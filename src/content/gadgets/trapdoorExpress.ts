@@ -32,7 +32,7 @@ export const trapdoorExpress: GadgetDef = {
     seg('TRP_DROP', 'action', 760, 'compress', [
       tw(0, 'lever', { rot: 0.9 }, 120, 'outBack'), anim(0, 'hands', 'open'), sound(0, 'clunk'),
       state(120, 'trapdoor', 'open'), anim(120, 'boss', 'hover'), anim(320, 'boss', 'lookdown'), anim(560, 'boss', 'lookcam'),
-      tw(0, 'camera', { x: 650, y: 380, sx: 1.15 }, 420, 'outQuad'), tw(60, 'hands', { y: 840 }, 260, 'inQuad'),
+      tw(0, 'camera', { x: 650, y: 380, sx: 1.15 }, 420, 'outQuad'), tw(60, 'hands', { y: 1060 }, 260, 'inQuad'),
     ]),
     // ---------------------------------------------------------------- LOSS : il marche dans le vide jusqu'au bord
     seg('TRP_L_TIPTOE', 'action', 900, 'compress', [

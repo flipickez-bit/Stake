@@ -23,7 +23,7 @@ export const officeRocket: GadgetDef = {
     ]),
     seg('RKT_FUSE', 'setup', 900, 'compress', [
       state(0, 'fuse', 'lit'), tw(0, 'spark', { alpha: 1 }, 60, 'linear'), sound(0, 'fuse'),
-      tw(0, 'spark', { x: 716 }, 880, 'linear'), tw(100, 'hands', { y: 840 }, 300, 'inQuad'),
+      tw(0, 'spark', { x: 716 }, 880, 'linear'), tw(100, 'hands', { y: 1060 }, 300, 'inQuad'),
       tw(0, 'camera', { x: 620, sx: 1.08 }, 800, 'inOutQuad'), anim(450, 'boss', 'sniff'),
     ]),
     // ---------------------------------------------------------------- ACTION commune : pfft… et calage

@@ -31,7 +31,7 @@ export const swivelSlingshot: GadgetDef = {
     // ---------------------------------------------------------------- ACTION commune : le lâcher
     seg('SLG_RELEASE', 'action', 260, 'compress', [
       anim(0, 'hands', 'open'), sound(0, 'twang'), tw(0, 'boss', { x: 470 }, 260, 'inQuad'), anim(0, 'boss', 'surprised'),
-      tw(0, 'camera', { x: 500, sx: 1 }, 300, 'outQuad'), tw(40, 'hands', { y: 840 }, 220, 'inQuad'),
+      tw(0, 'camera', { x: 500, sx: 1 }, 300, 'outQuad'), tw(40, 'hands', { y: 1060 }, 220, 'inQuad'),
     ]),
     // ---------------------------------------------------------------- LOSS : l'élastique le ramène
     seg('SLG_L_YANK', 'action', 760, 'compress', [

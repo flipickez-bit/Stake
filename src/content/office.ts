@@ -13,7 +13,7 @@ export const OFFICE_LAYOUT: Record<ActorId, ActorRest> = {
   boss: { transform: { x: BOSS_HOME.x, y: BOSS_HOME.y }, states: { seat: 'none', mug: 'normal', face: 'normal' }, anim: 'idle' },
   wendell: { transform: { x: 1260, y: 560 }, anim: 'idle' },
   coo: { transform: { x: 262, y: 342 }, anim: 'idle' },
-  hands: { transform: { x: 500, y: 840 }, anim: 'open' },
+  hands: { transform: { x: 500, y: 1060 }, anim: 'open' },
   window: { transform: { x: 220, y: 230 }, states: { main: 'intact' } },
   portrait: { transform: { x: 560, y: 150 } },
   cabinet: { transform: { x: 70, y: 560 }, states: { main: 'normal' } },
