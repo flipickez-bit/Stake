@@ -260,7 +260,7 @@ Le calculateur (`math/model`) **ne remplace pas** les artefacts Stake Engine.
 
 ## 7 bis. PHASE 0.5 : playtest et game feel (en cours)
 Question unique : **BAD BOSS est-il déjà satisfaisant à jouer avec des placeholders ?** Détail et état : `PHASE_0_5.md`.
-Outils prêts (PLAYTEST 50 v2 + questionnaire, portrait, LOOP x500) ; en attente des playtests humains ; 2e branche LOSS par gadget après le PLAYTEST #1. **Autoplay descendu dans les priorités** (après la Phase 1).
+Outils prêts (PLAYTEST 50 v2 + questionnaire, portrait, LOOP x500). PLAYTEST #1 fait (Q1 = 2,5 / 5 : le début annonçait la fin). **Phase 0.5B** : variété V2, 51 branches modulaires dont les 2es branches LOSS (BACKFIRE, TEASE, WENDELL CEILING), audit de prévisibilité, rareté cosmétique, APERÇU BOSS FIGHT. En attente du PLAYTEST #2. **Autoplay descendu dans les priorités** (après la Phase 1).
 
 ## 8. Proposition de Phase 1 (révisée après la Phase 0, NON commencée — sera mise à jour après la Phase 0.5)
 
@@ -268,7 +268,7 @@ La Phase 0 a déjà livré une grande partie de l'ancienne Phase 1 (GameFlow, re
 
 1. **Préversion sur téléphones réels** (référence + entrée de gamme, iOS Safari + Chrome Android) : FPS réels, latence de FIRE, déverrouillage audio, mise en page portrait. Ajuster les budgets du §4 avec des mesures.
 2. **PLAYTEST 50** avec 3 à 5 personnes (LOCAL DEV ONLY, données exportées à la main) : durée de manche perçue, temps avant la manche suivante, choix des Rage Levels, compréhension du résultat.
-3. **Passe de game feel** sur les 12 branches existantes, guidée par les playtests : placement de D1, durée des silences, lisibilité des impacts, pertes plus drôles. Ajouter en priorité les **archétypes de perte** manquants (BACKFIRE avec Wendell, TEASE) : environ 2 branches de perte par gadget, sans dépasser ~18 branches.
+3. **Passe de game feel** sur les branches existantes (51 depuis la Phase 0.5B, qui a déjà ajouté les archétypes BACKFIRE et TEASE et bien plus de variété que le plafond de ~18 branches prévu ici), guidée par les playtests : placement de D1, durée des silences, lisibilité des impacts, pertes plus drôles.
 4. **Finitions du GameFlow** : expiration de session (ERR_IS) et écran d'erreur fatale, couverture de 100 % des transitions, récapitulatif clair après reprise. (Autoplay : plus tard, derrière `FeatureGate`.)
 5. **UI minimale obligatoire** : écran de règles (RTP affiché si `displayRTP`, max win, table des gains par Rage Level), réglages son, libellés `socialCasino`, i18n (squelette).
 6. **`check:content`** en TypeScript (non-révélation, références d'animations et de segments, budget de TEASE), branché en CI.

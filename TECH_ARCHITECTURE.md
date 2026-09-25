@@ -525,7 +525,7 @@ src/
   render/     PixiStage.ts · office.ts · placeholder/{BossAnimator,minorCharacters,palette}.ts
   audio/      AudioDirector.ts                 sons synthétisés WebAudio (aucun fichier)
   dev/        devOutcomes.ts · loop.ts · perf.ts · playtest.ts
-tests/unit    domain · mockRgs · stakeAdapter · gameFlow · presentation · presenterFlow · playtest
+tests/unit    domain · mockRgs · stakeAdapter · gameFlow · presentation · presenterFlow · playtest · variety (0.5B)
 tests/e2e     phase0.spec.ts
 tools/        report-build-size.mjs · loop-benchmark.mjs · capture-screens.mjs · check_gadget_catalogue.py
 docs/phase0/screens/   captures · docs/generated/  BUILD_SIZE.md · LOOP_X100.md · MATH_REPORT.md
@@ -546,7 +546,8 @@ Sens des dépendances (vérifié par la structure des imports) :
 | `beginNeutral(level)` | `beginNeutral(level, speed)` | Le tronc neutre est compilé à la vitesse choisie |
 | Délais réseau 10 / 15 / 10 s | Identiques en mode Stake ; **8 / 6 / 5 s en mode Mock** | Pour que les simulations de panne se voient vite dans le DEV PANEL |
 | Reprise « en turbo » | Reprise à la vitesse **turbo si la juridiction l'autorise**, sinon normale | Conforme à §2.5 |
-| Branche = `candidats[seed % n]` | Identique | — |
+| Branche = `candidats[seed % n]` | Phase 0 : identique. **Phase 0.5B** : candidates (script du book × classe), puis **tirage pondéré par rareté cosmétique** sur le flux `branch` de la graine (§3.6) | Plusieurs branches par cas ; la découverte des gags rares s'étale sur des centaines de manches sans jamais toucher aux maths |
+| `rarity` du book choisit la branche | Champ **ignoré** pour la sélection depuis la 0.5B (conservé dans le format) | La rareté est portée par le contenu (`BranchDef.rarity`), pas par les maths |
 
 ## 3.3 Provenance des données d'une manche (exigence Phase 0)
 
@@ -562,9 +563,9 @@ Règle : **les mathématiques sont établies AVANT toute lecture de la graine** 
 | BOSS FIGHT : échelle, attaques HIT/BLOCKED, K.O., palier final | **Book** (événement `bossFight`), validé par `parseRound` | **Non** |
 | Variante visuelle d'une attaque (projectile) | **Book** (`attacks[].variant`) | Non (cosmétique, mais écrite dans le book) |
 | Gadget | **Local** : f(Rage Level) au MVP (décision D-GADGET en attente) | Non |
-| Branche | **Local** : candidates (script × classe × rareté), puis `seed % n` | **Oui, uniquement parmi des branches équivalentes** (une seule par cas en Phase 0) |
+| Branche | **Local** : candidates (script du book × classe), puis tirage pondéré par rareté cosmétique (flux `branch`) | **Oui, uniquement parmi des branches compatibles avec le résultat déjà fixé** (plusieurs par cas depuis la 0.5B) |
 | Réaction du boss (pool de la classe) | **Graine**, flux `reaction` | Oui |
-| Caméo de COO (10 %, gains uniquement) | **Graine**, flux `coo` | Oui |
+| Caméo de COO (10 %, hors pertes) | **Graine**, flux `coo` | Oui |
 | Trajectoires des particules | **Graine** (hash(graine, segment, cue)) | Oui |
 | Bruit de la secousse de caméra | **Graine** (idem) | Oui |
 | Durées, courbes, positions, sons | **Contenu local** (données des gadgets et bibliothèques) | Non |
@@ -598,3 +599,19 @@ BOSS FIGHT (palier final = nombre d'attaques HIT ; la dernière est BLOCKED sauf
 - **Attente réseau** : tronc « ouvert » ; à D1 le temps s'arrête, les poses continuent (`holdOffset`), un son d'attente se répète. À l'arrivée du book, la séquence complète **prolonge** le tronc (préfixe identique), sans rejouer d'événement.
 - **Skip / slamstop** : `seek(reveal)` puis `seek(end)` ; les signaux franchis (échelle du BOSS FIGHT, reveal) sont émis une seule fois, les sons intermédiaires non.
 - **Vitesses** : turbo = segments `drop` supprimés, `compress` ×1,8 ; super = intro/setup ×3, action/twist ×6 (muets), impact conservé, réaction ≤ 300 ms. Les signaux (et donc le résultat affiché) sont identiques à toutes les vitesses.
+
+## 3.6 Variété V2 (Phase 0.5B) : modules, rareté, audit
+
+**Contenu modulaire.** `src/content/dsl.ts` : `mod(name, ...steps)` déclare un module visible (setup ou twist) ; `compose(id, label, modules, fin, { categories, classes, rarity, d1 })` assemble une branche et renseigne `BranchDef.path` (noms des modules avant la fin). Les modules sont partagés entre branches de résultats opposés : c'est la fin, tardive, qui tranche. Segments partagés ajoutés dans `library.ts` : `ELEV_WAIT` / `ELEV_SAFE` / `ELEV_WRECK` / `ELEV_MEGA` / `ELEV_GOLD` (ascenseur hors champ), `SIP_BEAT`, `SIP_EMPTY`, `SIP_SMUG`. Nouveaux accessoires du bureau (`office.ts`, rendus dans `render/office.ts`) : ascenseur et portes, écran, ventilateur, plante, extincteur, chaise volante, fumée.
+
+**Sélection** (`compileSequence.ts`, fonction pure) :
+1. `candidateBranches(outcome, gadget)` : branches dont `categories` contient le script du book **et** dont `classes` contient la classe de résultat (repli : classe seule).
+2. `selectBranch` : branche forcée (DEV) ou tirage pondéré `RARITY_WEIGHT` (COMMON 100 · UNCOMMON 40 · RARE 12 · VERY_RARE 3) avec `createRng(outcome.seed, 'branch')`.
+3. `branchProbabilities(gadget, classe, poidsDesScripts)` : probabilités exactes, utilisées par l'audit et le rapport.
+
+Rien de cette sélection ne lit l'historique, l'horloge ou le stockage : **même book → même branche, même variante**, en direct, en reprise et en replay. Une anti-répétition fondée sur l'historique a été étudiée et écartée pour cette raison (`PHASE_0_5.md` §6.7).
+
+**Audit de prévisibilité** (`tests/unit/variety.test.ts`, en CI) : pour chaque gadget et chaque préfixe de `path` (hors BOSS FIGHT), il faut au moins une issue gagnante et une perdante, et un rapport de vraisemblance P(préfixe | gain) / P(préfixe | perte) dans [0,5 ; 2], calculé à partir de la distribution mathématique réelle des classes (`distributionTable`) et des poids de script (`config/presentation_policy.json`) ; fin → reveal ≤ 800 ms (1 300 ms pour RARE / VERY_RARE). Rapport : `VARIETY_REPORT=docs/generated/VARIETY_REPORT.md npx vitest run tests/unit/variety.test.ts`.
+
+**Traçabilité.** `PresentationInfo.variant` = `branche[/réaction][/COO]` ; `RoundRecord.variant` et les champs `variant`, `newBranch`, `newVariant` du PLAYTEST permettent de mesurer la découverte réelle. `CONTENT_VERSION` (`gadgets/index.ts`) compte les branches (`P05-B · 51 branches`) et accompagne chaque export de playtest.
+

@@ -6,10 +6,19 @@
 - [x] PLAYTEST 50 v2 : champs demandés par manche, questionnaire de 6 questions à la fin uniquement, export volontaire (copier / fichier), LOCAL DEV ONLY.
 - [x] Cadrage portrait adaptatif (captures avant / après).
 - [x] LOOP x500 avec relevés mémoire (chauffe normale, pas de fuite visible).
-- [ ] **PLAYTEST #1 humain** (vous) : 50 manches, questionnaire, export → me transmettre le texte ou le fichier.
+- [x] **PLAYTEST #1 humain** : Q1 = 2,5 / 5 (problème principal), Q2 / Q4 validés, Q3 validé mais variété insuffisante, Q5 non évaluable.
+- [x] **Phase 0.5B — variété V2** (`PHASE_0_5.md` §5-6) :
+  - [x] 2e branche LOSS par gadget : SLINGSHOT BACKFIRE, TRAPDOOR TEASE, ROCKET WENDELL CEILING (sans toucher aux probabilités) ;
+  - [x] modules SETUP × TWIST × FIN, 15-16 branches jouables par gadget (51 au total avec les BOSS FIGHT) ;
+  - [x] débuts partagés, audit de prévisibilité en CI (rapport de vraisemblance ∈ [0,5 ; 2]) ;
+  - [x] gags récurrents (LE SIP peut finir en gain), doubles twists rares, ascenseur hors champ, pertes en réaction en chaîne ;
+  - [x] rareté cosmétique COMMON / UNCOMMON / RARE / VERY_RARE (présentation seulement) ;
+  - [x] anti-répétition : étudiée, non implémentée (menace replay / reprise) → variété sans état ;
+  - [x] bouton APERÇU BOSS FIGHT (PLAYTEST / DEV, sans mise, sans donnée de playtest) ;
+  - [x] Q7 « nouveauté » + « pas rencontré » pour Q5 ; nouveauté mesurée par manche et dans le rapport.
+- [ ] **PLAYTEST #2 humain** (vous, contenu P05-B) : 50 manches, 7 questions, export. Cible : Q1 ≥ 4 / 5 ; nouvelles animations encore remarquées après les manches 10, 25 et 50.
 - [ ] Sessions supplémentaires si d'autres testeurs sont disponibles.
-- [ ] **Après le PLAYTEST #1** : 2e branche LOSS par gadget (SLINGSHOT BACKFIRE, TRAPDOOR TEASE, ROCKET WENDELL CEILING), sans toucher aux probabilités.
-- [ ] PLAYTEST #2 (contenu P05-B), puis rapport `tools/playtest-report.mjs` et arrêt.
+- [ ] Rapport de Phase 0.5 (`tools/playtest-report.mjs`, P05-A vs P05-B), puis arrêt.
 
 ## P0 : décisions et informations externes
 - [ ] Obtenir de Stake Engine (liste complète : `docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 et hypothèses H1-H13 du §12) :
@@ -27,7 +36,7 @@
 ## P1 : Phase 1 (proposée, NON commencée — `MVP_ROADMAP.md` §8)
 - [ ] Préversion sur téléphones réels : FPS, latence de FIRE, audio iOS/Android, portrait.
 - [ ] PLAYTEST 50 avec 3 à 5 personnes.
-- [ ] Passe de game feel guidée par les playtests (la 2e branche de perte est faite en Phase 0.5).
+- [ ] Passe de game feel guidée par les playtests (variété V2 faite en Phase 0.5B ; contenu supplémentaire plutôt que mémoire si la répétition gêne encore).
 - [ ] Expiration de session (ERR_IS) ; couverture de 100 % des transitions.
 - [ ] Autoplay derrière `FeatureGate` — **descendu en priorité** : pas avant que le jeu soit satisfaisant quand le joueur prend chaque décision lui-même.
 - [ ] Écran de règles (RTP si `displayRTP`, max win, gains par Rage Level), réglages son, i18n (squelette).

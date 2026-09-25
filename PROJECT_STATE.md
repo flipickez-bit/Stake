@@ -2,14 +2,21 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-_Dernière mise à jour : 2026-09-25, **Phase 0.5 en cours** (playtest et game feel). Phase 0 validée techniquement. **En attente du PLAYTEST #1 humain.** La Phase 1 n'est PAS commencée. Aucun asset définitif._
+_Dernière mise à jour : 2026-09-25, **Phase 0.5B terminée** (variété d'animations V2). PLAYTEST #1 fait. **En attente du PLAYTEST #2 humain.** La Phase 1 n'est PAS commencée. Aucun asset définitif._
 
 ## Phase 0.5 : état (`PHASE_0_5.md`)
 Question : **BAD BOSS est-il déjà satisfaisant à jouer avec des placeholders ?**
-- ✅ PLAYTEST 50 v2 (LOCAL DEV ONLY) : bouton **PLAYTEST** dans la barre du haut, 50 manches sans interruption, puis 6 affirmations notées 1-5 et un champ libre ; export volontaire (copier / fichier). Rapport : `tools/playtest-report.mjs`.
-- ✅ Cadrage portrait adaptatif : scène plus compacte, sol à 62 %, suivi du boss, bureau du joueur au premier plan, cartes collées à l'action (`docs/phase05/portrait/compare-*.jpg`).
-- ✅ LOOP x500 : 500/500, 0 erreur ; tas après GC 6,6 → 8,2 Mo pendant 50 manches de chauffe, puis plateau (≈ 0,08 Mo / 100 manches) ; nœuds et textures constants → **chauffe normale, pas de fuite visible** (`docs/generated/LOOP_X500.md`).
-- ⏳ PLAYTEST #1 humain, puis 2e branche LOSS par gadget (après ce premier playtest), puis PLAYTEST #2.
+- ✅ PLAYTEST 50 v2 (LOCAL DEV ONLY), cadrage portrait adaptatif, LOOP x500 (pas de fuite visible) : voir 0.5A.
+- ✅ **PLAYTEST #1** (contenu P05-A, 12 branches) : rythme (Q4) et Rage Levels (Q2) validés ; pertes amusantes mais trop peu variées (Q3) ; **Q1 = 2,5 / 5** (le début annonçait la fin) ; Q5 non évaluable ; demande de « beaucoup plus d'animations nouvelles ».
+- ✅ **Phase 0.5B — variété V2** (contenu **P05-B · 51 branches**, dont 45 hors BOSS FIGHT) :
+  - 2e branche LOSS par gadget faite : SLINGSHOT BACKFIRE, TRAPDOOR TEASE, ROCKET WENDELL CEILING (le « tell » du rallumage est corrigé) ;
+  - 15 à 16 branches jouables par gadget, composées de modules SETUP × TWIST × FIN partagés entre gains et pertes ;
+  - audit en CI : chaque début visible mène aux deux issues, rapport de vraisemblance gain/perte entre 0,62 et 1,83 (limite [0,5 ; 2]) ;
+  - gags récurrents sans signification fixe (LE SIP peut finir en gain), doubles twists rares, ascenseur hors champ dans les 3 gadgets ;
+  - rareté cosmétique COMMON → VERY_RARE qui ne choisit qu'entre des présentations compatibles avec le résultat (découvertes étalées jusqu'à ~200 manches et au-delà) ;
+  - anti-répétition étudiée et **non implémentée** (elle casserait replay et reprise) ; variété sans état à la place ;
+  - bouton **APERÇU BOSS FIGHT** (sans mise, sans donnée de playtest) ; question Q7 sur la nouveauté ; option « pas rencontré » pour Q5.
+- ⏳ **PLAYTEST #2** (vous) : objectif Q1 ≥ 4 / 5 et nouvelles animations encore remarquées après les manches 10, 25 et 50.
 - Autoplay : descendu dans les priorités (pas en Phase 0.5).
 
 ## Résumé
@@ -21,7 +28,7 @@ Jeu instantané pour **Stake Engine**. Le joueur se venge, façon cartoon slapst
 ## Phase 0 : état
 **Terminée.** Le prototype prouve l'architecture : boucle complète, coupures réseau et reprise, DEV PANEL, déterminisme.
 - Recette détaillée : **[PHASE_0_ACCEPTANCE.md](PHASE_0_ACCEPTANCE.md)** (PASS / FAIL / NOT TESTED). Aucun critère en FAIL. NOT TESTED : appareils réels, RGS Stake réel, jugement humain du « fun », vraie session PLAYTEST 50.
-- Tests : **58 unitaires/intégration** (Vitest) + **13 e2e** (Playwright, Chromium, dont un PLAYTEST 50 complet) : tous verts.
+- Tests (à la fin de la 0.5B) : **65 unitaires/intégration** (Vitest, dont l'audit de variété) + **14 e2e** (Playwright, Chromium, dont un PLAYTEST 50 complet et l'aperçu BOSS FIGHT) : tous verts.
 - LOOP ×100 (sans mise) : 100/100, 0 erreur, 0 appel wallet (`docs/generated/LOOP_X100.md`).
 - Build : 719 Ko bruts au total, **≈ 196 Ko gzip** au chargement initial (`docs/generated/BUILD_SIZE.md`). Aucun asset binaire.
 - **Préversion jouable** (privée) : https://claude.ai/artifact/2oG78eNrGNuwiL9aL2SWkA (fichier unique `npm run build:single`, Mock RGS, aucun argent réel).
@@ -43,7 +50,7 @@ src/domain                  modèle pur (Rage Levels, classes, book, Outcome, gr
 src/platform/rgs            RgsPort · mock/ (RGS simulé persistant, pannes) · stake/ (adaptateur du SDK)
 src/flow                    GameFlow (machine à états), FeatureGate, délais
 src/presentation            moteur : compileSequence (pur), timeline, SequencePlayer, particules, CharacterAnimator
-src/content                 données : bureau, bibliothèques partagées, 3 gadgets × 4 branches
+src/content                 données : bureau, bibliothèques partagées, modules (dsl), 3 gadgets (51 branches)
 src/presenter · src/render  pont GameFlow ↔ séquenceur · scène Pixi et placeholders
 src/audio · src/dev · src/app   sons synthétisés · outils dev (boucle, perf, playtest) · UI Svelte + DEV PANEL
 tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports générés) · math/
@@ -67,6 +74,7 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 ## Systèmes terminés
 - Conception : étapes 1 à 12 (GDD, analyse Stake, architecture, roadmap). Calculateur mathématique v3. Contrôleur du catalogue (152 branches).
 - **Phase 0** : GameFlow complet ; Mock RGS persistant avec pannes ; adaptateur Stake ; séquenceur déterministe ; scène placeholder (bureau, B.B., mug, Wendell, COO, 3 cartes) ; 12 branches + BOSS FIGHT ; sons synthétisés ; HUD mobile ; DEV PANEL (forçages, simulations, debug, boucle ×20/×100, PLAYTEST 50) ; replay par URL ; CI.
+- **Phase 0.5** : PLAYTEST 50 v2 et rapport ; cadrage portrait ; LOOP x500 ; variété V2 (51 branches modulaires, rareté cosmétique, ascenseur, accessoires de bureau : écran, ventilateur, plante, extincteur, chaise volante, fumée) ; audit de prévisibilité ; APERÇU BOSS FIGHT.
 
 ## Systèmes non commencés
 - Phase 1 (voir `MVP_ROADMAP.md` §8) et suivantes : tests sur téléphones réels, passe de game feel, archétypes de perte supplémentaires, autoplay, écran de règles.
@@ -76,8 +84,9 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 ## Bugs et limites connus
 - **Performance réelle inconnue** : seules des mesures headless (rendu logiciel SwiftShader, ≈ 9-15 FPS non représentatifs ; coût CPU de notre code ≈ 1 ms/image).
 - Portrait : corrigé en Phase 0.5 ; à valider sur de vrais téléphones (encoches, barres système, audio).
-- Les scripts CLEAN_MISS, BACKFIRE et TEASE partagent **une seule** branche de perte par gadget : 2e branche prévue en Phase 0.5, **après** le PLAYTEST #1 (pour mesurer la version actuelle d'abord).
-- Le « tell » de l'OFFICE ROCKET : après le calage commun, un rallumage annonce toujours un gain. La branche WENDELL CEILING (perte après rallumage) le corrigera.
+- Variété P05-B non encore validée par un humain (PLAYTEST #2). Les gags de gros gain RARE ne se voient qu'après des centaines de manches : utiliser le DEV PANEL (branche forcée) pour les revoir.
+- Répétition immédiate d'une même branche encore possible (≈ 17 % perte → perte, 20-26 % gain → gain) : pas d'anti-répétition, par choix (déterminisme du replay).
+- Chaque nouvelle branche est un placeholder : la lisibilité de certains gags (chaise qui revient, fumée, ascenseur) sera à revoir avec les vrais assets.
 - Sons placeholders synthétisés ; ambiance minimale ; déverrouillage audio non vérifié sur iOS.
 - `minimumRoundDuration` : interprétation provisoire (≤ 60 → secondes). **Bloquant avant production.**
 - `StakeRgsAdapter` non testé contre un vrai RGS.
@@ -87,7 +96,7 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 `docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 (16 questions) et §12 (13 hypothèses portées par le code, chacune isolée à un seul endroit).
 
 ## Prochaine tâche
-**Attendre le PLAYTEST #1** (vos résultats exportés). Ensuite : 2e branche LOSS par gadget, PLAYTEST #2, rapport de Phase 0.5, puis arrêt. Pas de Phase 1 automatique.
+**Attendre le PLAYTEST #2** (vos résultats exportés, contenu P05-B). Ensuite : rapport de Phase 0.5 comparant P05-A et P05-B, puis arrêt. Pas de Phase 1 automatique.
 
 ## Commandes
 ```bash
@@ -95,13 +104,14 @@ npm install                     # une fois
 npm run dev                     # développement : http://localhost:5173  (?dev=1 ouvre le DEV PANEL)
 npm run build && npm run preview   # build statique : http://localhost:4173
 npm run build:single            # un seul fichier : dist-single/index.html (s'ouvre aussi en double-cliquant)
-npm test                        # Vitest : 58 tests
-npm run test:e2e                # Playwright : 13 tests (Chromium)
+npm test                        # Vitest : 65 tests
+npm run test:e2e                # Playwright : 14 tests (Chromium)
 npm run check                   # svelte-check
 npm run size                    # taille du build (après build)
 npm run loop:bench -- --count 100 --speed turbo --markdown docs/generated/LOOP_X100.md
 npm run loop:500                # LOOP x500 + mémoire tous les 50 rounds (≈ 20 min, pas en CI)
 node tools/playtest-report.mjs exports/*.json --markdown docs/generated/PLAYTEST_REPORT.md
+VARIETY_REPORT=docs/generated/VARIETY_REPORT.md npx vitest run tests/unit/variety.test.ts   # rapport de variété
 node tools/capture-portrait.mjs --dist dist --prefix after   # captures portrait
 node tools/capture-screens.mjs  # captures → docs/phase0/screens
 python3 math/model/bad_boss_math.py --quick
