@@ -1,0 +1,15 @@
+:root {
+  --bb-violet: #5b2a86;
+  --bb-yellow: #ffc400;
+  --bb-ink: #1b1f3b;
+  --bb-paper: #f4f1ea;
+  --grumpy: #1e90ff;
+  --furious: #ff8a00;
+  --unhinged: #ff2e4d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bb-ink); color: #fff; }
+body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; overscroll-behavior: none; }
+#app { height: 100%; }
+button { font: inherit; }

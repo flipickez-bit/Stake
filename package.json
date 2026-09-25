@@ -1,0 +1,30 @@
+{
+  "name": "bad-boss",
+  "private": true,
+  "version": "0.0.1",
+  "description": "BAD BOSS (WORKING TITLE - TRADEMARK/CLEARANCE REQUIRED) - Phase 0 prototype",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "size": "node tools/report-build-size.mjs"
+  },
+  "dependencies": {
+    "pixi.js": "8.21.0",
+    "stake-engine": "0.1.32",
+    "svelte": "5.57.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@types/node": "22.20.4",
+    "svelte-check": "4.7.6",
+    "typescript": "5.9.3",
+    "vite": "8.3.1",
+    "vitest": "5.0.2"
+  }
+}
