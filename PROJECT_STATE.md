@@ -2,7 +2,15 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-_Dernière mise à jour : 2026-09-25, **fin de la Phase 0**. **Arrêt demandé** : la Phase 1 n'est PAS commencée (proposition dans `MVP_ROADMAP.md` §8). Aucun asset définitif._
+_Dernière mise à jour : 2026-09-25, **Phase 0.5 en cours** (playtest et game feel). Phase 0 validée techniquement. **En attente du PLAYTEST #1 humain.** La Phase 1 n'est PAS commencée. Aucun asset définitif._
+
+## Phase 0.5 : état (`PHASE_0_5.md`)
+Question : **BAD BOSS est-il déjà satisfaisant à jouer avec des placeholders ?**
+- ✅ PLAYTEST 50 v2 (LOCAL DEV ONLY) : bouton **PLAYTEST** dans la barre du haut, 50 manches sans interruption, puis 6 affirmations notées 1-5 et un champ libre ; export volontaire (copier / fichier). Rapport : `tools/playtest-report.mjs`.
+- ✅ Cadrage portrait adaptatif : scène plus compacte, sol à 62 %, suivi du boss, bureau du joueur au premier plan, cartes collées à l'action (`docs/phase05/portrait/compare-*.jpg`).
+- ✅ LOOP x500 : 500/500, 0 erreur ; tas après GC 6,6 → 8,2 Mo pendant 50 manches de chauffe, puis plateau (≈ 0,08 Mo / 100 manches) ; nœuds et textures constants → **chauffe normale, pas de fuite visible** (`docs/generated/LOOP_X500.md`).
+- ⏳ PLAYTEST #1 humain, puis 2e branche LOSS par gadget (après ce premier playtest), puis PLAYTEST #2.
+- Autoplay : descendu dans les priorités (pas en Phase 0.5).
 
 ## Résumé
 Jeu instantané pour **Stake Engine**. Le joueur se venge, façon cartoon slapstick, de Barnaby « B.B. » Bottomline, un patron fictif.
@@ -13,7 +21,7 @@ Jeu instantané pour **Stake Engine**. Le joueur se venge, façon cartoon slapst
 ## Phase 0 : état
 **Terminée.** Le prototype prouve l'architecture : boucle complète, coupures réseau et reprise, DEV PANEL, déterminisme.
 - Recette détaillée : **[PHASE_0_ACCEPTANCE.md](PHASE_0_ACCEPTANCE.md)** (PASS / FAIL / NOT TESTED). Aucun critère en FAIL. NOT TESTED : appareils réels, RGS Stake réel, jugement humain du « fun », vraie session PLAYTEST 50.
-- Tests : **55 unitaires/intégration** (Vitest) + **13 e2e** (Playwright, Chromium) : tous verts.
+- Tests : **58 unitaires/intégration** (Vitest) + **13 e2e** (Playwright, Chromium, dont un PLAYTEST 50 complet) : tous verts.
 - LOOP ×100 (sans mise) : 100/100, 0 erreur, 0 appel wallet (`docs/generated/LOOP_X100.md`).
 - Build : 719 Ko bruts au total, **≈ 196 Ko gzip** au chargement initial (`docs/generated/BUILD_SIZE.md`). Aucun asset binaire.
 - **Préversion jouable** (privée) : https://claude.ai/artifact/2oG78eNrGNuwiL9aL2SWkA (fichier unique `npm run build:single`, Mock RGS, aucun argent réel).
@@ -67,19 +75,19 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 
 ## Bugs et limites connus
 - **Performance réelle inconnue** : seules des mesures headless (rendu logiciel SwiftShader, ≈ 9-15 FPS non représentatifs ; coût CPU de notre code ≈ 1 ms/image).
-- **Portrait** : le cadrage laisse beaucoup de plafond vide au-dessus de la scène (à retravailler en Phase 1).
-- Les scripts CLEAN_MISS, BACKFIRE et TEASE partagent **une seule** branche de perte par gadget (limite volontaire de 12 branches).
-- Le « tell » de l'OFFICE ROCKET : après le calage commun, un rallumage annonce toujours un gain (une seule branche de perte). À corriger avec une 2e branche de perte en Phase 1.
+- Portrait : corrigé en Phase 0.5 ; à valider sur de vrais téléphones (encoches, barres système, audio).
+- Les scripts CLEAN_MISS, BACKFIRE et TEASE partagent **une seule** branche de perte par gadget : 2e branche prévue en Phase 0.5, **après** le PLAYTEST #1 (pour mesurer la version actuelle d'abord).
+- Le « tell » de l'OFFICE ROCKET : après le calage commun, un rallumage annonce toujours un gain. La branche WENDELL CEILING (perte après rallumage) le corrigera.
 - Sons placeholders synthétisés ; ambiance minimale ; déverrouillage audio non vérifié sur iOS.
 - `minimumRoundDuration` : interprétation provisoire (≤ 60 → secondes). **Bloquant avant production.**
 - `StakeRgsAdapter` non testé contre un vrai RGS.
-- Préversion claude.ai : pas de paramètres d'URL (utiliser le bouton **DEV**), pas de replay par URL, et **EXPORT JSON** du PLAYTEST inopérant (le viewer bloque les téléchargements) ; le solde fictif est propre à chaque navigateur.
+- Préversion claude.ai : pas de paramètres d'URL (utiliser le bouton **DEV**), pas de replay par URL ; l'enregistrement de fichier passe par la confirmation du viewer (capacité `downloads`) ; le solde fictif et les sessions de playtest sont propres à chaque navigateur.
 
 ## Questions ouvertes (INFORMATION STAKE ENGINE REQUISE)
 `docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 (16 questions) et §12 (13 hypothèses portées par le code, chacune isolée à un seul endroit).
 
 ## Prochaine tâche
-**Attendre votre validation de la Phase 0.** Ensuite seulement : Phase 1 selon `MVP_ROADMAP.md` §8 (téléphones réels et PLAYTEST 50 d'abord).
+**Attendre le PLAYTEST #1** (vos résultats exportés). Ensuite : 2e branche LOSS par gadget, PLAYTEST #2, rapport de Phase 0.5, puis arrêt. Pas de Phase 1 automatique.
 
 ## Commandes
 ```bash
@@ -87,11 +95,14 @@ npm install                     # une fois
 npm run dev                     # développement : http://localhost:5173  (?dev=1 ouvre le DEV PANEL)
 npm run build && npm run preview   # build statique : http://localhost:4173
 npm run build:single            # un seul fichier : dist-single/index.html (s'ouvre aussi en double-cliquant)
-npm test                        # Vitest : 55 tests
+npm test                        # Vitest : 58 tests
 npm run test:e2e                # Playwright : 13 tests (Chromium)
 npm run check                   # svelte-check
 npm run size                    # taille du build (après build)
 npm run loop:bench -- --count 100 --speed turbo --markdown docs/generated/LOOP_X100.md
+npm run loop:500                # LOOP x500 + mémoire tous les 50 rounds (≈ 20 min, pas en CI)
+node tools/playtest-report.mjs exports/*.json --markdown docs/generated/PLAYTEST_REPORT.md
+node tools/capture-portrait.mjs --dist dist --prefix after   # captures portrait
 node tools/capture-screens.mjs  # captures → docs/phase0/screens
 python3 math/model/bad_boss_math.py --quick
 python3 tools/check_gadget_catalogue.py

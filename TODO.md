@@ -2,9 +2,16 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
+## P0 : Phase 0.5 (en cours) — `PHASE_0_5.md`
+- [x] PLAYTEST 50 v2 : champs demandés par manche, questionnaire de 6 questions à la fin uniquement, export volontaire (copier / fichier), LOCAL DEV ONLY.
+- [x] Cadrage portrait adaptatif (captures avant / après).
+- [x] LOOP x500 avec relevés mémoire (chauffe normale, pas de fuite visible).
+- [ ] **PLAYTEST #1 humain** (vous) : 50 manches, questionnaire, export → me transmettre le texte ou le fichier.
+- [ ] Sessions supplémentaires si d'autres testeurs sont disponibles.
+- [ ] **Après le PLAYTEST #1** : 2e branche LOSS par gadget (SLINGSHOT BACKFIRE, TRAPDOOR TEASE, ROCKET WENDELL CEILING), sans toucher aux probabilités.
+- [ ] PLAYTEST #2 (contenu P05-B), puis rapport `tools/playtest-report.mjs` et arrêt.
+
 ## P0 : décisions et informations externes
-- [ ] **Validation de la Phase 0** par vous (`PHASE_0_ACCEPTANCE.md`), puis feu vert Phase 1.
-- [ ] Jouer une vraie session **PLAYTEST 50** (DEV PANEL → PLAYTEST 50 → START), sur téléphone si possible, et exporter le JSON.
 - [ ] Obtenir de Stake Engine (liste complète : `docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 et hypothèses H1-H13 du §12) :
   - [ ] sémantique de `autoEndRoundDisabled` / `auto_close_disabled=True` sur des modes de base (manches à gain nul comprises) ;
   - [ ] statut officiel du paquet npm `stake-engine`, et une version à erreurs structurées ;
@@ -20,9 +27,9 @@
 ## P1 : Phase 1 (proposée, NON commencée — `MVP_ROADMAP.md` §8)
 - [ ] Préversion sur téléphones réels : FPS, latence de FIRE, audio iOS/Android, portrait.
 - [ ] PLAYTEST 50 avec 3 à 5 personnes.
-- [ ] Passe de game feel des 12 branches ; 2e branche de perte par gadget (BACKFIRE avec Wendell, TEASE) ; corriger le « tell » du rallumage de l'OFFICE ROCKET.
-- [ ] Cadrage portrait (moins de plafond vide ; place pour le résultat et l'échelle du BOSS FIGHT).
-- [ ] Autoplay derrière `FeatureGate` ; expiration de session (ERR_IS) ; couverture de 100 % des transitions.
+- [ ] Passe de game feel guidée par les playtests (la 2e branche de perte est faite en Phase 0.5).
+- [ ] Expiration de session (ERR_IS) ; couverture de 100 % des transitions.
+- [ ] Autoplay derrière `FeatureGate` — **descendu en priorité** : pas avant que le jeu soit satisfaisant quand le joueur prend chaque décision lui-même.
 - [ ] Écran de règles (RTP si `displayRTP`, max win, gains par Rage Level), réglages son, i18n (squelette).
 - [ ] `check:content` en TypeScript branché en CI.
 

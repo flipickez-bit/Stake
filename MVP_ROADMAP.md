@@ -258,14 +258,18 @@ Le calculateur (`math/model`) **ne remplace pas** les artefacts Stake Engine.
 4. Écrire la machine à états et ses tests d'invariants, **avant** toute animation.
 5. Déployer la préversion et partager le lien de test.
 
-## 8. Proposition de Phase 1 (révisée après la Phase 0, NON commencée)
+## 7 bis. PHASE 0.5 : playtest et game feel (en cours)
+Question unique : **BAD BOSS est-il déjà satisfaisant à jouer avec des placeholders ?** Détail et état : `PHASE_0_5.md`.
+Outils prêts (PLAYTEST 50 v2 + questionnaire, portrait, LOOP x500) ; en attente des playtests humains ; 2e branche LOSS par gadget après le PLAYTEST #1. **Autoplay descendu dans les priorités** (après la Phase 1).
+
+## 8. Proposition de Phase 1 (révisée après la Phase 0, NON commencée — sera mise à jour après la Phase 0.5)
 
 La Phase 0 a déjà livré une grande partie de l'ancienne Phase 1 (GameFlow, reprise, replay, FeatureGate). La Phase 1 se concentre donc sur **ce qui ne peut être jugé qu'avec des humains et des appareils réels**, et sur le « feel ».
 
 1. **Préversion sur téléphones réels** (référence + entrée de gamme, iOS Safari + Chrome Android) : FPS réels, latence de FIRE, déverrouillage audio, mise en page portrait. Ajuster les budgets du §4 avec des mesures.
 2. **PLAYTEST 50** avec 3 à 5 personnes (LOCAL DEV ONLY, données exportées à la main) : durée de manche perçue, temps avant la manche suivante, choix des Rage Levels, compréhension du résultat.
 3. **Passe de game feel** sur les 12 branches existantes, guidée par les playtests : placement de D1, durée des silences, lisibilité des impacts, pertes plus drôles. Ajouter en priorité les **archétypes de perte** manquants (BACKFIRE avec Wendell, TEASE) : environ 2 branches de perte par gadget, sans dépasser ~18 branches.
-4. **Finitions du GameFlow** : autoplay derrière `FeatureGate`, expiration de session (ERR_IS) et écran d'erreur fatale, couverture de 100 % des transitions, récapitulatif clair après reprise.
+4. **Finitions du GameFlow** : expiration de session (ERR_IS) et écran d'erreur fatale, couverture de 100 % des transitions, récapitulatif clair après reprise. (Autoplay : plus tard, derrière `FeatureGate`.)
 5. **UI minimale obligatoire** : écran de règles (RTP affiché si `displayRTP`, max win, table des gains par Rage Level), réglages son, libellés `socialCasino`, i18n (squelette).
 6. **`check:content`** en TypeScript (non-révélation, références d'animations et de segments, budget de TEASE), branché en CI.
 7. En parallèle, sans bloquer : réponses **INFORMATION STAKE ENGINE REQUISE** (`docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11-12) et démarrage du jeu `bad_boss` dans le **math-sdk officiel** (Phase 2) avec le format d'événements v3 (`TECH_ARCHITECTURE.md` §3.4).

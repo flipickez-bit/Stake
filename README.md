@@ -13,7 +13,7 @@ Voir **[PROJECT_STATE.md](PROJECT_STATE.md)** et **[TODO.md](TODO.md)**.
 ```bash
 npm install
 npm run dev              # http://localhost:5173  — ajoutez ?dev=1 pour ouvrir le DEV PANEL
-npm test                 # 55 tests unitaires et d'intégration
+npm test                 # 58 tests unitaires et d'intégration
 npm run test:e2e         # 13 tests Playwright (Chromium)
 npm run build:single     # préversion en un seul fichier : dist-single/index.html
 ```
@@ -32,6 +32,7 @@ Aucun argent réel : en l'absence de `sessionID`/`rgs_url` dans l'URL, le jeu ut
 | 9 | [STAKE_ENGINE_FAITS_VERIFIES](docs/STAKE_ENGINE_FAITS_VERIFIES.md) | Analyse technique Stake Engine |
 | 10-11 | [TECH_ARCHITECTURE](TECH_ARCHITECTURE.md) | Stack, architecture, GameFlow, modèle d'animation, DEV PANEL |
 | 12 | [MVP_ROADMAP](MVP_ROADMAP.md) | Phases, portes, budgets de performance, critères MVP, proposition de Phase 1 |
+| Phase 0.5 | [PHASE_0_5](PHASE_0_5.md) · [portrait avant/après](docs/phase05/portrait) · [LOOP x500](docs/generated/LOOP_X500.md) | Playtest et game feel (en cours) |
 | Phase 0 | [PHASE_0_ACCEPTANCE](PHASE_0_ACCEPTANCE.md) · [captures](docs/phase0/screens) · [LOOP x100](docs/generated/LOOP_X100.md) · [taille du build](docs/generated/BUILD_SIZE.md) | Recette du prototype |
 
 ## Maths
