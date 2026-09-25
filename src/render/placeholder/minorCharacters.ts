@@ -92,6 +92,17 @@ export class WendellAnimator implements CharacterAnimator<Container> {
         lean = 0.35; headDy = 6; armL = armR = 0.6; break;
       case 'thumbsup':
         armR = 2.3; happy = true; thumb = true; break;
+      case 'stuck':
+        // Collé au plafond, bras et jambes écartés, qui gigote un peu.
+        armL = 2.4 + sin(e / 200) * 0.1; armR = 2.4 - sin(e / 200) * 0.1; legs = 0.55; bob = 0; folders = false; break;
+      case 'pull':
+        lean = -0.28; armL = armR = 1.5 + sin(e / 60) * 0.1; legs = 0.35; folders = false; bob = sin(e / 50) * 1.5; break;
+      case 'hit':
+        lean = 0.5; armL = armR = 2.6; folders = false; break;
+      case 'shrug':
+        armL = armR = 1.2; bob = -Math.abs(sin(e / 300)) * 4; folders = false; break;
+      case 'fall':
+        armL = armR = 2.8; lean = -0.2; legs = sin(e / 50) * 0.5; folders = false; break;
       default:
         armL = armR = 0.9;
     }
@@ -148,18 +159,27 @@ export class CooAnimator implements CharacterAnimator<Container> {
     let flap = 0;
     let bob = 0;
     let peck = 0;
+    let spin = 0;
     let salute = false;
+    let clap = false;
     switch (anim) {
       case 'fly':
         flap = sin(e / 35) * 1.1; bob = sin(e / 70) * 4; break;
       case 'salute':
         salute = true; bob = -2; break;
+      case 'crash':
+        flap = sin(e / 20) * 1.4; spin = e / 90; break;
+      case 'applaud':
+        clap = true; flap = Math.abs(sin(e / 70)); bob = -Math.abs(sin(e / 140)) * 3; break;
+      case 'carry':
+        flap = sin(e / 25) * 1.3; bob = sin(e / 50) * 2; break;
       default:
         peck = (e % 2600) < 300 ? sin(((e % 2600) / 300) * Math.PI) * 0.5 : 0;
     }
     this.inner.y = bob;
-    this.wingL.rotation = -flap;
-    this.wingR.rotation = salute ? -2.2 : flap;
+    this.inner.rotation = spin;
+    this.wingL.rotation = clap ? 1.2 * flap : -flap;
+    this.wingR.rotation = salute ? -2.2 : clap ? -1.2 * flap : flap;
     this.wingR.position.set(16, salute ? -44 : -30);
     this.head.rotation = peck;
   }

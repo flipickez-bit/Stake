@@ -12,6 +12,8 @@ export interface PresentationInfo {
   sequenceKey: string;
   totalMs: number;
   gadgetId: string;
+  /** Présentation effectivement vue (branche + variations cosmétiques) : mesure de nouveauté en playtest. */
+  variant?: string;
 }
 
 export interface PresentationHandle {

@@ -100,6 +100,11 @@ export class AudioDirector implements AudioSink {
       case 'click': this.tone(t, 'square', 1200 * p, 900 * p, 0.03, 0.15, 3000); break;
       case 'creak': this.tone(t, 'sawtooth', 95 * p, 120 * p, 0.35, 0.12, 600, 18); break;
       case 'screech': this.tone(t, 'sawtooth', 1300 * p, 1000 * p, 0.4, 0.08, 3000, 30); break;
+      case 'sip': this.noiseBurst(t, 0.32, 0.22, 'bandpass', 500 * p, 1700 * p, true); this.tone(t + 0.22, 'sine', 700 * p, 300 * p, 0.1, 0.12); break;
+      case 'spin': this.tone(t, 'sawtooth', 180 * p, 260 * p, 0.6, 0.1, 900, 22); break;
+      case 'spray': this.noiseBurst(t, 0.75, 0.3, 'highpass', 2500, 4000); break;
+      case 'coo': [0, 0.2].forEach((d) => this.tone(t + d, 'sine', 380 * p, 460 * p, 0.17, 0.2, undefined, 12)); break;
+      case 'bonk': this.tone(t, 'sine', 330 * p, 120 * p, 0.14, 0.45); this.noiseBurst(t, 0.04, 0.25, 'lowpass', 2000, 900); break;
     }
   }
 

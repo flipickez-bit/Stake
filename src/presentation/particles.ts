@@ -28,6 +28,9 @@ export const PARTICLE_PRESETS: Record<VfxId, ParticlePreset> = {
   stars: { colors: [0xffe066, 0xffffff], speed: [0, 0], angle: [0, 0], gravity: 0, life: [1400, 1400], size: [8, 10], spin: 0, shape: 'rect' },
   gold: { colors: [0xffd700, 0xffe98a, 0xffb700], speed: [100, 420], angle: [-170, -10], gravity: 380, life: [900, 1600], size: [5, 10], spin: 10, shape: 'circle' },
   soot: { colors: [0x2b2b2b, 0x444444], speed: [30, 120], angle: [-180, 0], gravity: 60, life: [400, 700], size: [8, 16], spin: 0, shape: 'circle' },
+  foam: { colors: [0xffffff, 0xe6f4ff, 0xcfe8ff], speed: [140, 380], angle: [-200, -100], gravity: 260, life: [700, 1200], size: [12, 24], spin: 0, shape: 'circle' },
+  feathers: { colors: [0x8b7fa6, 0xb3a9c9, 0xffffff], speed: [40, 160], angle: [-170, -10], gravity: 90, life: [900, 1500], size: [8, 14], spin: 6, shape: 'rect' },
+  hair: { colors: [0x3f1c5e, 0x5b2a86], speed: [60, 200], angle: [-160, -20], gravity: 420, life: [500, 900], size: [4, 8], spin: 10, shape: 'rect' },
 };
 
 export interface ParticleParams {

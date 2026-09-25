@@ -221,7 +221,8 @@ export class Presenter implements RoundPresenter {
     // Récapitulatif (manche déjà réglée par le serveur) : on montre directement le résultat.
     if (options.mode === 'recap') this.player.seek(seq.markers.reveal);
 
-    const info: PresentationInfo = { branchId: seq.branchId, sequenceKey: seq.key, totalMs: seq.totalMs, gadgetId: gadget.id };
+    const variant = `${seq.branchId}${seq.reaction ? `/${seq.reaction}` : ''}${seq.cooCameo ? '/COO' : ''}`;
+    const info: PresentationInfo = { branchId: seq.branchId, sequenceKey: seq.key, totalMs: seq.totalMs, gadgetId: gadget.id, variant };
     return {
       info,
       reveal,

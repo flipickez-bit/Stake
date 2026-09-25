@@ -11,7 +11,7 @@ export const BOSS_HOME = { x: 650, y: 560 } as const;
 /** Disposition de repos commune à tous les gadgets. */
 export const OFFICE_LAYOUT: Record<ActorId, ActorRest> = {
   boss: { transform: { x: BOSS_HOME.x, y: BOSS_HOME.y }, states: { seat: 'none', mug: 'normal', face: 'normal' }, anim: 'idle' },
-  wendell: { transform: { x: 1260, y: 560 }, anim: 'idle' },
+  wendell: { transform: { x: 1560, y: 560 }, anim: 'idle' },
   coo: { transform: { x: 262, y: 342 }, anim: 'idle' },
   hands: { transform: { x: 500, y: 1060 }, anim: 'open' },
   window: { transform: { x: 220, y: 230 }, states: { main: 'intact' } },
@@ -24,7 +24,23 @@ export const OFFICE_LAYOUT: Record<ActorId, ActorRest> = {
   flash: { transform: { x: 500, y: 350, alpha: 0 } },
   dim: { transform: { x: 500, y: 350, alpha: 0 } },
   bfBack: { transform: { x: 500, y: 350, alpha: 0 } },
+  // Phase 0.5B : accessoires de réactions en chaîne et hors champ.
+  elevator: { transform: { x: 985, y: 560 }, states: { main: 'idle', dent: 'no' } },
+  /** Portes de l'ascenseur (au premier plan) : pivot sur le bord extérieur, s'ouvrent en réduisant sx. */
+  elevL: { transform: { x: 930, y: 560 } },
+  elevR: { transform: { x: 1040, y: 560 } },
+  monitor: { transform: { x: 770, y: 436 }, states: { main: 'normal' } },
+  fan: { transform: { x: 650, y: 60 }, states: { main: 'on' } },
+  plant: { transform: { x: 322, y: 560 } },
+  extinguisher: { transform: { x: 520, y: 500 }, states: { main: 'normal' } },
+  /** Chaise ou fusée qui part SANS B.B. */
+  chairProp: { transform: { x: 770, y: 560, alpha: 0 }, states: { kind: 'chair' } },
+  /** Fumée plein écran : cache la scène pendant qu'on replace les acteurs. */
+  fog: { transform: { x: 500, y: 350, alpha: 0 } },
 };
+
+/** Position de B.B. dans la cabine d'ascenseur. */
+export const ELEVATOR = { x: 985, y: 560 } as const;
 
 /** Où frappent les impacts partagés, selon la direction. */
 export const IMPACT_POINTS: Record<ImpactDirection, { x: number; y: number }> = {
@@ -35,6 +51,7 @@ export const IMPACT_POINTS: Record<ImpactDirection, { x: number; y: number }> = 
   floor: { x: BOSS_HOME.x, y: 556 },
   cork: { x: 560, y: 150 },
   wall: { x: 128, y: 470 },
+  elevator: { x: 985, y: 470 },
 };
 
 /**
@@ -47,9 +64,10 @@ export const CHARACTER_ANIMS = {
     'idle', 'sip', 'oblivious', 'surprised', 'spin', 'dizzy', 'scared', 'splat', 'ouch', 'laugh', 'smug', 'flex',
     'sulk', 'dazed', 'tapfoot', 'hover', 'lookdown', 'lookcam', 'tiptoe', 'wave', 'fall', 'furious', 'sniff',
     'drink', 'grow', 'giant-idle', 'giant-wind', 'giant-hurt', 'giant-swat', 'giant-laugh', 'giant-ko', 'away',
+    'braced', 'peek', 'phew', 'lookback', 'mugcheck', 'hang', 'tiefix', 'taunt', 'hop', 'lookup', 'climb', 'ring',
   ],
-  wendell: ['idle', 'walk', 'run', 'cheer', 'peek', 'thumbsup'],
-  coo: ['idle', 'fly', 'salute'],
+  wendell: ['idle', 'walk', 'run', 'cheer', 'peek', 'thumbsup', 'stuck', 'pull', 'hit', 'shrug', 'fall'],
+  coo: ['idle', 'fly', 'salute', 'crash', 'applaud', 'carry'],
   hands: ['open', 'grab', 'strain', 'lighter'],
 } as const satisfies Record<string, readonly string[]>;
 

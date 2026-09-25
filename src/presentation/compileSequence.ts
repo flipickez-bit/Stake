@@ -11,7 +11,7 @@
  */
 import { hash32, createRng } from '../domain/seed';
 import type { Outcome } from '../domain/outcome';
-import type { Rarity, ResultClass, Speed } from '../domain/types';
+import type { ResultClass, Script, Speed } from '../domain/types';
 import type {
   AnimationSequence,
   BossReaction,
@@ -24,6 +24,7 @@ import type {
   SegmentDef,
   Step,
 } from './types';
+import { RARITY_WEIGHT } from './types';
 
 export type ImpactTier = 'T05' | 'T1' | 'T2' | 'T3' | 'T3G';
 
@@ -53,9 +54,7 @@ export interface ContentLibrary {
 
 export class CompileError extends Error {}
 
-const RARITY_ORDER: readonly Rarity[] = ['common', 'rare', 'epic'];
-
-/** Branches capables de servir ce résultat (script ET classe), avant le filtre de rareté. */
+/** Branches capables de servir ce résultat (script ET classe). Repli : toutes les branches de la classe. */
 export function candidateBranches(outcome: Pick<Outcome, 'script' | 'resultClass'>, gadget: GadgetDef): BranchDef[] {
   const exact = gadget.branches.filter((b) => b.categories.includes(outcome.script) && b.classes.includes(outcome.resultClass));
   if (exact.length > 0) return exact;
@@ -63,6 +62,11 @@ export function candidateBranches(outcome: Pick<Outcome, 'script' | 'resultClass
   return gadget.branches.filter((b) => b.classes.includes(outcome.resultClass));
 }
 
+/**
+ * Choix de la branche : tirage pondéré par la rareté cosmétique, avec le flux « branch » de la graine du book.
+ * Entrées : résultat déjà fixé (classe, script) + graine. Aucun historique, aucun état local : une reprise ou un
+ * replay retrouve toujours la même branche. La rareté du book (legacy) n'est plus utilisée pour ce choix.
+ */
 export function selectBranch(outcome: Outcome, gadget: GadgetDef, forceBranchId?: string): BranchDef {
   const candidates = candidateBranches(outcome, gadget);
   if (forceBranchId) {
@@ -71,16 +75,29 @@ export function selectBranch(outcome: Outcome, gadget: GadgetDef, forceBranchId?
     return forced;
   }
   if (candidates.length === 0) throw new CompileError(`${gadget.id} : aucune branche pour ${outcome.resultClass}/${outcome.script}`);
-  // Filtre de rareté avec repli sur la rareté disponible la plus proche.
-  const wanted = RARITY_ORDER.indexOf(outcome.rarity);
-  let pool: BranchDef[] = [];
-  for (let d = 0; d < RARITY_ORDER.length && pool.length === 0; d++) {
-    for (const r of [wanted - d, wanted + d]) {
-      const rarity = RARITY_ORDER[r];
-      if (rarity && pool.length === 0) pool = candidates.filter((b) => b.rarity === rarity);
-    }
+  const total = candidates.reduce((a, b) => a + RARITY_WEIGHT[b.rarity], 0);
+  let u = createRng(outcome.seed, 'branch').next() * total;
+  for (const b of candidates) {
+    u -= RARITY_WEIGHT[b.rarity];
+    if (u < 0) return b;
   }
-  return pool[outcome.seed % pool.length] as BranchDef;
+  return candidates[candidates.length - 1] as BranchDef;
+}
+
+/**
+ * Probabilité de chaque branche pour une classe de résultat, étant donné la distribution des scripts du book.
+ * Pure ; sert à l'audit de prévisibilité et au rapport de variété (jamais au jeu lui-même).
+ */
+export function branchProbabilities(gadget: GadgetDef, resultClass: ResultClass, scriptWeights: Partial<Record<Script, number>>): Map<string, number> {
+  const out = new Map<string, number>();
+  const totalScript = Object.values(scriptWeights).reduce((a, b) => a + (b ?? 0), 0);
+  for (const [script, w] of Object.entries(scriptWeights) as [Script, number][]) {
+    if (!w) continue;
+    const cands = candidateBranches({ script, resultClass }, gadget);
+    const sum = cands.reduce((a, b) => a + RARITY_WEIGHT[b.rarity], 0);
+    for (const b of cands) out.set(b.id, (out.get(b.id) ?? 0) + (w / totalScript) * (RARITY_WEIGHT[b.rarity] / sum));
+  }
+  return out;
 }
 
 interface SpeedRule {

@@ -116,8 +116,32 @@ export class PixiStage implements SceneSink {
     const cab = office.drawCabinet();
     this.add('cabinet', cab.view, (f) => (cab.dent.visible = f.states.main === 'dented'));
     this.add('bell', office.drawBell());
+    // Accessoires de réactions en chaîne (Phase 0.5B).
+    const elevator = office.drawElevator();
+    this.add('elevator', elevator.view, (f) => {
+      elevator.lamp.tint = f.states.main === 'arrived' ? 0x31d67b : f.states.main === 'moving' ? 0xffc400 : 0x555a6b;
+      elevator.lamp.rotation = 0;
+      elevator.lamp.scale.y = f.states.main === 'moving' ? -1 : 1;
+      elevator.dent.visible = f.states.dent === 'yes';
+    });
+    const monitor = office.drawMonitor();
+    this.add('monitor', monitor.view, (f) => {
+      monitor.normal.visible = f.states.main !== 'broken';
+      monitor.broken.visible = f.states.main === 'broken';
+    });
+    this.add('plant', office.drawPlant());
+    const ext = office.drawExtinguisher();
+    this.add('extinguisher', ext.view, (f) => (ext.nozzle.rotation = f.states.main === 'fired' ? -0.5 : 0));
+    const fan = office.drawFan();
+    this.add('fan', fan.view, (f) => {
+      const broken = f.states.main === 'broken';
+      fan.blades.visible = !broken;
+      fan.droop.visible = broken;
+      // Rotation = fonction du temps propre de l'acteur (séquence + attente) : reprise et replay identiques.
+      fan.blades.scale.x = Math.cos(f.animElapsed * 0.012);
+    });
     this.add('bfBack', office.drawBfBackdrop());
-    this.add('dim', new Graphics().rect(-900, -700, 1800, 1400).fill(0x000000));
+    this.add('dim', new Graphics().rect(-1400, -700, 2800, 1400).fill(0x000000));
 
     // Accessoires des gadgets.
     this.add('slingPost', office.drawSlingPost(), (f, all) => this.drawElastic(f, all));
@@ -126,6 +150,7 @@ export class PixiStage implements SceneSink {
     this.add('trapdoor', trap.view, (f) => {
       trap.closed.visible = f.states.main !== 'open';
       trap.open.visible = f.states.main === 'open';
+      trap.jammed.visible = f.states.main === 'jammed';
     });
     const lever = office.drawLever();
     this.add('lever', lever.view, (f) => {
@@ -139,10 +164,17 @@ export class PixiStage implements SceneSink {
       this.views.get('spark')?.scale.set(s);
     });
     this.add('glow', office.drawGlow());
+    const chair = office.drawChairProp();
+    this.add('chairProp', chair.view, (f) => {
+      chair.rocket.visible = f.states.kind === 'rocket';
+    });
 
     this.addCharacter(new BossAnimator());
     this.addCharacter(new WendellAnimator());
     this.addCharacter(new CooAnimator());
+    // Portes de l'ascenseur devant les personnages : B.B. peut y attendre caché.
+    this.add('elevL', office.drawElevatorDoor(1));
+    this.add('elevR', office.drawElevatorDoor(-1));
 
     w.addChild(office.drawFloorFront());
     w.addChild(office.drawPlayerDesk());
@@ -162,8 +194,9 @@ export class PixiStage implements SceneSink {
       for (const [kind, g] of Object.entries(projectiles)) g.visible = kind === (f.states.kind ?? 'stapler');
     });
     this.addCharacter(new HandsAnimator());
+    this.add('fog', office.drawFog());
     w.addChild(this.particles);
-    this.add('flash', new Graphics().rect(-900, -700, 1800, 1400).fill(C.white));
+    this.add('flash', new Graphics().rect(-1400, -700, 2800, 1400).fill(C.white));
   }
 
   private drawElastic(f: ActorFrame, all: FrameState): void {

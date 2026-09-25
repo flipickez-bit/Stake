@@ -79,6 +79,8 @@ export interface RoundRecord {
   resultClass: ResultClass;
   multiplier100: number;
   branchId: string | null;
+  /** Présentation vue (branche + variations cosmétiques). */
+  variant: string | null;
   gadgetId: string | null;
   betAmount: number;
   payout: number;
@@ -472,6 +474,7 @@ export class GameFlow {
       resultClass: outcome.resultClass,
       multiplier100: outcome.payoutMultiplier100,
       branchId,
+      variant: this.s.presentation?.variant ?? branchId,
       gadgetId: this.s.presentation?.gadgetId ?? null,
       betAmount: outcome.betAmount,
       payout: outcome.payout,

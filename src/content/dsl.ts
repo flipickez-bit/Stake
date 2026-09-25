@@ -3,7 +3,8 @@
  * aucune logique de gadget n'entre dans le moteur.
  */
 import type { EaseName } from '../presentation/easing';
-import type { ActorId, Cue, Phase, SegmentDef, Signal, SoundId, Transform, VfxId } from '../presentation/types';
+import type { ResultClass, Script } from '../domain/types';
+import type { ActorId, BranchDef, BranchRarity, Cue, Phase, SegmentDef, Signal, SoundId, Step, Transform, VfxId } from '../presentation/types';
 
 export const tw = (at: number, actor: ActorId, to: Partial<Transform>, ms: number, ease?: EaseName): Cue => ({ kind: 'tween', at, actor, to, ms, ease });
 export const anim = (at: number, actor: ActorId, name: string): Cue => ({ kind: 'anim', at, actor, anim: name });
@@ -28,4 +29,35 @@ export function segments(list: SegmentDef[]): Record<string, SegmentDef> {
     out[s.id] = s;
   }
   return out;
+}
+
+// ------------------------------------------------------------------ composition modulaire des branches
+
+/** Un module visible (setup ou twist) : une suite d'étapes partagée tel quel par plusieurs branches. */
+export interface Module {
+  name: string;
+  steps: Step[];
+}
+
+export const mod = (name: string, ...steps: Step[]): Module => ({ name, steps });
+
+export const LOSS: ResultClass[] = ['MISS'];
+export const WIN_SMALL: ResultClass[] = ['SCRAPE', 'HIT'];
+export const WIN_ANY: ResultClass[] = ['SCRAPE', 'HIT', 'BIG'];
+export const WIN_MID: ResultClass[] = ['HIT', 'BIG'];
+export const WIN_BIG: ResultClass[] = ['BIG', 'MEGA', 'LEGENDARY'];
+export const BOSS_FIGHT: ResultClass[] = ['HIT', 'BIG', 'MEGA', 'LEGENDARY'];
+
+/**
+ * Branche = modules partagés (le chemin visible avant la révélation) + une fin qui révèle le résultat.
+ * `path` est rempli automatiquement : l'audit de prévisibilité s'en sert.
+ */
+export function compose(
+  id: string,
+  label: string,
+  modules: Module[],
+  ending: Step[],
+  meta: { categories: Script[]; classes: ResultClass[]; rarity: BranchRarity; d1: string },
+): BranchDef {
+  return { id, label, ...meta, path: modules.map((m) => m.name), steps: [...modules.flatMap((m) => m.steps), ...ending] };
 }

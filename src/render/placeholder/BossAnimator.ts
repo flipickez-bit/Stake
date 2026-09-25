@@ -120,6 +120,35 @@ export function bossPose(anim: string, e: number): Pose {
       p.eyes = 'x'; p.mouth = 'o'; p.armL = 2.2; p.armR = 2.2; p.legL = 0.4; p.legR = -0.4; break;
     case 'away':
       p.eyes = 'wide'; p.mouth = 'o'; p.armL = 2.4 + sin(e / 40) * 0.6; p.armR = 2.4 - sin(e / 40) * 0.6; p.legL = sin(e / 50); p.legR = -sin(e / 50); break;
+    // ---- Phase 0.5B
+    case 'braced':
+      p.eyes = 'closed'; p.mouth = 'teeth'; p.brow = 0.9; p.armL = 2.5; p.armR = -2.1; p.sx = 0.96; p.sy = 0.92; p.jitter = sin(e / 25) * 1.2; break;
+    case 'peek':
+      p.eyes = 'half'; p.mouth = 'teeth'; p.brow = 0.6; p.armL = 2.2; p.armR = -1.8; p.sy = 0.95; p.px = 2; break;
+    case 'phew':
+      p.eyes = 'open'; p.mouth = 'o'; p.brow = -0.3; p.armL = 0.5 + Math.abs(sin(e / 110)) * 0.4; p.armR = 0.5 + Math.abs(sin(e / 110 + 1)) * 0.4; p.bob = -Math.abs(sin(e / 180)) * 3; break;
+    case 'lookback':
+      p.eyes = 'wide'; p.mouth = 'o'; p.px = 5; p.headTilt = 0.12; p.brow = -0.4; p.armR = -2.3; break;
+    case 'mugcheck':
+      p.armR = -1.7; p.headDy = 5; p.py = 4; p.px = 3; p.eyes = 'wide'; p.mouth = 'flat'; p.brow = -0.2; break;
+    case 'hang':
+      p.armL = 2.6 + sin(e / 70) * 0.4; p.armR = 2.6 - sin(e / 70) * 0.4; p.legL = sin(e / 90) * 0.5; p.legR = -sin(e / 90) * 0.5;
+      p.tilt = sin(e / 320) * 0.1; p.eyes = 'wide'; p.mouth = 'o'; p.meche = 1; break;
+    case 'tiefix':
+      p.armR = -2.9 + sin(e / 90) * 0.1; p.armL = 0.3; p.headTilt = -0.1; p.eyes = 'half'; p.mouth = 'grin'; p.brow = -0.2; break;
+    case 'taunt':
+      p.armR = 1.7 + sin(e / 70) * 0.35; p.armL = -0.35; p.eyes = 'half'; p.mouth = 'grin'; p.brow = -0.3;
+      p.headTilt = sin(e / 140) * 0.1; p.bob = -Math.abs(sin(e / 140)) * 3; break;
+    case 'hop':
+      p.sy = 1 + 0.1 * Math.max(0, 1 - e / 200); p.bob = -Math.max(0, sin((Math.min(e, 300) / 300) * Math.PI)) * 18;
+      p.armL = 1.6; p.armR = 1.6; p.eyes = 'wide'; p.mouth = 'o'; break;
+    case 'lookup':
+      p.headDy = -4; p.py = -5; p.eyes = 'open'; p.mouth = 'o'; p.brow = -0.4; p.armL = 0.3; p.armR = -2.3; break;
+    case 'climb':
+      p.armL = 2.7 + sin(e / 90) * 0.4; p.armR = 2.7 - sin(e / 90) * 0.4; p.legL = sin(e / 90) * 0.6; p.legR = -sin(e / 90) * 0.6;
+      p.eyes = 'closed'; p.mouth = 'teeth'; p.flush = 0.4; break;
+    case 'ring':
+      p.armR = 1.1 + Math.abs(sin(e / 60)) * 0.35; p.armL = -0.35; p.eyes = 'half'; p.mouth = 'grin'; p.brow = -0.2; break;
     default:
       break;
   }
@@ -144,6 +173,10 @@ export class BossAnimator implements CharacterAnimator<Container> {
   private readonly armL = new Container();
   private readonly armR = new Container();
   private readonly mug: Graphics;
+  private readonly tie: Graphics;
+  private readonly tieStretched: Graphics;
+  private readonly tieSnapped: Graphics;
+  private readonly mecheCut: Graphics;
   private readonly mugGold: Graphics;
   private readonly head = new Container();
   private readonly flush: Graphics;
@@ -183,8 +216,11 @@ export class BossAnimator implements CharacterAnimator<Container> {
     const body = part((g) => {
       g.roundRect(-50, -132, 100, 104, 26).fill(C.violet).stroke({ width: 3, color: C.violetDark });
       g.poly([-14, -132, 0, -110, 14, -132]).fill(C.white);
-      g.poly([-5, -122, 5, -122, 7, -84, 0, -76, -7, -84]).fill(C.yellow);
     });
+    this.tie = part((g) => g.poly([-5, -122, 5, -122, 7, -84, 0, -76, -7, -84]).fill(C.yellow));
+    // Cravate coincée au bord de la trappe (tendue vers le haut) et cravate coupée.
+    this.tieStretched = part((g) => g.rect(-5, -300, 10, 180).fill(C.yellow).poly([-9, -304, 9, -304, 0, -290]).fill(0xb38600));
+    this.tieSnapped = part((g) => g.poly([-5, -122, 5, -122, 6, -104, 2, -108, 0, -100, -3, -107, -6, -103]).fill(C.yellow));
     for (const [arm, x] of [[this.armL, -46], [this.armR, 46]] as const) {
       arm.position.set(x, -120);
       arm.addChild(part((g) => {
@@ -221,11 +257,12 @@ export class BossAnimator implements CharacterAnimator<Container> {
     this.meche.addChild(part((g) => {
       g.poly([-18, 6, -4, -22, 6, -6, 20, -30, 14, 6]).fill(C.violetDark);
     }));
+    this.mecheCut = part((g) => g.rect(-12, -40, 24, 6).fill(C.violetDark));
     this.browL = part((g) => g.roundRect(-11, -3, 22, 6, 3).fill(C.violetDark));
     this.browR = part((g) => g.roundRect(-11, -3, 22, 6, 3).fill(C.violetDark));
     this.browL.position.set(-14, -18);
     this.browR.position.set(14, -18);
-    this.head.addChild(face, this.flush, this.soot, this.meche, this.browL, this.browR);
+    this.head.addChild(face, this.flush, this.soot, this.meche, this.mecheCut, this.browL, this.browR);
 
     const eyePair = (draw: (g: Graphics, x: number, c: Container) => void) => {
       const c = new Container();
@@ -287,7 +324,7 @@ export class BossAnimator implements CharacterAnimator<Container> {
     });
 
     // Bras droit (mug) au premier plan : le mug passe devant la bouche quand il boit.
-    this.inner.addChild(this.chair, this.legL, this.legR, this.rocket, body, this.armL, this.head, this.armR);
+    this.inner.addChild(this.chair, this.legL, this.legR, this.rocket, body, this.tie, this.tieSnapped, this.tieStretched, this.armL, this.head, this.armR);
   }
 
   pose(anim: string, elapsedMs: number, states: Readonly<Record<string, string>>): void {
@@ -299,6 +336,13 @@ export class BossAnimator implements CharacterAnimator<Container> {
     this.mug.visible = !gold;
     this.mugGold.visible = gold;
     this.soot.visible = states.face === 'soot';
+    const tie = states.tie ?? 'normal';
+    this.tie.visible = tie === 'normal';
+    this.tieStretched.visible = tie === 'stretched';
+    this.tieSnapped.visible = tie === 'snapped';
+    const cut = states.meche === 'cut';
+    this.meche.visible = !cut;
+    this.mecheCut.visible = cut;
 
     this.inner.position.set(p.jitter, p.bob);
     this.inner.scale.set(p.sx * p.spin, p.sy);

@@ -2,7 +2,7 @@
  * Modèle de mise en scène data-driven (TECH_ARCHITECTURE.md §2.8).
  * Gadget → Branch → Step → Segment → Cues. Aucune logique propre à un gadget dans le moteur.
  */
-import type { RageLevelId, Rarity, ResultClass, Script, Speed } from '../domain/types';
+import type { RageLevelId, ResultClass, Script, Speed } from '../domain/types';
 import type { EaseName } from './easing';
 
 export type ActorId = string;
@@ -23,9 +23,10 @@ export const IDENTITY: Transform = { x: 0, y: 0, z: 0, rot: 0, sx: 1, sy: 1, alp
 export type SoundId =
   | 'click' | 'creak' | 'twang' | 'screech' | 'thud' | 'tink' | 'ding' | 'whoosh' | 'glass' | 'crash'
   | 'pfft' | 'roar' | 'fuse' | 'clunk' | 'plop' | 'hmpf' | 'laugh' | 'wahwah' | 'boing' | 'clang'
-  | 'crack' | 'gold' | 'deflate' | 'giantRoar' | 'elevator' | 'cheer' | 'fall';
+  | 'crack' | 'gold' | 'deflate' | 'giantRoar' | 'elevator' | 'cheer' | 'fall'
+  | 'sip' | 'spin' | 'spray' | 'coo' | 'bonk';
 
-export type VfxId = 'dust' | 'sparks' | 'glass' | 'papers' | 'confetti' | 'smoke' | 'flame' | 'stars' | 'gold' | 'soot';
+export type VfxId = 'dust' | 'sparks' | 'glass' | 'papers' | 'confetti' | 'smoke' | 'flame' | 'stars' | 'gold' | 'soot' | 'foam' | 'feathers' | 'hair';
 
 export type Signal = 'd1' | 'reveal' | 'bfStart' | 'bfRung' | 'bfBlocked' | 'bfKo' | 'end';
 
@@ -67,7 +68,7 @@ export interface SegmentDef {
   cues: Cue[];
 }
 
-export type ImpactDirection = 'none' | 'window' | 'overdesk' | 'ceiling' | 'floor' | 'cork' | 'wall';
+export type ImpactDirection = 'none' | 'window' | 'overdesk' | 'ceiling' | 'floor' | 'cork' | 'wall' | 'elevator';
 
 /** Réactions partagées (bibliothèque REACTION). Les deux dernières servent quand le boss a quitté le cadre. */
 export type BossReaction = 'SIP' | 'LAUGH' | 'FLEX' | 'SULK' | 'DAZED' | 'OFFICE_CHEER' | 'WENDELL_PEEK';
@@ -88,13 +89,25 @@ export interface ActorRest {
   anim?: string;
 }
 
+/**
+ * Rareté COSMÉTIQUE d'une branche : elle ne sert qu'à choisir, avec la graine du book, parmi des présentations
+ * déjà compatibles avec le résultat fixé. Elle ne dépend jamais d'un gain passé ou futur et ne touche pas aux maths.
+ */
+export type BranchRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'VERY_RARE';
+export const RARITY_WEIGHT: Record<BranchRarity, number> = { COMMON: 100, UNCOMMON: 40, RARE: 12, VERY_RARE: 3 };
+
 export interface BranchDef {
   id: string;
   label: string;
   /** Scripts du book que cette branche sait servir. */
   categories: Script[];
   classes: ResultClass[];
-  rarity: Rarity;
+  rarity: BranchRarity;
+  /**
+   * Modules visibles AVANT la fin révélatrice (setup, puis twists), dans l'ordre. Deux branches qui partagent un
+   * préfixe montrent exactement la même chose jusque-là : c'est la base de l'audit de prévisibilité.
+   */
+  path: string[];
   /** État visible au point de divergence (contrôle de non-révélation). */
   d1: string;
   steps: Step[];
