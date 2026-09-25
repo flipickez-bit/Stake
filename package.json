@@ -11,6 +11,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "loop:bench": "node tools/loop-benchmark.mjs",
     "size": "node tools/report-build-size.mjs"
   },
   "dependencies": {
