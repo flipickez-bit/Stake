@@ -13,7 +13,26 @@ async function boot(page: Page, query = '') {
 }
 
 async function untilState(page: Page, s: string, timeout = 45_000) {
-  await page.waitForFunction((target) => (window as unknown as Win).__BADBOSS__.state().state === target, s, { timeout });
+  await page.waitForFunction(
+    (target) => {
+      const h = (window as unknown as Win).__BADBOSS__;
+      return !!h && h.state().state === target;
+    },
+    s,
+    { timeout },
+  );
+}
+
+/** Attend qu'une branche soit jouée. Le crochet n'existe qu'après le démarrage (rechargement !). */
+async function untilBranch(page: Page, timeout = 30_000) {
+  await page.waitForFunction(
+    () => {
+      const h = (window as unknown as Win).__BADBOSS__;
+      return !!h && h.presenter().branchId !== null;
+    },
+    null,
+    { timeout },
+  );
 }
 
 async function force(page: Page, forced: object, mode: string | null = null) {
@@ -66,7 +85,10 @@ test('RELOAD AFTER PLAY → round recovered, never replayed as a new bet', async
   await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__.mock().activeRound !== null);
   const roundId = (await mock(page)).activeRound.roundId;
   await page.reload();
-  await page.waitForFunction(() => ['RESUMING', 'REVEAL', 'READY'].includes((window as unknown as Win).__BADBOSS__?.state().state));
+  await page.waitForFunction(() => {
+    const h = (window as unknown as Win).__BADBOSS__;
+    return !!h && ['RESUMING', 'REVEAL', 'READY'].includes(h.state().state);
+  });
   await untilState(page, 'READY');
   const m = await mock(page);
   expect(m.calls.play).toBe(1);
@@ -87,7 +109,7 @@ test('RELOAD DURING ANIMATION → same result, same branch, same seed', async ({
   const before = await presenter(page);
   const roundId = (await mock(page)).activeRound.roundId;
   await page.reload();
-  await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__?.presenter().branchId !== null, null, { timeout: 30_000 });
+  await untilBranch(page);
   const after = await presenter(page);
   expect(after.branchId).toBe(before.branchId);
   expect(after.seed).toBe(4242);
@@ -102,7 +124,7 @@ test('REPLAY (dev + URL) → same branch and result, no wallet call, no bet poss
   await force(page, { kind: 'BOSS_FIGHT', bossFightRung: 1, seed: 99 });
   await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.flow.setSpeed('turbo'));
   await page.getByTestId('fire').click();
-  await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__.presenter().branchId !== null);
+  await untilBranch(page);
   const original = await presenter(page);
   await untilState(page, 'READY', 60_000);
   const revealed = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.state().revealed);
@@ -124,7 +146,7 @@ test('REPLAY (dev + URL) → same branch and result, no wallet call, no bet poss
   // Replay par URL (même stockage mock) : jamais de mise possible.
   const url = `/?replay=true&game=bad-boss&version=0&mode=grumpy&event=${revealed.roundId}`;
   await page.goto(url);
-  await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__?.presenter().branchId !== null, null, { timeout: 30_000 });
+  await untilBranch(page);
   expect((await presenter(page)).branchId).toBe(original.branchId);
   await expect(page.getByTestId('fire')).toBeDisabled();
   await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__.state().revealed !== null, null, { timeout: 60_000 });
@@ -219,17 +241,39 @@ test('DEV PANEL button: SIMULATE PLAY TIMEOUT AFTER REQUEST SENT → exactly one
   expect((await mock(page)).settledRounds).toBe(1);
 });
 
-test('PLAYTEST 50 (LOCAL DEV ONLY): records real mock rounds and shows a summary', async ({ page }) => {
-  await boot(page, '?dev=1');
+test('PLAYTEST 50 (LOCAL DEV ONLY): 50 uninterrupted rounds, questionnaire at the end only, local export', async ({ page }) => {
+  test.setTimeout(420_000);
+  await boot(page);
   await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.flow.setSpeed('super'));
-  await page.getByTestId('playtest-start').click();
-  for (let i = 0; i < 3; i++) {
+  await page.getByTestId('playtest-open').click();
+  await page.getByTestId('playtest-go').click();
+  await untilState(page, 'READY');
+  expect((await mock(page)).balance).toBe(1000 * 1_000_000);
+  for (let i = 1; i <= 50; i++) {
+    // Aucune interruption pendant les 50 manches.
+    await expect(page.getByTestId('questionnaire')).toHaveCount(0);
     await page.getByTestId('fire').click();
     await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__.state().state !== 'READY');
     await untilState(page, 'READY');
   }
-  await expect(page.getByTestId('playtest-progress')).toContainText('3/50');
-  await expect(page.getByTestId('playtest-summary')).toBeVisible();
-  const stored = await page.evaluate(() => localStorage.getItem('badboss.playtest.local-dev-only.v1'));
-  expect(JSON.parse(stored!).entries).toHaveLength(3);
+  await expect(page.getByTestId('questionnaire')).toBeVisible();
+  await expect(page.getByTestId('q-submit')).toBeDisabled();
+  for (let q = 1; q <= 6; q++) await page.getByTestId(`q${q}-${(q % 5) + 1}`).check({ force: true });
+  await page.getByTestId('q-memorable').fill('Le pigeon qui salue.');
+  await page.getByTestId('q-submit').click();
+  await expect(page.getByTestId('playtest-results')).toBeVisible();
+  const exported = JSON.parse(await page.getByTestId('pt-json').inputValue());
+  const session = exported.sessions[0];
+  expect(session.rounds).toHaveLength(50);
+  expect(session.answers.scores).toEqual([2, 3, 4, 5, 1, 2]);
+  expect(session.answers.memorable).toBe('Le pigeon qui salue.');
+  expect(Object.keys(session.rounds[0])).toEqual(expect.arrayContaining(['n', 'level', 'gadget', 'outcome', 'multiplier', 'branch', 'animationMs', 'readyToBetMs', 'speed', 'skipped', 'bossFight']));
+  expect(session.rounds.every((r: { speed: string }) => r.speed === 'super')).toBe(true);
+  await page.getByTestId('pt-close').click();
+  // Manche volontaire après la 50e : comptée localement, sans aucune incitation.
+  await page.getByTestId('fire').click();
+  await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__.state().state !== 'READY');
+  await untilState(page, 'READY');
+  const stored = JSON.parse((await page.evaluate(() => localStorage.getItem('badboss.playtest.local-dev-only.v2')))!);
+  expect(stored.sessions[0].extraRounds).toBe(1);
 });
