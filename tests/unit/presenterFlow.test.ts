@@ -70,6 +70,27 @@ describe('Presenter réel + GameFlow + MockRGS', () => {
     expect(server2.snapshot().settledRounds).toBe(1);
   });
 
+  it('RELOAD DURING BOSS FIGHT → même déroulé, même palier final, aucune nouvelle mise', async () => {
+    const { store, server } = createMock(66);
+    const a = await boot(store, server);
+    a.flow.setLevel('unhinged');
+    server.update((s) => (s.nextForced = { mode: 'unhinged', forced: { kind: 'BOSS_FIGHT', bossFightRung: 4, seed: 31337 } }));
+    a.flow.fire();
+    await waitFor(() => a.presenter.status.bossFight.rung >= 2, 8000, 'milieu du BOSS FIGHT');
+    const before = { branch: a.presenter.status.branchId, rungs: a.presenter.status.bossFight.rungs100, round: a.flow.snapshot.round?.roundId };
+    for (const d of drivers.splice(0)) clearInterval(d);
+    const server2 = new MockServer(store, mulberry32(1));
+    const b = await boot(store, server2, false);
+    await waitFor(() => b.presenter.status.branchId !== null, 3000, 'reprise');
+    expect(b.presenter.status.branchId).toBe(before.branch);
+    expect(b.flow.snapshot.round?.roundId).toBe(before.round);
+    await waitFor(() => b.presenter.status.bossFight.active, 5000, 'échelle');
+    expect(b.presenter.status.bossFight.rungs100).toEqual(before.rungs);
+    await waitFor(() => b.flow.snapshot.state === 'READY', 20000, 'ready');
+    expect(b.flow.snapshot.revealed?.multiplier100).toBe(10_000); // UNHINGED, palier 4 = x100
+    expect(server2.snapshot().calls.play).toBe(1);
+  }, 30000);
+
   it('REPLAY → même branche, même résultat, aucun appel wallet', async () => {
     const { store, server } = createMock(44);
     const { flow, presenter } = await boot(store, server);

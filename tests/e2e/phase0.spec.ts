@@ -190,3 +190,46 @@ test('DEV PANEL: LOOP x20 without bets completes with no error', async ({ page }
   expect(report.errors).toEqual([]);
   expect(report.walletCallsDuringLoop).toBe(0);
 });
+
+test('DEV PANEL: force outcome + branch + seed through the panel, then preview without bet', async ({ page }) => {
+  await boot(page, '?dev=1');
+  await page.getByTestId('rage-furious').click();
+  await page.getByTestId('dev-kind').selectOption('BIG_WIN');
+  await page.getByTestId('dev-mult').selectOption('25');
+  await page.getByTestId('dev-seed').fill('777');
+  await page.getByTestId('dev-arm').click();
+  await page.getByTestId('fire').click();
+  await expect(page.getByTestId('result')).toHaveAttribute('data-multiplier', '2500');
+  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.presenter().seed)).toBe(777);
+  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.presenter().branchId)).toBe('TRP-BW');
+  await untilState(page, 'READY');
+  const c = await calls(page);
+  await page.getByTestId('dev-preview').click();
+  await untilState(page, 'REPLAYING');
+  await untilState(page, 'READY');
+  expect((await calls(page)).play).toBe(c.play);
+});
+
+test('DEV PANEL button: SIMULATE PLAY TIMEOUT AFTER REQUEST SENT → exactly one Play', async ({ page }) => {
+  await boot(page, '?dev=1');
+  await page.getByTestId('dev-play-timeout').click();
+  await untilState(page, 'ROUND_STATUS_UNKNOWN');
+  await untilState(page, 'READY', 60_000);
+  await expect(page.getByTestId('dev-calls-play')).toHaveText('1');
+  expect((await mock(page)).settledRounds).toBe(1);
+});
+
+test('PLAYTEST 50 (LOCAL DEV ONLY): records real mock rounds and shows a summary', async ({ page }) => {
+  await boot(page, '?dev=1');
+  await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.flow.setSpeed('super'));
+  await page.getByTestId('playtest-start').click();
+  for (let i = 0; i < 3; i++) {
+    await page.getByTestId('fire').click();
+    await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__.state().state !== 'READY');
+    await untilState(page, 'READY');
+  }
+  await expect(page.getByTestId('playtest-progress')).toContainText('3/50');
+  await expect(page.getByTestId('playtest-summary')).toBeVisible();
+  const stored = await page.evaluate(() => localStorage.getItem('badboss.playtest.local-dev-only.v1'));
+  expect(JSON.parse(stored!).entries).toHaveLength(3);
+});
