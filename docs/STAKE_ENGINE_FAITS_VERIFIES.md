@@ -171,3 +171,23 @@ Une fermeture de page ou une perte réseau pendant ACTION, TWIST, IMPACT, RESULT
 14. Limites de taille des fichiers front, polices, requêtes externes, CSP.
 15. Guidelines de contenu (violence cartoon) et processus d'approbation.
 16. Unité monétaire : confirmation de 1e6.
+
+## 12. Phase 0 : hypothèses encore portées par le code (non confirmées)
+
+> Le code de la Phase 0 tourne sur le **Mock RGS**. Chaque hypothèse ci-dessous est isolée dans **un seul endroit** du code, pour être remplacée par le contrat officiel sans toucher à GameFlow.
+
+| # | Hypothèse | Où dans le code | Statut | Question §11 |
+|---|---|---|---|---|
+| H1 | Le paquet npm `stake-engine` 0.1.32 (BETA) est un client acceptable | `src/platform/rgs/stake/StakeRgsAdapter.ts` (seul importeur) | ❓ | 4 |
+| H2 | Le corps d'erreur RGS contient `error` ou `code` (ex. `ERR_IPB`) ; récupéré par `FetchObserver` | `src/platform/rgs/stake/fetchObserver.ts` | 🟡 | 5 |
+| H3 | Les événements du book arrivent dans `round.state` (tableau) ou `round.state.events` | `toInternalRound` | ❓ | 7 |
+| H4 | `payoutMultiplier` = payout ÷ mise ×100 ; repli sur l'événement `finalWin` | `toInternalRound`, `parseRound` | ❓ | 7 |
+| H5 | Les modes restent **actifs jusqu'à `endRound`** (`auto_close_disabled=True`), y compris à x0 ; repli géré si le RGS ferme lui-même | `GameFlow.presentRound` / `settleRound` ; test `politique de repli` | ❓ | 3 |
+| H6 | `endRound` sur une manche déjà close renvoie une erreur sans effet (pas de double crédit) ; le client revérifie l'état serveur avant tout nouvel appel (≤ 3 appels) | `GameFlow.settleRound` | ❓ | 3, 5 |
+| H7 | `authenticate` renvoie la manche active (`round.active`) après une coupure : c'est la base de la reprise | `StakeRgsAdapter.getActiveRound` (client neuf à chaque resync) | 🟡 | — |
+| H8 | Replay : `GET {rgs_url}/bet/replay/{game}/{version}/{mode}/{event}` et paramètres d'URL `replay=true&game&version&mode&event&amount` | `StakeRgsAdapter.getReplay`, `launchParams.ts` | 🟡 (web-sdk) | 6 |
+| H9 | `minimumRoundDuration` : ≤ 60 → secondes, sinon millisecondes ; départ = envoi de la mise | `featureGate.ts` (`minRoundDurationMs`) — **bloquant avant production** | ❓ | 8 |
+| H10 | `disabledSlamstop` interdit seulement le skip (turbo et super turbo ont leurs propres clés) | `featureGate.ts`, `Hud.svelte` | ❓ | 9 |
+| H11 | Montants en unités de 1e6 | `domain/round.ts` (`RGS_AMOUNT_MULTIPLIER`) | ✅ (web-sdk) / confirmation demandée | 16 |
+| H12 | Aucune dépendance à `/bet/event` | — (non utilisé) | décision | 10 |
+| H13 | La réponse de `play` peut être perdue APRÈS exécution : le client ne le suppose jamais échoué et resynchronise | `GameFlow.runBet` / `resolveUnknownPlay` | exigence projet | — |

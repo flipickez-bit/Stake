@@ -1,14 +1,14 @@
 # TECH_ARCHITECTURE — BAD BOSS
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
-> Étapes 10 (stack) et 11 (architecture). Statut : **proposé, en attente du feu vert CODE.**
+> Étapes 10 (stack) et 11 (architecture). Statut : **Phase 0 implémentée** (2026-09-25). Ce qui a réellement été construit, et les écarts avec la conception ci-dessous, sont au **§3**. Recette : `PHASE_0_ACCEPTANCE.md`.
 > Références : `docs/STAKE_ENGINE_FAITS_VERIFIES.md` (contraintes Stake), `docs/GDD_04*.md` (animations), `config/rage_levels.json` (maths).
 
 ## 0. La décision en 10 lignes
 
 1. **Svelte 5 + PixiJS 8 + TypeScript**, la stack du web-sdk officiel, en **SPA Vite simple**, sans SvelteKit ni monorepo.
 2. **Rendu 2.5D stylisé** : couches en parallaxe, profondeur simulée, caméra virtuelle, particules. Aucun moteur 3D.
-3. **Personnages** : animation squelettique (**Spine**) derrière une interface `Rig`. Le MVP démarre avec des rigs provisoires en formes simples, sans assets définitifs.
+3. **Personnages** : derrière l'interface **`CharacterAnimator`** (nom retenu en Phase 0, ex-`Rig`). Implémentation actuelle : placeholders « à pièces » en formes simples. Spine, spritesheets ou pré-rendu restent possibles sans toucher au moteur. Spine n'est **pas** une dépendance.
 4. **Le « ragdoll » est scripté.** Une **physique légère maison** (pas fixe, graine) sert seulement aux débris et petits objets.
 5. **Réseau** : le client npm **`stake-engine`** est utilisé tel quel, derrière un **adapter très fin**. Pas de réécriture d'Authenticate, Play ou EndRound.
 6. **GameFlow** : une machine à états typée, petite et testée, garante des invariants (pas de double mise, reprise, durée minimale).
@@ -497,3 +497,104 @@ Atlas WebP 2048² au maximum, variantes @1x et @2x choisies selon l'écran. Audi
 | Endurance | 1 000 manches en autoplay simulé : mémoire stable, aucune fuite de pool |
 | Staging Stake | Parcours complet sur le RGS de staging (phase 3) |
 | Maths | `rgs_verification.py` du math-sdk + comparaison statistique avec `config/rage_levels.json` |
+
+
+---
+
+# 3. Phase 0 : ce qui est construit (2026-09-25)
+
+## 3.1 Arborescence réelle
+
+```
+index.html · package.json · vite.config.ts · svelte.config.js · tsconfig.json · playwright.config.ts
+.github/workflows/ci.yml              types, svelte-check, tests, build, taille, catalogue
+config/rage_levels.json               maths (source de vérité unique)
+config/presentation_policy.json       probabilités de script et de rareté par classe (mock)
+src/
+  main.ts
+  app/        App.svelte · Hud.svelte · ResultPop.svelte · BfLadder.svelte · DevPanel.svelte · bootstrap.ts · format.ts · global.css
+  domain/     types.ts · rageLevels.ts · resultClass.ts · seed.ts · round.ts · book.ts · outcome.ts   (pur, sans dépendance)
+  platform/   storage.ts · launchParams.ts
+    rgs/      RgsPort.ts                       interface interne stable (seule vue de GameFlow)
+    rgs/mock/ mockMath.ts · MockServer.ts · MockRgsAdapter.ts   RGS simulé persistant + pannes injectables
+    rgs/stake/StakeRgsAdapter.ts · fetchObserver.ts             SEUL importeur du client BETA `stake-engine`
+  flow/       GameFlow.ts · featureGate.ts · timing.ts · presenterPort.ts
+  presentation/  types.ts · easing.ts · compileSequence.ts · timeline.ts · particles.ts · SequencePlayer.ts · characterAnimator.ts
+  content/    dsl.ts · office.ts · library.ts · gadgets/{swivelSlingshot,trapdoorExpress,officeRocket,index}.ts
+  presenter/  Presenter.ts                     implémente RoundPresenter (port de GameFlow) sur le SequencePlayer
+  render/     PixiStage.ts · office.ts · placeholder/{BossAnimator,minorCharacters,palette}.ts
+  audio/      AudioDirector.ts                 sons synthétisés WebAudio (aucun fichier)
+  dev/        devOutcomes.ts · loop.ts · perf.ts · playtest.ts
+tests/unit    domain · mockRgs · stakeAdapter · gameFlow · presentation · presenterFlow · playtest
+tests/e2e     phase0.spec.ts
+tools/        report-build-size.mjs · loop-benchmark.mjs · capture-screens.mjs · check_gadget_catalogue.py
+docs/phase0/screens/   captures · docs/generated/  BUILD_SIZE.md · LOOP_X100.md · MATH_REPORT.md
+```
+
+Sens des dépendances (vérifié par la structure des imports) :
+`domain` ← `flow` ← `app` ; `presentation` (moteur, sans Pixi) ← `content` (données) ← `presenter` ← `render` (Pixi) ; `platform/rgs/*` n'est vu par `flow` qu'à travers `RgsPort`.
+
+## 3.2 Écarts avec la conception (et pourquoi)
+
+| Conception (§1-2) | Phase 0 | Raison |
+|---|---|---|
+| Interface `Rig`, `PlaceholderRig`, `SpineRig` | **`CharacterAnimator`** (`pose(anim, elapsedMs, states)`), implémentations placeholder à pièces | Demande explicite : le moteur ne doit pas savoir si les personnages seront Spine, spritesheets ou pré-rendus |
+| Howler | **WebAudio synthétisé** (`AudioDirector`) | Aucun fichier son en Phase 0 : Howler n'apporterait rien. Il reviendra avec les vrais sons (Phase 5) |
+| Particules et débris à pas fixe 1/60 s | **Particules analytiques** : position = f(graine, âge) ; pas de débris physiques | Plus simple ET parfaitement seekable (reprise, skip, replay). La physique de débris reste pour plus tard |
+| Règle ESLint anti-`Math.random` | **Test unitaire** qui analyse `src/presentation` et `src/content` | Pas d'ESLint en Phase 0 (moins d'outillage) ; même garantie en CI |
+| `Timeline` + `Stage/Camera/Layers` séparés | `timeline.ts` (évaluation pure) + `PixiStage` (un seul fichier de rendu) | Phase 0 : moins de fichiers, même séparation moteur / rendu |
+| `beginNeutral(level)` | `beginNeutral(level, speed)` | Le tronc neutre est compilé à la vitesse choisie |
+| Délais réseau 10 / 15 / 10 s | Identiques en mode Stake ; **8 / 6 / 5 s en mode Mock** | Pour que les simulations de panne se voient vite dans le DEV PANEL |
+| Reprise « en turbo » | Reprise à la vitesse **turbo si la juridiction l'autorise**, sinon normale | Conforme à §2.5 |
+| Branche = `candidats[seed % n]` | Identique | — |
+
+## 3.3 Provenance des données d'une manche (exigence Phase 0)
+
+Règle : **les mathématiques sont établies AVANT toute lecture de la graine** (`parseRound`), et la graine ne sert qu'à choisir parmi des variantes **déjà compatibles** avec le résultat.
+
+| Donnée | Vient de | Peut varier avec la graine ? |
+|---|---|---|
+| Multiplicateur (`payoutMultiplier`, ×100) | **Book** (maths) | **Non** |
+| Payout, solde | **RGS** (mise × multiplicateur) | **Non** |
+| Gain ou perte, classe (MISS … LEGENDARY) | Calcul **local** déterministe depuis le multiplicateur (`classify`) | **Non** |
+| Tier d'impact (T0,5 … T3G), le « combien » | Calcul **local** depuis la classe (`impactTierFor`) | **Non** |
+| Script (CLEAN_MISS, DIRECT, COMEBACK, … BF_ENTRY), rareté | **Book** (événement `presentation`) | **Non** |
+| BOSS FIGHT : échelle, attaques HIT/BLOCKED, K.O., palier final | **Book** (événement `bossFight`), validé par `parseRound` | **Non** |
+| Variante visuelle d'une attaque (projectile) | **Book** (`attacks[].variant`) | Non (cosmétique, mais écrite dans le book) |
+| Gadget | **Local** : f(Rage Level) au MVP (décision D-GADGET en attente) | Non |
+| Branche | **Local** : candidates (script × classe × rareté), puis `seed % n` | **Oui, uniquement parmi des branches équivalentes** (une seule par cas en Phase 0) |
+| Réaction du boss (pool de la classe) | **Graine**, flux `reaction` | Oui |
+| Caméo de COO (10 %, gains uniquement) | **Graine**, flux `coo` | Oui |
+| Trajectoires des particules | **Graine** (hash(graine, segment, cue)) | Oui |
+| Bruit de la secousse de caméra | **Graine** (idem) | Oui |
+| Durées, courbes, positions, sons | **Contenu local** (données des gadgets et bibliothèques) | Non |
+| Vitesse (normal, turbo, super) | **Réglage du joueur**, filtré par la juridiction | Non (change les durées, jamais le contenu du résultat) |
+| Tronc neutre (avant D1) | **Contenu local**, graines d'effets FIXES | Non (joué avant de connaître le book) |
+| Boucle d'attente réseau | **Latence réelle** : seule donnée non reproductible ; neutre, avant D1 | — |
+
+Les books restent légers : **une graine uint32** suffit pour toute la variété cosmétique ; aucune donnée purement visuelle (trajectoires, timings) n'y est stockée.
+
+## 3.4 Format des événements de book (v3, mock ; à porter dans le math-sdk en Phase 2)
+
+```json
+{ "id": 17, "payoutMultiplier": 250, "events": [
+  { "type": "presentation", "script": "COMEBACK", "rarity": "common", "seed": 3141592653 },
+  { "type": "finalWin", "amount": 250 } ] }
+```
+BOSS FIGHT (palier final = nombre d'attaques HIT ; la dernière est BLOCKED sauf K.O.) :
+```json
+{ "type": "presentation", "script": "BF_ENTRY", "rarity": "rare", "seed": 99 },
+{ "type": "bossFight", "rungs100": [500, 1000, 2500, 5000, 10000, 25000, 50000, 100000],
+  "attacks": [ { "result": "HIT", "variant": 2 }, { "result": "HIT", "variant": 0 }, { "result": "BLOCKED", "variant": 3 } ],
+  "ko": false },
+{ "type": "finalWin", "amount": 2500 }
+```
+❓ Où Stake expose ces événements (`round.state` ou `round.events`) : **INFORMATION STAKE ENGINE REQUISE**. `toInternalRound` accepte les deux formes.
+
+## 3.5 Sémantique du temps (SequencePlayer)
+
+- `evaluate(timeline, t)` : pose de chaque acteur, états, animation et temps écoulé, caméra (tweens + secousses par bruit lisse), particules. **Aucun état accumulé.**
+- **Hit stop** (`freeze`) : le temps de séquence s'arrête pendant `wallMs` de temps réel ; ignoré par `seek`.
+- **Attente réseau** : tronc « ouvert » ; à D1 le temps s'arrête, les poses continuent (`holdOffset`), un son d'attente se répète. À l'arrivée du book, la séquence complète **prolonge** le tronc (préfixe identique), sans rejouer d'événement.
+- **Skip / slamstop** : `seek(reveal)` puis `seek(end)` ; les signaux franchis (échelle du BOSS FIGHT, reveal) sont émis une seule fois, les sons intermédiaires non.
+- **Vitesses** : turbo = segments `drop` supprimés, `compress` ×1,8 ; super = intro/setup ×3, action/twist ×6 (muets), impact conservé, réaction ≤ 300 ms. Les signaux (et donc le résultat affiché) sont identiques à toutes les vitesses.

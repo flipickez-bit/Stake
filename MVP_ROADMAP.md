@@ -71,7 +71,8 @@ Portes :   G0  G1          G3      G2                 G4
 
 ## 3. Phases
 
-### PHASE 0 : fondations et tranche technique (≈ 1 semaine)
+### PHASE 0 : fondations et tranche technique (≈ 1 semaine) — ✅ TERMINÉE le 2026-09-25
+> **Livré au-delà du plan initial** : GameFlow complet (I1 à I8), reprise, replay, FeatureGate, READY_GATE, vitesses et skip, séquenceur déterministe, 3 gadgets × 4 branches placeholder, BOSS FIGHT jouable, DEV PANEL complet, LOOP ×100, PLAYTEST 50. Recette : `PHASE_0_ACCEPTANCE.md`. Écarts : `TECH_ARCHITECTURE.md` §3.2. La proposition de Phase 1 est **révisée** au §8.
 - **Objectifs** :
   - scaffold Vite + Svelte 5 + PixiJS 8 + TS strict ;
   - CI (lint, types, tests unitaires, contrôle de contenu, taille du bundle) ;
@@ -256,3 +257,17 @@ Le calculateur (`math/model`) **ne remplace pas** les artefacts Stake Engine.
 3. Écrire `RgsPort`, `MockRgs` et `parseRound`, avec leurs tests.
 4. Écrire la machine à états et ses tests d'invariants, **avant** toute animation.
 5. Déployer la préversion et partager le lien de test.
+
+## 8. Proposition de Phase 1 (révisée après la Phase 0, NON commencée)
+
+La Phase 0 a déjà livré une grande partie de l'ancienne Phase 1 (GameFlow, reprise, replay, FeatureGate). La Phase 1 se concentre donc sur **ce qui ne peut être jugé qu'avec des humains et des appareils réels**, et sur le « feel ».
+
+1. **Préversion sur téléphones réels** (référence + entrée de gamme, iOS Safari + Chrome Android) : FPS réels, latence de FIRE, déverrouillage audio, mise en page portrait. Ajuster les budgets du §4 avec des mesures.
+2. **PLAYTEST 50** avec 3 à 5 personnes (LOCAL DEV ONLY, données exportées à la main) : durée de manche perçue, temps avant la manche suivante, choix des Rage Levels, compréhension du résultat.
+3. **Passe de game feel** sur les 12 branches existantes, guidée par les playtests : placement de D1, durée des silences, lisibilité des impacts, pertes plus drôles. Ajouter en priorité les **archétypes de perte** manquants (BACKFIRE avec Wendell, TEASE) : environ 2 branches de perte par gadget, sans dépasser ~18 branches.
+4. **Finitions du GameFlow** : autoplay derrière `FeatureGate`, expiration de session (ERR_IS) et écran d'erreur fatale, couverture de 100 % des transitions, récapitulatif clair après reprise.
+5. **UI minimale obligatoire** : écran de règles (RTP affiché si `displayRTP`, max win, table des gains par Rage Level), réglages son, libellés `socialCasino`, i18n (squelette).
+6. **`check:content`** en TypeScript (non-révélation, références d'animations et de segments, budget de TEASE), branché en CI.
+7. En parallèle, sans bloquer : réponses **INFORMATION STAKE ENGINE REQUISE** (`docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11-12) et démarrage du jeu `bad_boss` dans le **math-sdk officiel** (Phase 2) avec le format d'événements v3 (`TECH_ARCHITECTURE.md` §3.4).
+
+**Porte de sortie de Phase 1** : 50 manches jouées par au moins 3 personnes sur téléphone, ≥ 45 FPS sur l'appareil de référence, aucun blocage de manche, et une décision go / no-go sur le « fun » des 3 gadgets.

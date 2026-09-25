@@ -6,8 +6,18 @@ Jeu instantané cartoon pour **Stake Engine** : on se venge de Barnaby « B.B. �
 Trois Rage Levels (trois vrais niveaux de risque), un résultat tiré avant l'animation, des animations qui ne révèlent rien avant la fin, et un BOSS FIGHT jusqu'à x5 000.
 
 ## État
-Conception terminée : étapes 1 à 12. **En attente du feu vert pour coder le MVP.** Aucun code de jeu pour l'instant.
+**Phase 0 terminée** (prototype technique en formes simples, Mock RGS, DEV PANEL). Recette : **[PHASE_0_ACCEPTANCE.md](PHASE_0_ACCEPTANCE.md)**.
 Voir **[PROJECT_STATE.md](PROJECT_STATE.md)** et **[TODO.md](TODO.md)**.
+
+## Lancer le prototype
+```bash
+npm install
+npm run dev              # http://localhost:5173  — ajoutez ?dev=1 pour ouvrir le DEV PANEL
+npm test                 # 55 tests unitaires et d'intégration
+npm run test:e2e         # 13 tests Playwright (Chromium)
+npm run build:single     # préversion en un seul fichier : dist-single/index.html
+```
+Aucun argent réel : en l'absence de `sessionID`/`rgs_url` dans l'URL, le jeu utilise le **Mock RGS** (solde fictif, stocké dans le navigateur).
 
 ## Documents
 | Étape | Document | Contenu |
@@ -21,7 +31,8 @@ Voir **[PROJECT_STATE.md](PROJECT_STATE.md)** et **[TODO.md](TODO.md)**.
 | 8 | [GDD_07_UI_CAMERA_SON](docs/GDD_07_UI_CAMERA_SON.md) | UI, juridiction, caméra, son |
 | 9 | [STAKE_ENGINE_FAITS_VERIFIES](docs/STAKE_ENGINE_FAITS_VERIFIES.md) | Analyse technique Stake Engine |
 | 10-11 | [TECH_ARCHITECTURE](TECH_ARCHITECTURE.md) | Stack, architecture, GameFlow, modèle d'animation, DEV PANEL |
-| 12 | [MVP_ROADMAP](MVP_ROADMAP.md) | Phases, portes, budgets de performance, critères MVP |
+| 12 | [MVP_ROADMAP](MVP_ROADMAP.md) | Phases, portes, budgets de performance, critères MVP, proposition de Phase 1 |
+| Phase 0 | [PHASE_0_ACCEPTANCE](PHASE_0_ACCEPTANCE.md) · [captures](docs/phase0/screens) · [LOOP x100](docs/generated/LOOP_X100.md) · [taille du build](docs/generated/BUILD_SIZE.md) | Recette du prototype |
 
 ## Maths
 Paramètres : [`config/rage_levels.json`](config/rage_levels.json) (source de vérité unique).
