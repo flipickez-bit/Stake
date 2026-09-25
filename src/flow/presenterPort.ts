@@ -26,7 +26,7 @@ export interface PresentationHandle {
 
 export interface RoundPresenter {
   /** INTRO + SETUP neutres (identiques pour toutes les issues), avant de connaître le résultat. */
-  beginNeutral(level: RageLevelId): void;
+  beginNeutral(level: RageLevelId, speed: Speed): void;
   /** Mise refusée de façon CERTAINE : on range le gadget. */
   abortNeutral(): void;
   present(outcome: Outcome, options: PresentOptions): PresentationHandle;

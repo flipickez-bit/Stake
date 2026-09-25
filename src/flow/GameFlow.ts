@@ -320,7 +320,7 @@ export class GameFlow {
 
   private async runBet(level: RageLevelId, amount: number): Promise<void> {
     this.roundStartedAt = this.firedAt;
-    this.presenter.beginNeutral(level);
+    this.presenter.beginNeutral(level, this.s.speed);
     let round: InternalRound;
     try {
       const res = await this.walletCall(() => withTimeout(this.rgs.play(amount, level), this.timeouts.playMs, 'play'));
