@@ -1,0 +1,12 @@
+{
+  "_doc": "Politique de mise en scene ecrite dans les books (GDD_02 §3.6). N'affecte PAS le RTP : ce sont des probabilites conditionnelles a la classe de resultat. Lue par le MockRGS (phase 0) et, plus tard, par le generateur math-sdk.",
+  "scripts_by_class": {
+    "MISS": {"CLEAN_MISS": 0.50, "BACKFIRE": 0.35, "TEASE": 0.15},
+    "SCRAPE": {"GRAZE": 1.0},
+    "HIT": {"DIRECT": 0.70, "COMEBACK": 0.30},
+    "BIG": {"DIRECT": 0.50, "COMEBACK": 0.35, "CHAIN": 0.15},
+    "MEGA": {"COMEBACK": 0.40, "CHAIN": 0.35, "SUPER": 0.25},
+    "LEGENDARY": {"SUPER": 1.0}
+  },
+  "rarity": {"common": 0.75, "rare": 0.20, "epic": 0.05}
+}
