@@ -6,6 +6,7 @@ import { AudioDirector } from '../audio/AudioDirector';
 import { GameFlow } from '../flow/GameFlow';
 import { PerfMeter } from '../dev/perf';
 import { PlaytestRecorder } from '../dev/playtest';
+import { CONTENT_VERSION } from '../content/gadgets';
 import { makeDevRound } from '../dev/devOutcomes';
 import { runLoop, type LoopOptions } from '../dev/loop';
 import type { RageLevelId } from '../domain/types';
@@ -54,7 +55,7 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
     onContentError: (e) => contentErrors.push(e instanceof Error ? e.message : String(e)),
   });
   const perf = new PerfMeter();
-  const playtest = new PlaytestRecorder(createBrowserStore());
+  const playtest = new PlaytestRecorder(createBrowserStore(), CONTENT_VERSION);
   const { rgs, mock } = await createRgs(params);
   const flow = new GameFlow({
     rgs,
@@ -105,6 +106,7 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
         runLoop(flow, presenter, perf, () => (mock ? mock.snapshot().calls.play + mock.snapshot().calls.endRound : 0), {
           level: 'all',
           forced: null,
+          sceneStats: () => stage.stats(),
           ...options,
         }),
       perf: () => perf.snapshot(),

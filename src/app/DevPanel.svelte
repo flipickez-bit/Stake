@@ -7,12 +7,13 @@
   import { makeDevRound } from '../dev/devOutcomes';
   import { runLoop, type LoopReport } from '../dev/loop';
   import { PLAYTEST_TARGET, type PlaytestState } from '../dev/playtest';
+  import { copyText, saveTextFile } from '../dev/exportFile';
   import { cryptoRandom, forcibleMultipliers, type ForcedOutcome } from '../platform/rgs/mock/mockMath';
   import type { BranchDef } from '../presentation/types';
   import type { GameContext } from './bootstrap';
   import { formatBalance, formatX } from './format';
 
-  let { ctx, snap, onClose }: { ctx: GameContext; snap: FlowSnapshot; onClose: () => void } = $props();
+  let { ctx, snap, onClose, onShowSession }: { ctx: GameContext; snap: FlowSnapshot; onClose: () => void; onShowSession: (id: string) => void } = $props();
   const { flow, presenter, mock, perf, stage, playtest } = $derived(ctx);
 
   type Kind = ForcedOutcome['kind'] | 'RANDOM';
@@ -28,7 +29,8 @@
   let loopRunning = $state(false);
   let loopStop = false;
   let loopReport = $state<LoopReport | null>(null);
-  let pt = $state<PlaytestState>({ active: false, startedAt: null, entries: [], lastReadyAt: null });
+  let pt = $state<PlaytestState>({ version: 2, current: null, sessions: [], trackingExtraFor: null, lastReadyAt: null });
+  let ptNote = $state('');
   let tick = $state(0);
   let note = $state('');
 
@@ -161,24 +163,26 @@
       forced: loopForced ? forced() : null,
       onProgress: (d, n) => (loopProgress = `${d}/${n}`),
       shouldStop: () => loopStop,
+      sampleEvery: loopCount >= 100 ? 50 : 0,
+      sceneStats: () => stage.stats(),
     });
     loopReport = report;
     (window as unknown as { __BADBOSS_LOOP__: LoopReport }).__BADBOSS_LOOP__ = report;
     loopRunning = false;
   }
 
-  function exportPlaytest() {
-    const blob = new Blob([playtest.exportJson()], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'badboss-playtest50-local-dev-only.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
+  async function copyAllSessions() {
+    ptNote = (await copyText(playtest.exportJson())) ? 'All sessions copied.' : 'Clipboard refused: use SAVE.';
+  }
+
+  async function saveAllSessions() {
+    const r = await saveTextFile('badboss-playtests-local-dev-only.json', playtest.exportJson());
+    ptNote = r === 'saved' ? 'Saved.' : r === 'declined' ? 'Save cancelled.' : 'Save unavailable here: use COPY.';
   }
 
   const fmtMs = (ms: number) => `${(ms / 1000).toFixed(2)} s`;
   const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
-  const summary = $derived(pt.entries.length ? playtest.summary() : null);
+  const current = $derived(pt.current);
 </script>
 
 <aside class="dev" data-testid="dev-panel">
@@ -309,7 +313,7 @@
   <section>
     <h3>LOOP (no bets)</h3>
     <div class="row">
-      <select bind:value={loopCount} data-testid="loop-count"><option value={20}>x20</option><option value={100}>x100</option></select>
+      <select bind:value={loopCount} data-testid="loop-count"><option value={20}>x20</option><option value={100}>x100</option><option value={500}>x500</option></select>
       <label class="check"><input type="checkbox" bind:checked={loopAll} /> all levels</label>
       <label class="check"><input type="checkbox" bind:checked={loopForced} /> use FORCE</label>
     </div>
@@ -330,6 +334,7 @@
           <tr><td>Max particles</td><td>{loopReport.maxParticles}</td></tr>
           <tr><td>JS heap start → end</td><td>{loopReport.heapStartMB ?? 'n/a'} → {loopReport.heapEndMB ?? 'n/a'} MB</td></tr>
           <tr><td>Branches</td><td>{Object.entries(loopReport.branches).map(([k, v]) => `${k}:${v}`).join(' ')}</td></tr>
+          {#if loopReport.samples.length}<tr><td>Heap every 50 (MB)</td><td>{loopReport.samples.map((x) => x.heapAfterGcMB ?? x.heapMB ?? '?').join(' → ')}</td></tr>{/if}
         </tbody>
       </table>
     {/if}
@@ -337,28 +342,26 @@
 
   <section>
     <h3>PLAYTEST {PLAYTEST_TARGET} <span class="tag warn">LOCAL DEV ONLY</span></h3>
-    <p class="small">Normal session with the Mock RGS. Recorded only in this browser (localStorage). Nothing is sent anywhere. Any future data collection from real players needs its own privacy notice and consent.</p>
+    <p class="small">Start from the PLAYTEST button in the top bar (clean mock state). Recorded only in this browser; nothing is sent anywhere. Any future collection from real players needs its own privacy notice and consent.</p>
+    <table class="kv">
+      <tbody>
+        <tr><td>Current session</td><td data-testid="playtest-progress">{current ? `${current.id} · ${current.rounds.length}/${PLAYTEST_TARGET} · ${current.status}` : '—'}</td></tr>
+        <tr><td>Completed sessions</td><td>{pt.sessions.length}</td></tr>
+      </tbody>
+    </table>
+    {#each pt.sessions as s (s.id)}
+      <div class="row">
+        <button onclick={() => onShowSession(s.id)}>{s.id}</button>
+        <span>{s.rounds.length} rounds · {s.answers ? `Q ${s.answers.scores.join('/')}` : s.questionnaireSkipped ? 'no answers' : 'aborted'}{s.extraRounds ? ` · +${s.extraRounds} after 50` : ''}</span>
+      </div>
+    {/each}
     <div class="buttons">
-      <button onclick={() => playtest.start()} disabled={pt.active || !mock} data-testid="playtest-start">START</button>
-      <button onclick={() => playtest.stop()} disabled={!pt.active}>STOP</button>
-      <button onclick={() => playtest.clear()}>CLEAR</button>
-      <button onclick={exportPlaytest} disabled={!pt.entries.length}>EXPORT JSON</button>
-      <span data-testid="playtest-progress">{pt.entries.length}/{PLAYTEST_TARGET}{pt.active ? ' · recording' : ''}</span>
+      <button onclick={() => playtest.abort()} disabled={!current}>ABORT CURRENT</button>
+      <button onclick={copyAllSessions} disabled={!pt.sessions.length}>COPY ALL</button>
+      <button onclick={saveAllSessions} disabled={!pt.sessions.length}>SAVE ALL</button>
+      <button onclick={() => playtest.clearAll()}>CLEAR ALL</button>
     </div>
-    {#if summary}
-      <table class="kv" data-testid="playtest-summary">
-        <tbody>
-          <tr><td>Rounds</td><td>{summary.rounds}</td></tr>
-          <tr><td>Rage Levels</td><td>G {summary.byLevel.grumpy} · F {summary.byLevel.furious} · U {summary.byLevel.unhinged} · switches {summary.levelSwitches}</td></tr>
-          <tr><td>Hit rate / avg multiplier</td><td>{(summary.hitRate * 100).toFixed(1)} % / x{summary.avgMultiplier.toFixed(2)}</td></tr>
-          <tr><td>Round duration avg / median</td><td>{fmtMs(summary.avgRoundMs)} / {fmtMs(summary.medianRoundMs)}</td></tr>
-          <tr><td>Time before next round avg / median</td><td>{summary.avgIdleMs === null ? '—' : fmtMs(summary.avgIdleMs)} / {summary.medianIdleMs === null ? '—' : fmtMs(summary.medianIdleMs)}</td></tr>
-          <tr><td>Boss fights</td><td>{summary.bossFights}</td></tr>
-          <tr><td>Results</td><td>{Object.entries(summary.byClass).map(([k, v]) => `${k}:${v}`).join(' ')}</td></tr>
-          <tr><td>Branches</td><td>{Object.entries(summary.byBranch).map(([k, v]) => `${k}:${v}`).join(' ')}</td></tr>
-        </tbody>
-      </table>
-    {/if}
+    {#if ptNote}<p class="small">{ptNote}</p>{/if}
   </section>
 </aside>
 

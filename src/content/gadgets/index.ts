@@ -5,6 +5,12 @@ import { officeRocket } from './officeRocket';
 import { swivelSlingshot } from './swivelSlingshot';
 import { trapdoorExpress } from './trapdoorExpress';
 
+/**
+ * Version du contenu joué, enregistrée dans chaque session de playtest pour comparer les sessions
+ * (A = 12 branches de la Phase 0 ; les versions suivantes l'incrémentent).
+ */
+export const CONTENT_VERSION = 'P05-A · 12 branches';
+
 /** MVP : un gadget par Rage Level (affectation validée, TECH_ARCHITECTURE.md §2.5, décision D-GADGET en attente). */
 export const GADGETS: readonly GadgetDef[] = [swivelSlingshot, trapdoorExpress, officeRocket];
 
