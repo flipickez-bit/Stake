@@ -158,18 +158,21 @@ export function generateBook(levelId: RageLevelId, rnd: RandomSource, forced?: F
   }
 
   const resultClass = classify(multiplier100);
-  const events: BookEvent[] = [];
-  if (bossFightRung !== null) {
-    events.push({ type: 'presentation', script: 'BF_ENTRY', rarity: forced?.rarity ?? pickRarity(rnd), seed: forced?.seed ?? randomSeed(rnd) });
-    events.push(bossFightEvents(levelId, bossFightRung, rnd));
-  } else {
-    events.push({
+  // Tirages cosmétiques dans un ordre FIXE, toujours consommés : forcer la graine (DEV PANEL)
+  // ne décale pas les autres tirages. La graine ne touche jamais au multiplicateur, déjà fixé ci-dessus.
+  const isBossFight = bossFightRung !== null;
+  const drawnScript = isBossFight ? 'BF_ENTRY' : pickScript(resultClass, rnd);
+  const drawnRarity = pickRarity(rnd);
+  const drawnSeed = randomSeed(rnd);
+  const events: BookEvent[] = [
+    {
       type: 'presentation',
-      script: forced?.script ?? pickScript(resultClass, rnd),
-      rarity: forced?.rarity ?? pickRarity(rnd),
-      seed: forced?.seed ?? randomSeed(rnd),
-    });
-  }
+      script: isBossFight ? 'BF_ENTRY' : forced?.script ?? drawnScript,
+      rarity: forced?.rarity ?? drawnRarity,
+      seed: forced?.seed ?? drawnSeed,
+    },
+  ];
+  if (bossFightRung !== null) events.push(bossFightEvents(levelId, bossFightRung, rnd));
   events.push({ type: 'finalWin', amount: multiplier100 });
   return { id: bookCounter++, payoutMultiplier: multiplier100, events };
 }
