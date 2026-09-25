@@ -109,7 +109,7 @@ const BF_ENTRY_MUG = seg('BF_ENTRY_MUG', 'twist', 2000, 'compress', [
   state(450, 'boss', 'mug=gold'), tw(450, 'glow', { x: BF_POS.x, y: 400, alpha: 0.9 }, 300, 'outQuad'), sound(450, 'gold'),
   anim(620, 'boss', 'drink'),
   anim(1100, 'boss', 'grow'), tw(1100, 'boss', { sx: 2.1, sy: 2.1 }, 620, 'outBack'), sound(1100, 'giantRoar'),
-  shake(1150, 650, 12), state(1300, 'ceiling', 'hole'), fx(1300, 'dust', 500, 20, 20),
+  shake(1150, 650, 12), state(1300, 'ceiling', 'hole'), fx(1300, 'dust', 650, 70, 20),
   tw(1100, 'camera', { x: 500, y: 330, sx: 0.9 }, 600, 'inOutQuad'),
   tw(1500, 'glow', { alpha: 0 }, 400),
 ]);

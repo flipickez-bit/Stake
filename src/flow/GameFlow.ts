@@ -128,6 +128,8 @@ export class GameFlow {
   private roundStartedAt = 0;
   private firedAt = 0;
   private lastKnownRoundId: string | null = null;
+  /** Lancé en mode replay (URL) : aucune mise possible, jamais d'appel wallet. */
+  private replayOnly = false;
   private settlePromise: Promise<boolean> | null = null;
   private retryAction: (() => Promise<void>) | null = null;
   private lastOutcome: Outcome | null = null;
@@ -174,6 +176,7 @@ export class GameFlow {
   private set(patch: Partial<FlowSnapshot>): void {
     const next = { ...this.s, ...patch };
     next.canFire =
+      !this.replayOnly &&
       next.state === 'READY' &&
       !this.walletCallInFlight &&
       next.balance !== null &&
@@ -294,7 +297,12 @@ export class GameFlow {
     this.toReady(null);
   }
 
+  get isReplayOnly(): boolean {
+    return this.replayOnly;
+  }
+
   private async startReplayFromRequest(req: ReplayRequest): Promise<void> {
+    this.replayOnly = true;
     this.set({ state: 'AUTHENTICATING', message: { kind: 'info', text: 'Loading replay…' } });
     try {
       const round = await withTimeout(this.rgs.getReplay(req), this.timeouts.authMs, 'replay');

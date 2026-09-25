@@ -43,7 +43,7 @@ export const officeRocket: GadgetDef = {
     // ---------------------------------------------------------------- WIN : rallumage, droit au plafond
     seg('RKT_W_REIGNITE', 'action', 520, 'compress', [
       sound(0, 'roar'), fx(0, 'flame', 60, 0, 22, 'boss'), shake(0, 420, 8), anim(0, 'boss', 'scared'),
-      tw(60, 'boss', { y: 205 }, 440, 'inQuad'), state(0, 'boss', 'face=soot'),
+      tw(60, 'boss', { y: 250 }, 440, 'inQuad'), state(0, 'boss', 'face=soot'),
     ]),
     // ---------------------------------------------------------------- BIG WIN : rallumage, zigzag, fenêtre
     seg('RKT_BW_ZIGZAG', 'action', 1080, 'compress', [
