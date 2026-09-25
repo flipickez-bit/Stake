@@ -18,7 +18,18 @@ import { C } from './placeholder/palette';
  * En portrait, on recadre plus serré : la caméra suit l'action (contenu), pas les bords du bureau.
  */
 const SAFE_LANDSCAPE = { width: 920, height: 640 };
-const SAFE_PORTRAIT = { width: 760, height: 640 };
+
+/**
+ * Cadrage PORTRAIT adaptatif (rendu seulement : fonction pure du FrameState, donc reprise et replay identiques).
+ * - largeur utile resserrée sur l'action ;
+ * - sol ancré à 62 % de la hauteur : le boss remonte, le plafond vide disparaît, le premier plan (bureau du joueur)
+ *   remplit le bas ;
+ * - la caméra suit partiellement le boss (point focal) tant qu'il est visible, et retombe sur la caméra du contenu
+ *   quand il quitte le cadre (fenêtre, trappe, plafond).
+ */
+const PORTRAIT = { width: 640, minHeight: 600, floorY: 560, floorAt: 0.62, follow: 0.45, restY: 350 };
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 type Updater = (frame: ActorFrame, all: FrameState) => void;
 
@@ -134,6 +145,7 @@ export class PixiStage implements SceneSink {
     this.addCharacter(new CooAnimator());
 
     w.addChild(office.drawFloorFront());
+    w.addChild(office.drawPlayerDesk());
     const ceiling = new Container();
     const hole = office.drawCeilingHole();
     ceiling.addChild(office.drawCeilingStrip());
@@ -204,11 +216,24 @@ export class PixiStage implements SceneSink {
     }
     this.drawParticles(frame);
     const cam = frame.camera;
-    const safe = this.width / this.height < 0.8 ? SAFE_PORTRAIT : SAFE_LANDSCAPE;
-    const base = Math.min(this.width / safe.width, this.height / safe.height);
+    let base: number;
+    let camX = cam.x;
+    let camY = cam.y;
+    if (this.width / this.height < 0.8) {
+      base = Math.min(this.width / PORTRAIT.width, this.height / PORTRAIT.minHeight);
+      const visibleH = this.height / base;
+      camY = PORTRAIT.floorY - (PORTRAIT.floorAt - 0.5) * visibleH + (cam.y - PORTRAIT.restY);
+      const boss = frame.actors.boss?.transform;
+      if (boss) {
+        const w = clamp01((boss.alpha - 0.2) / 0.3) * clamp01((720 - boss.y) / 120) * clamp01(1 - boss.z / 400);
+        camX = cam.x + PORTRAIT.follow * w * (boss.x - cam.x);
+      }
+    } else {
+      base = Math.min(this.width / SAFE_LANDSCAPE.width, this.height / SAFE_LANDSCAPE.height);
+    }
     const s = base * cam.zoom;
     this.world.scale.set(s);
-    this.world.pivot.set(cam.x, cam.y);
+    this.world.pivot.set(camX, camY);
     this.world.rotation = cam.rot;
     this.world.position.set(this.width / 2 + cam.shakeX * base, this.height / 2 + cam.shakeY * base);
   }

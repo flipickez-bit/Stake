@@ -19,6 +19,13 @@ export function drawBackground(): Container {
   // Porte (Wendell entre par la droite).
   g.rect(930, 250, 110, 310).fill(0xb58b62).stroke({ width: 5, color: 0x7a5230 });
   g.circle(946, 410, 6).fill(C.gold);
+  // Suspensions (profondeur verticale, surtout visibles en portrait).
+  for (const x of [300, 830]) {
+    g.moveTo(x, -300).lineTo(x, 8).stroke({ width: 2, color: 0x6d6352 });
+    g.poly([x - 28, 34, x - 12, 8, x + 12, 8, x + 28, 34]).fill(0x3b3f4a);
+    g.ellipse(x, 34, 28, 5).fill({ color: 0xfff2b0, alpha: 0.9 });
+    g.poly([x - 28, 36, x + 28, 36, x + 110, 540, x - 110, 540]).fill({ color: 0xfff6d0, alpha: 0.06 });
+  }
   // Plante.
   g.roundRect(300, 500, 44, 60, 6).fill(0xb5542c);
   for (const [dx, h] of [[-14, 60], [0, 80], [14, 64]] as const) g.ellipse(322 + dx, 500 - h / 2, 10, h / 2).fill(0x3c9a4b);
@@ -39,6 +46,29 @@ export function drawBackground(): Container {
 /** Plafond (au premier plan, pour que le boss puisse s'y encastrer). */
 export function drawCeilingStrip(): Graphics {
   return new Graphics().rect(-400, -300, 1800, 360).fill(0xf4efe3).rect(-400, 54, 1800, 6).fill(0xd7ccb4);
+}
+
+/**
+ * Premier plan : le bureau du joueur (vue subjective). Hors cadre en paysage ; en portrait il remplit
+ * le bas de l'écran et donne la profondeur. Les mains du joueur surgissent de derrière.
+ */
+export function drawPlayerDesk(): Container {
+  const c = new Container();
+  const g = new Graphics();
+  g.rect(-400, 722, 1800, 400).fill(0x4a3526);
+  g.rect(-400, 712, 1800, 14).fill(0x6b4a32);
+  g.rect(-400, 726, 1800, 4).fill({ color: 0x000000, alpha: 0.25 });
+  // Clavier, post-it, cactus, tasse du joueur (turquoise : le mug jaune reste celui de B.B.).
+  g.roundRect(150, 690, 210, 30, 5).fill(0x2b2f3a);
+  for (let i = 0; i < 12; i++) g.rect(160 + i * 16, 696, 12, 7).fill(0x4a5060).rect(164 + i * 16, 707, 12, 7).fill(0x4a5060);
+  g.rect(420, 684, 46, 40).fill(0xfff08a).poly([420, 684, 466, 684, 466, 692, 420, 690]).fill(0xf5e070);
+  g.moveTo(428, 698).lineTo(456, 698).moveTo(428, 708).lineTo(450, 708).stroke({ width: 2, color: 0x8a7a30 });
+  g.roundRect(600, 660, 26, 56, 10).fill(0x3c9a4b).roundRect(611, 646, 10, 26, 5).fill(0x3c9a4b).roundRect(582, 672, 16, 10, 5).fill(0x3c9a4b);
+  g.poly([590, 712, 640, 712, 634, 730, 596, 730]).fill(0xb5542c);
+  g.roundRect(760, 676, 40, 46, 6).fill(0x2ec4b6).roundRect(796, 688, 14, 20, 7).stroke({ width: 4, color: 0x2ec4b6 });
+  g.ellipse(780, 680, 16, 4).fill(0x5a3b20);
+  c.addChild(g);
+  return c;
 }
 
 /** Bande de sol au premier plan : masque le boss qui tombe dans la trappe. */

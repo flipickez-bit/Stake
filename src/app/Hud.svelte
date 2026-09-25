@@ -50,7 +50,7 @@
         data-testid="rage-{lv.id}"
         onclick={() => pickLevel(lv.id)}
       >
-        <span class="name">{lv.label}</span>
+        <span class="name">{lv.label} <span class="risk" aria-hidden="true">{#each [0, 1, 2] as k (k)}<i class:full={k <= RAGE_LEVELS.indexOf(lv)}></i>{/each}</span></span>
         <span class="gadget">{gadgetFor(lv.id).label}</span>
         <span class="meta">{lv.volatility} · MAX x{lv.maxWin.toLocaleString('en-US')}</span>
       </button>
@@ -88,6 +88,9 @@
   @media (max-width: 520px) { .card { padding: 6px 7px; } .card .name { font-size: 12px; } .card .gadget { font-size: 9px; } .card .meta { font-size: 9px; } .fire { height: 48px; font-size: 19px; flex-basis: 100%; max-width: none; order: -1; } }
   .card .gadget { font-size: 11px; opacity: 0.85; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .card .meta { font-size: 10px; opacity: 0.7; }
+  .risk { display: inline-flex; gap: 2px; margin-left: 4px; vertical-align: middle; }
+  .risk i { display: block; width: 4px; height: 10px; border-radius: 1px; background: #3a4280; }
+  .risk i.full { background: var(--c); }
   .card.grumpy { --c: var(--grumpy); }
   .card.furious { --c: var(--furious); }
   .card.unhinged { --c: var(--unhinged); }
@@ -108,4 +111,19 @@
   .skip { height: 44px; border-radius: 12px; border: 2px solid #2b3160; background: #1f2447; color: #fff; font-weight: 800; padding: 0 12px; cursor: pointer; }
   .skip:disabled { opacity: 0.35; }
   button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  /* Portrait : les cartes collent à la zone d'action ; FIRE (et SKIP) sous le pouce, puis vitesse et mise. */
+  @media (orientation: portrait) and (max-aspect-ratio: 4/5) {
+    .hud { padding-top: 6px; }
+    .controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'fire skip' 'speed bet'; gap: 8px; align-items: center; }
+    .fire { grid-area: fire; max-width: none; height: 52px; }
+    .controls:not(:has(.skip)) .fire { grid-column: 1 / -1; }
+    .skip { grid-area: skip; height: 52px; }
+    .speed { grid-area: speed; justify-self: start; }
+    .bet { grid-area: bet; }
+    .amount { min-width: 64px; }
+  }
+  @media (orientation: portrait) and (max-height: 700px) {
+    .card .meta { display: none; }
+    .fire, .skip { height: 46px; }
+  }
 </style>

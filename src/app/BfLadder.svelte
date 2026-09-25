@@ -26,4 +26,5 @@
   .locked { background: #ff8a00; }
   .ko { background: #31d67b; animation: flash 0.3s 4; }
   @keyframes flash { 50% { filter: brightness(1.6); } }
+  @media (orientation: portrait) and (max-aspect-ratio: 4/5) { .ladder { right: 6px; top: 44%; min-width: 62px; padding: 5px; gap: 2px; } .rung { font-size: 10px; padding: 2px 4px; } }
 </style>

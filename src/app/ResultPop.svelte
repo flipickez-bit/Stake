@@ -25,6 +25,7 @@
 
 <style>
   .pop { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+  @media (orientation: portrait) and (max-aspect-ratio: 4/5) { .pop { top: 24%; } }
   .x { font-size: clamp(44px, 11vw, 96px); font-weight: 900; color: #fff; -webkit-text-stroke: 3px var(--bb-ink); text-shadow: 0 6px 0 var(--bb-ink); letter-spacing: 2px; }
   .win, .line { margin-top: 4px; font-size: clamp(16px, 4vw, 26px); font-weight: 900; color: var(--bb-yellow); -webkit-text-stroke: 1px var(--bb-ink); text-shadow: 0 3px 0 var(--bb-ink); }
   .miss .x { color: #cfd3e6; font-size: clamp(36px, 9vw, 72px); }
