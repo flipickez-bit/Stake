@@ -1,0 +1,71 @@
+{
+  "_doc": "SOURCE DE VERITE UNIQUE des parametres mathematiques de BAD BOSS. Lue par math/model/bad_boss_math.py (et plus tard par le generateur de books et le client pour l'affichage). Ne jamais recopier ces valeurs ailleurs : les importer. Fractions ecrites en chaines decimales ou 'a/b' pour rester exactes.",
+  "target_rtp": "0.965",
+  "target_rtp_status": "PROVISOIRE - validation Stake Engine requise avant publication",
+  "boss_fight_frequency": "1/150",
+  "rage_levels": [
+    {
+      "id": "grumpy",
+      "label": "GRUMPY",
+      "volatility": "low",
+      "max_win": 200,
+      "base": [
+        {"multiplier": "0.5", "rtp_share": "0.080"},
+        {"multiplier": "1.2", "rtp_share": "balance"},
+        {"multiplier": "1.5", "rtp_share": "0.180"},
+        {"multiplier": "2", "rtp_share": "0.140"},
+        {"multiplier": "3", "rtp_share": "0.100"},
+        {"multiplier": "5", "rtp_share": "0.080"},
+        {"multiplier": "10", "rtp_share": "0.050"},
+        {"multiplier": "25", "rtp_share": "0.035"}
+      ],
+      "boss_fight": {
+        "ladder": [5, 10, 25, 50, 100, 200],
+        "continue": ["0.45", "0.45", "0.40", "0.35", "0.30"]
+      }
+    },
+    {
+      "id": "furious",
+      "label": "FURIOUS",
+      "volatility": "medium",
+      "max_win": 1000,
+      "base": [
+        {"multiplier": "0.5", "rtp_share": "0.040"},
+        {"multiplier": "1.5", "rtp_share": "0.130"},
+        {"multiplier": "2", "rtp_share": "balance"},
+        {"multiplier": "3", "rtp_share": "0.120"},
+        {"multiplier": "5", "rtp_share": "0.100"},
+        {"multiplier": "10", "rtp_share": "0.080"},
+        {"multiplier": "25", "rtp_share": "0.070"},
+        {"multiplier": "50", "rtp_share": "0.050"},
+        {"multiplier": "100", "rtp_share": "0.040"}
+      ],
+      "boss_fight": {
+        "ladder": [5, 10, 25, 50, 100, 250, 500, 1000],
+        "continue": ["0.55", "0.50", "0.45", "0.45", "0.40", "0.35", "0.30"]
+      }
+    },
+    {
+      "id": "unhinged",
+      "label": "UNHINGED",
+      "volatility": "high",
+      "max_win": 5000,
+      "base": [
+        {"multiplier": "1.5", "rtp_share": "0.045"},
+        {"multiplier": "2", "rtp_share": "0.090"},
+        {"multiplier": "3", "rtp_share": "balance"},
+        {"multiplier": "5", "rtp_share": "0.080"},
+        {"multiplier": "10", "rtp_share": "0.080"},
+        {"multiplier": "25", "rtp_share": "0.075"},
+        {"multiplier": "50", "rtp_share": "0.070"},
+        {"multiplier": "100", "rtp_share": "0.060"},
+        {"multiplier": "250", "rtp_share": "0.050"},
+        {"multiplier": "500", "rtp_share": "0.045"}
+      ],
+      "boss_fight": {
+        "ladder": [5, 10, 25, 50, 100, 250, 500, 1000, 5000],
+        "continue": ["0.70", "0.60", "0.55", "0.45", "0.35", "0.25", "0.20", "0.15"]
+      }
+    }
+  ]
+}

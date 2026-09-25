@@ -36,12 +36,13 @@ Règles :
 2. **Chaque emplacement est un bet mode Stake Engine** (coût 1,0) avec son propre lookup table. **Le RTP est identique : 96,5 %**. Seules la distribution et la volatilité changent (voir partie 3).
 3. **À chaque manche, chaque emplacement reçoit un gadget** tiré dans le pool de son niveau. À terme : 5 gadgets par niveau (15 au total). Au MVP : 1 par niveau. Le tirage est **purement cosmétique** : il se fait côté client, hors RNG mathématique. Les règles du jeu indiquent que **tous les gadgets d'un même niveau ont exactement les mêmes probabilités**.
 4. **Les pools sont thématiques**, pour que l'animation colle aux montants possibles :
-   - GRUMPY : objets de bureau à taille humaine (chaise, agrafeuse, ventilateur, aspirateur, machine à café).
-   - FURIOUS : machines de bureau déréglées (robot, photocopieuse, distributeur, ascenseur, chariot élévateur).
-   - UNHINGED : catastrophes absurdes (fusée, canon de bureau, tornade, camion de livraison, trappe géante).
+   - GRUMPY : petites vengeances de bureau (chaise-lance-pierre, agrafeuse géante, ventilateur, machine à café, pigeons).
+   - FURIOUS : machines et mécanismes déréglés (robot, photocopieuse, distributeur, trappe, PC hanté).
+   - UNHINGED : catastrophes absurdes (fusée, piano, camion de livraison, boule de démolition, téléporteur).
+   - Liste définitive et branches d'animation : `docs/GDD_04_ANIMATIONS_ET_GADGETS.md` (étape 5).
    - **Super-gadgets** (UFO, T-Rex, trou noir, kaiju…) : **non sélectionnables**. Ils surgissent dans la manche, uniquement sur des résultats ≥ x25 (§3.6).
 5. **Sélection persistante** : le niveau choisi reste sélectionné d'une manche à l'autre. Changer de niveau = 1 tap sur une carte (gratuit, instantané, sans mise).
-6. **Proposition MVP** (à confirmer à l'étape 5) : GRUMPY = *Chair Launcher*, FURIOUS = *Rogue Robot*, UNHINGED = *Office Rocket*. Ce sont les trois exemples du brief.
+6. **MVP (décidé à l'étape 5)** : GRUMPY = *Swivel Slingshot* (chaise-lance-pierre), FURIOUS = *Trapdoor Express*, UNHINGED = *Office Rocket*. Justification dans `GDD_04`, §5.8.
 
 ## 3.3 Système de mise : la mise ne définit que l'argent engagé
 
@@ -49,7 +50,7 @@ Règles :
 - Les seuils de mise en scène (big win, etc.) sont définis **sur le multiplicateur**, jamais sur le montant. Un x500 à 0,10 $ reçoit le même spectacle qu'un x500 à 100 $.
 - Aucune « amélioration d'arme » achetable. Aucun gadget débloqué par la mise.
 - La mise respecte `minBet`, `maxBet` et `stepBet`, et propose les `betLevels` renvoyés par `/wallet/authenticate`. Montants entiers, 6 décimales (1 000 000 = 1 unité).
-- **Bonus buy** (achat direct du BOSS FIGHT) : **hors MVP**. S'il est ajouté un jour : 4e mode, coût ~100x, RTP identique. **INFORMATION STAKE ENGINE REQUISE** : restrictions de juridiction sur le bonus buy (clés exactes de `jurisdiction`).
+- **Bonus buy** (achat direct du BOSS FIGHT) : **hors MVP**. S'il est ajouté un jour : 4e mode, coût ~100x, RTP identique. Il ne sera **proposé** que si `jurisdiction.disabledBuyFeature` est faux (clé vérifiée dans le web-sdk).
 
 ## 3.4 La boucle, analysée et améliorée
 
@@ -89,7 +90,7 @@ Budgets de durée (mode normal, hors latence) :
 | Fake-out (TEASE, COMEBACK) | 3,2 à 4,0 s | ~1,4 s (twist compressé) |
 | BIG HIT / CHAIN | 4,0 à 5,0 s | ~1,6 s |
 | MEGA / LEGENDARY / super-gadget | 5 à 8 s (skippable dès l'impact) | ~2,0 s |
-| BOSS FIGHT | 12 à 25 s (chaque coup skippable) | ~6 à 10 s |
+| BOSS FIGHT | 6 à 26 s selon le nombre de coups (médiane ~8 s) | ~3 à 10 s |
 
 ## 3.5 Grammaire du résultat : le boss est le compteur
 
@@ -134,18 +135,25 @@ Fréquence effective des TEASE sur l'ensemble des manches : GRUMPY 6,3 %, FURIOU
 
 ### Charte de présentation honnête (non négociable)
 1. **Le résultat est connu avant la première image du script.** L'animation ne décide de rien.
-2. **Aucun multiplicateur, montant, pièce ou compteur n'apparaît avant REVEAL.** Aucun compteur ne dépasse la valeur finale ni ne redescend.
+2. **Aucun multiplicateur, montant, pièce ou compteur n'apparaît avant REVEAL.** Aucun compteur ne dépasse la valeur finale ni ne redescend. *Seule exception : l'échelle du BOSS FIGHT, qui affiche le palier **acquis** au fil des coups. Ce palier ne dépasse jamais le gain final et ne redescend jamais.*
 3. **TEASE ≤ 15 % des pertes**, à fréquence fixe codée dans les books. Il n'est **jamais adapté** à l'historique, à la mise, au solde ou aux séries du joueur.
 4. **Un gain inférieur à la mise n'est jamais présenté comme une victoire** : ni pièces, ni « WIN », son neutre, libellé « RECOVERED ».
 5. **Signaux honnêtes** : un super-gadget garantit un gain ≥ x25, et l'entrée en BOSS FIGHT garantit ≥ x5. Un signal fort n'est **jamais** suivi d'une perte.
 6. **Near-miss honnête** : le « presque » est physique (l'objet rate de quelques centimètres, le boss vacille). Il ne s'exprime jamais en valeurs : pas de « x500 raté de peu ».
 7. **Les règles du jeu expliquent** les niveaux de risque, l'équivalence des gadgets, les max wins et le RTP. Elles précisent aussi que les animations mettent en scène un résultat déjà déterminé.
+8. **Iconographie réservée** : la lueur dorée du mug est réservée au BOSS FIGHT, les silhouettes de super-gadgets (UFO, T-Rex, trou noir…) aux résultats ≥ x25, et les pièces ou l'or aux gains ≥ mise. Une branche de perte n'emprunte **jamais** ces signaux, pas même pour un TEASE.
+9. **Tronc commun** : toutes les branches d'un gadget partagent les mêmes 500 à 1 500 premières ms. À chaque point de divergence, au moins une issue gagnante et une issue perdante restent possibles (vérifié par la matrice de non-révélation, `GDD_04` §5.6).
 
 ## 3.7 BOSS FIGHT (aperçu ; conception complète à l'étape 6)
 
 - Déclenché **dans la manche**, avec la même fréquence sur les 3 niveaux : **1 manche sur 150**.
 - Le boss devient géant. Le joueur tape pour déclencher chaque attaque. **Le tap ne règle que le rythme** : pas de visée, pas de timing, pas d'adresse.
-- Entrée = **x5 garanti**. Chaque coup réussi fait monter d'un palier : x5 → x12 → x30 → x75 → x200 → x500 → x1 000 → x2 000 → x5 000. Le plafond dépend du niveau : GRUMPY x200, FURIOUS x1 000, UNHINGED x5 000. Le dernier palier = **K.O.**
+- Entrée = **x5 garanti**. Chaque coup réussi fait monter d'un palier. Échelles (source : `config/rage_levels.json`) :
+  - GRUMPY : x5 → x10 → x25 → x50 → x100 → x200
+  - FURIOUS : x5 → x10 → x25 → x50 → x100 → x250 → x500 → x1 000
+  - UNHINGED : x5 → x10 → x25 → x50 → x100 → x250 → x500 → x1 000 → x5 000
+
+  Le dernier palier = **K.O.** Le BOSS FIGHT n'est **pas** un gros gain garanti : 30 à 55 % des combats s'arrêtent à x5. Conception complète : `docs/GDD_05_BOSS_FIGHT.md`.
 - Un coup bloqué termine le combat. Le joueur garde le dernier palier atteint.
 
 **Pourquoi pas de cash-out** : le book renvoyé par `/play` contient déjà la totalité du combat, et son `payoutMultiplier` est le gain versé. Un cash-out qui paierait autre chose que ce montant est impossible. Un cash-out qui paierait quand même ce montant serait un faux choix, donc une tromperie. Toute mécanique de décision réelle (gamble, quitte ou double) exigerait des manches séparées avec une nouvelle mise, et donc une validation Stake. **INFORMATION STAKE ENGINE REQUISE** avant d'envisager cette piste. Elle est hors MVP.
@@ -193,15 +201,15 @@ Exemple de book (schéma provisoire, entiers ×100 comme `payoutMultiplier`) :
 ```json
 {
   "id": 900417,
-  "payoutMultiplier": 7500,
+  "payoutMultiplier": 5000,
   "events": [
     {"index": 0, "type": "bossFightTrigger", "mode": "unhinged", "entry": "CEO_ELEVATOR",
      "variant": 1, "rung": 1, "multiplier": 500},
-    {"index": 1, "type": "bossFightHit", "rung": 2, "outcome": "HIT", "multiplier": 1200, "variant": 4},
-    {"index": 2, "type": "bossFightHit", "rung": 3, "outcome": "HIT", "multiplier": 3000, "variant": 2},
-    {"index": 3, "type": "bossFightHit", "rung": 4, "outcome": "HIT", "multiplier": 7500, "variant": 7},
+    {"index": 1, "type": "bossFightHit", "rung": 2, "outcome": "HIT", "multiplier": 1000, "variant": 4},
+    {"index": 2, "type": "bossFightHit", "rung": 3, "outcome": "HIT", "multiplier": 2500, "variant": 2},
+    {"index": 3, "type": "bossFightHit", "rung": 4, "outcome": "HIT", "multiplier": 5000, "variant": 7},
     {"index": 4, "type": "bossFightHit", "rung": 5, "outcome": "BLOCKED", "variant": 1},
-    {"index": 5, "type": "finalWin", "amount": 7500}
+    {"index": 5, "type": "finalWin", "amount": 5000}
   ]
 }
 ```

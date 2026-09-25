@@ -1,351 +1,172 @@
-# BAD BOSS — GDD partie 3 : mathématiques (étape 4)
+# BAD BOSS — GDD partie 3 : mathématiques (étape 4, v2)
 
-> **Tous les chiffres de ce document sont produits par `math/model/bad_boss_math.py`.** C'est un calculateur Python sans dépendance, en fractions exactes : aucune probabilité n'est « inventée ».
-> Relancer : `python3 math/model/bad_boss_math.py` (rapport) ou `python3 math/model/bad_boss_math.py --markdown` (tableaux ci-dessous).
+> **Source de vérité des paramètres : `config/rage_levels.json`** (RTP cible, fréquence du BOSS FIGHT, distributions, échelles). Aucun autre fichier ne doit recopier ces valeurs.
+> **Tableaux complets** (générés, à ne pas modifier à la main) : [`docs/generated/MATH_REPORT.md`](generated/MATH_REPORT.md).
+> Régénérer : `python3 math/model/bad_boss_math.py --write-report docs/generated/MATH_REPORT.md`.
+> Statut : **validé** (étapes 1 à 4). `TARGET_RTP = 0.965`, **provisoire, validation Stake Engine requise avant publication**.
 
----
+## Changements v1 → v2
+
+| Changement | Raison | Impact |
+|---|---|---|
+| Échelle du BOSS FIGHT : x5 → x10 → x25 → x50 → x100 → x250 → x500 → x1 000 → x5 000 (auparavant x5 → x12 → x30 → x75 → x200 → x500 → x1 000 → x2 000 → x5 000) | Demande de validation : paliers plus lisibles, alignés sur les multiplicateurs de base | Probabilités d'enchaînement recalibrées pour **conserver l'espérance du bonus** (écart ≤ 1,4 %) **et la fréquence du max win**. La ligne d'équilibrage absorbe l'écart : **RTP toujours exactement 96,5 %** |
+| GRUMPY : échelle x5 → x10 → x25 → x50 → x100 → x200 | x200 = max validé (hors échelle de référence) | σ 2,74 → 2,68 |
+| FURIOUS : x5 → … → x1 000 (8 paliers) | | σ 6,81 → 6,67 |
+| UNHINGED : x5 → … → x1 000 → x5 000 (9 paliers, sans x2 000) | Suppression du palier x2 000 | **σ 13,31 → 11,59**. Le saut final x1 000 → x5 000 devient le K.O. Si l'on veut retrouver σ ≈ 13, le levier est d'augmenter P(x5 000) (voir §4.8) |
+| Paramètres déplacés dans `config/rage_levels.json` | Consigne : ne pas dupliquer `TARGET_RTP` | Le calculateur, puis le générateur de books et le client, lisent le même fichier |
+| Ajout de l'analyse des séries de pertes et des temps d'attente | Demande de validation | §4.6 |
 
 ## 4.0 Contraintes Stake Engine qui s'appliquent aux maths (vérifiées)
 
-Sources : `StakeEngine/math-sdk` (docs + `utils/rgs_verification.py`). Détail dans `docs/STAKE_ENGINE_FAITS_VERIFIES.md`.
-
-| Contrainte | Conséquence pour BAD BOSS |
+| Contrainte | Conséquence |
 |---|---|
-| Tous les résultats possibles sont **pré-calculés** (books). Le RGS tire un book **proportionnellement à son poids** dans le lookup table du mode | Le résultat est connu avant l'animation, par construction |
-| `payoutMultiplier` est un **entier** : 1150 = x11,5 | On manipule des entiers ×100 |
-| Gain non nul ≥ 10 et **multiple de 10** (contrôle SDK) | Multiplicateurs par **pas de x0,1**. x4,8 est valide, x1,25 ne l'est pas |
-| Poids du lookup table : **entiers uint64**, somme ≤ 2^64 − 1 | Nos poids sont exacts (PPCM des dénominateurs, §4.7) |
-| Contrôles « 3-star volatility limits » du SDK : RTP ≤ 0,967, CVaR 99,9 % ≤ 800, ETL40 ≤ 0,9, P(≥x5000) ≤ 1 %, P(≥x10000) ≤ 0,5 % | Les 3 modes passent tous les contrôles (§4.3) |
-| Le SDK avertit si l'écart de RTP entre modes dépasse 0,05 (« allowed difference for approvals ») | Nos 3 modes ont **exactement** le même RTP |
+| Résultats **pré-calculés** (books). Le RGS tire un book proportionnellement à son poids, dans le lookup table du mode | Le résultat est connu avant l'animation, et le BOSS FIGHT entier est dans le book |
+| `payoutMultiplier` entier : 1150 = x11,5. Gain non nul ≥ 10 et multiple de 10 | Multiplicateurs par pas de x0,1 (le calculateur le vérifie) |
+| Poids uint64, somme ≤ 2^64 − 1 | Poids entiers exacts (PPCM), totaux ≤ 7,2·10^10 |
+| Contrôles « 3-star » du SDK : RTP ≤ 0,967, CVaR ≤ 800, ETL40 ≤ 0,9, P(≥x5 000) ≤ 1 %, P(≥x10 000) ≤ 0,5 % | Les 3 modes passent tous les contrôles |
+| Avertissement si l'écart de RTP entre modes dépasse 0,05 | RTP identique sur les 3 modes |
 
-## 4.1 Méthode : le budget de RTP (pas de probabilités arbitraires)
-
-Le designer ne choisit pas des probabilités « au feeling ». Il **répartit un budget de RTP** entre les multiplicateurs, et les probabilités en découlent :
+## 4.1 Méthode : le budget de RTP
 
 ```
-RTP              = Σ m_i · p_i                         (espérance du gain, en mises)
-p_i              = r_i / m_i                           (r_i = part de RTP allouée au multiplicateur m_i)
+RTP              = Σ m_i · p_i
+p_i              = r_i / m_i                   (r_i = part de RTP allouée au multiplicateur m_i)
 BOSS FIGHT       : EV_BF = Σ_k L_k · P(finir au palier k)
-                   part_BF = f_BF · EV_BF              (f_BF = fréquence du bonus = 1/150)
+                   P(finir au palier k) = (Π_{j<k} c_j) · (1 − c_k)     c = probabilités d'enchaînement
+                   part_BF = f_BF · EV_BF                                f_BF = 1/150
 Ligne d'équilibre : r_eq = RTP_cible − part_BF − Σ(autres r_i)
-P(perte)         = 1 − Σ p_i                           (variable libre, absorbe le reste)
-Hit rate         = Σ p_i = RTP / E[m | gain]           (plus le gain moyen est gros, plus les gains sont rares)
-Variance         = Σ p_i · (m_i − RTP)²      σ = √Variance   (en unités de mise)
-House edge       = 1 − RTP
+P(perte)         = 1 − Σ p_i
+Variance         = Σ p_i · (m_i − RTP)²        σ = √Variance (en mises)
 ```
 
-Procédure pour chaque mode :
-1. Fixer l'échelle et la fréquence du BOSS FIGHT, ce qui donne sa part de RTP.
-2. Allouer des parts de RTP aux multiplicateurs de base, du plus fréquent au plus rare.
-3. Une seule ligne « d'équilibre » reçoit le reste, pour atteindre **exactement** 96,5 %.
-4. Calculer p = part / m, puis P(perte) = 1 − Σp.
-5. Contrôler σ, les bandes, le max win et les limites du SDK. Itérer sur les parts si besoin.
+## 4.2 Exemple calculé pas à pas : FURIOUS (v2)
 
-## 4.2 Exemple calculé pas à pas : FURIOUS
-
-**a) BOSS FIGHT FURIOUS** : paliers x5 → x12 → x30 → x75 → x200 → x500 → x1 000. Probabilités d'enchaîner : 50 %, 45 %, 40 %, 35 %, 30 %, 25 %.
+**a) BOSS FIGHT** : paliers x5, x10, x25, x50, x100, x250, x500, x1 000. Enchaînements : 55, 50, 45, 45, 40, 35, 30 %.
 
 | Palier | P(finir ici) | Calcul | m × P |
 |---|---|---|---|
-| x5 | 0,5 | 1 × (1 − 0,50) | 2,5 |
-| x12 | 0,275 | 0,50 × (1 − 0,45) | 3,3 |
-| x30 | 0,135 | 0,50 × 0,45 × (1 − 0,40) | 4,05 |
-| x75 | 0,0585 | 0,225 × 0,40 × (1 − 0,35) | 4,3875 |
-| x200 | 0,02205 | 0,09 × 0,35 × (1 − 0,30) | 4,41 |
-| x500 | 0,0070875 | 0,0315 × 0,30 × (1 − 0,25) | 3,54375 |
-| x1 000 (K.O.) | 0,0023625 | 0,0315 × 0,30 × 0,25 | 2,3625 |
-| **EV_BF** | Σ = 1 | | **24,55375** |
+| x5 | 0,45 | 1 × (1 − 0,55) | 2,25 |
+| x10 | 0,275 | 0,55 × (1 − 0,50) | 2,75 |
+| x25 | 0,15125 | 0,275 × (1 − 0,45) | 3,78125 |
+| x50 | 0,0680625 | 0,12375 × (1 − 0,45) | 3,403125 |
+| x100 | 0,0334125 | 0,0556875 × (1 − 0,40) | 3,34125 |
+| x250 | 0,01447875 | 0,022275 × (1 − 0,35) | 3,6196875 |
+| x500 | 0,005457375 | 0,00779625 × (1 − 0,30) | 2,7286875 |
+| x1 000 (K.O.) | 0,002338875 | 0,00779625 × 0,30 | 2,338875 |
+| **EV_BF** | Σ = 1 | | **24,212875** |
 
-Part de RTP du bonus = 24,55375 / 150 = **16,369 %**.
+Part de RTP du bonus = 24,212875 / 150 = **16,142 %**.
 
 **b) Base** : parts fixées de x0,5 = 4 %, x1,5 = 13 %, x3 = 12 %, x5 = 10 %, x10 = 8 %, x25 = 7 %, x50 = 5 %, x100 = 4 %, soit 63 % au total.
-Ligne d'équilibre x2 : 96,5 − 16,369 − 63 = **17,131 %**, donc p(x2) = 17,131 / 2 = **8,5654 %**.
+Ligne d'équilibre x2 : 96,5 − 16,142 − 63 = **17,358 %**, donc p(x2) = **8,6790 %**.
 
-**c) Probabilités** : x0,5 = 4/0,5 = 8 % · x1,5 = 13/1,5 = 8,6667 % · x3 = 4 % · x5 = 2 % · x10 = 0,8 % · x25 = 0,28 % · x50 = 0,1 % · x100 = 0,04 %.
-Σ base = 32,4521 %. BOSS FIGHT = 1/150 = 0,6667 %. **Hit rate = 33,119 %**, donc **P(perte) = 66,881 %**.
+**c) Probabilités** : Σ base = 8 + 8,6667 + 8,6790 + 4 + 2 + 0,8 + 0,28 + 0,1 + 0,04 = 32,5657 %. BOSS FIGHT = 0,6667 %. **Hit rate = 33,232 %**, donc **P(perte) = 66,768 %**.
 
-**d) Vérification** : Σ parts = 4 + 13 + 17,131 + 12 + 10 + 8 + 7 + 5 + 4 + 16,369 = **96,500 %**. En fraction exacte : RTP = 193/200.
+**d) Vérification** : Σ parts = 4 + 13 + 17,358 + 12 + 10 + 8 + 7 + 5 + 4 + 16,142 = **96,500 %**. RTP exact = 193/200.
 
-**e) D'où vient la volatilité** (contributions à la variance, FURIOUS, total 46,33) :
+**e) D'où vient la volatilité** (variance totale 44,51) : x0 → 0,62 · x0,5 à x10 → 1,48 · x25 à x100 → 11,80 · **x250 à x1 000 (BOSS FIGHT) → 30,61 (69 %)**. σ = **6,67**.
 
-| Multiplicateur | Contribution | Commentaire |
-|---|---|---|
-| x0 | 0,62 | les pertes pèsent peu |
-| x0,5 à x10 | 1,33 | la « vie quotidienne » du mode |
-| x12 à x100 | 11,07 | |
-| x200, x500, x1 000 (BOSS FIGHT) | **33,31 (72 %)** | la volatilité vient presque entièrement des hauts paliers du bonus |
-
-σ = √46,33 = **6,81 mises**.
-
-## 4.3 Synthèse des 3 profils
+## 4.3 Synthèse des 3 Rage Levels (v2)
 
 | Indicateur | GRUMPY | FURIOUS | UNHINGED |
 |---|---|---|---|
-| RTP (exact) | 96.5000 % | 96.5000 % | 96.5000 % |
-| House edge | 3.50 % | 3.50 % | 3.50 % |
-| P(perte x0) | 41.86 % | 66.88 % | 84.44 % |
-| Hit rate (paiement > 0) | 58.14 % (1 / 2) | 33.12 % (1 / 3) | 15.56 % (1 / 6) |
-| P(paiement ≥ mise) | 42.14 % | 25.12 % | 15.56 % |
-| Écart-type (σ, en mises) | 2.74 | 6.81 | 13.31 |
-| Variance | 7.5 | 46.3 | 177.1 |
-| Médiane | x0.5 | x0 | x0 |
-| Max win | x200 | x1000 | x5000 |
-| Fréquence max win | 1 / 12 698 | 1 / 63 492 | 1 / 577 201 |
+| RTP (exact) | 96,50 % | 96,50 % | 96,50 % |
+| P(perte x0) | 41,86 % | 66,77 % | 84,46 % |
+| Hit rate | 58,14 % | 33,23 % | 15,54 % |
+| P(paiement ≥ mise) | 42,14 % | 25,23 % | 15,54 % |
+| σ (en mises) | 2,68 | 6,67 | 11,59 |
+| Max win | x200 | x1 000 | x5 000 |
+| Fréquence max win | 1 / 17 637 | 1 / 64 133 | 1 / 549 715 |
 | BOSS FIGHT | 1 / 150 | 1 / 150 | 1 / 150 |
-| Part RTP du BOSS FIGHT | 9.73 % | 16.37 % | 23.62 % |
-| CVaR 99.9 % (limite SDK 800) | 52.9 | 94.0 | 235.1 |
-| ETL40 (limite SDK 0.9) | 0.033 | 0.188 | 0.394 |
-| P(≥ x5000) (limite SDK 1 %) | 0 | 0 | 1.73e-06 |
+| EV d'un BOSS FIGHT | x14,58 | x24,21 | x35,50 |
+| P(BOSS FIGHT terminé à x5) | 55 % | 45 % | 30 % |
+| CVaR 99,9 % (limite 800) | 35,4 | 86,7 | 182,7 |
 
-Lecture : σ est multiplié par ~2,5 entre GRUMPY et FURIOUS, puis par ~2 entre FURIOUS et UNHINGED. Ce sont trois paliers de risque nettement distincts, pour un avantage maison identique.
+Distributions complètes, bandes de gains et poids entiers : voir `docs/generated/MATH_REPORT.md`.
 
-## 4.4 Distributions détaillées
+## 4.4 BOSS FIGHT : une famille de résultats, pas un « gros gain »
 
-### GRUMPY (volatilité basse), max x200
+- Entrer en BOSS FIGHT garantit **x5 minimum** (jamais une perte, conformément à la charte : un signal fort n'est jamais suivi d'une perte).
+- **Ce n'est pas un gros gain garanti** : 55 % (GRUMPY), 45 % (FURIOUS) et 30 % (UNHINGED) des combats s'arrêtent à x5.
+- Le joueur voit l'échelle complète de son Rage Level, sans jamais savoir où il s'arrêtera.
+- Tout le combat est dans le book : aucun cash-out, aucune décision réelle.
 
-BOSS FIGHT : EV = 14.5878x, fréquence 1 / 150, part de RTP = 9.725 %
+## 4.5 Rythme ressenti : les moments forts
 
-| Source | Multiplicateur | Part de RTP | Probabilité | Fréquence |
-|---|---|---|---|---|
-| base | x0.5 | 8.000 % | 16.0000 % | 1 / 6 |
-| base | x1.2 *(équilibre)* | 20.275 % | 16.8957 % | 1 / 6 |
-| base | x1.5 | 18.000 % | 12.0000 % | 1 / 8 |
-| base | x2 | 14.000 % | 7.0000 % | 1 / 14 |
-| base | x3 | 10.000 % | 3.3333 % | 1 / 30 |
-| base | x5 | 8.000 % | 1.6000 % | 1 / 62 |
-| base | x10 | 5.000 % | 0.5000 % | 1 / 200 |
-| base | x25 | 3.500 % | 0.1400 % | 1 / 714 |
-| BOSS FIGHT | x5 | 1.833 % | 0.3667 % | 1 / 273 |
-| BOSS FIGHT | x12 | 2.340 % | 0.1950 % | 1 / 513 |
-| BOSS FIGHT | x30 | 2.205 % | 0.0735 % | 1 / 1 361 |
-| BOSS FIGHT | x75 | 1.772 % | 0.0236 % | 1 / 4 233 |
-| BOSS FIGHT | x200 | 1.575 % | 0.0079 % | 1 / 12 698 |
-| — | **x0 (perte)** | 0 % | **41.8643 %** | — |
-| **Total** | | **96.5000 %** | 100 % | |
-
-| Bande | Probabilité | Part de RTP |
-|---|---|---|
-| PERTE (x0) | 41.864 % | 0.00 % |
-| RÉCUP. (x0.1-x0.9) | 16.000 % | 8.00 % |
-| PETIT (x1-x4.9) | 39.229 % | 62.27 % |
-| MOYEN (x5-x24.9) | 2.662 % | 17.17 % |
-| GROS (x25-x99.9) | 0.237 % | 7.48 % |
-| ÉNORME (x100-x999) | 0.008 % | 1.57 % |
-| LÉGENDAIRE (x1000+) | 0.000 % | 0.00 % |
-
-### FURIOUS (volatilité moyenne), max x1 000
-
-BOSS FIGHT : EV = 24.5538x, fréquence 1 / 150, part de RTP = 16.369 %
-
-| Source | Multiplicateur | Part de RTP | Probabilité | Fréquence |
-|---|---|---|---|---|
-| base | x0.5 | 4.000 % | 8.0000 % | 1 / 12 |
-| base | x1.5 | 13.000 % | 8.6667 % | 1 / 12 |
-| base | x2 *(équilibre)* | 17.131 % | 8.5654 % | 1 / 12 |
-| base | x3 | 12.000 % | 4.0000 % | 1 / 25 |
-| base | x5 | 10.000 % | 2.0000 % | 1 / 50 |
-| base | x10 | 8.000 % | 0.8000 % | 1 / 125 |
-| base | x25 | 7.000 % | 0.2800 % | 1 / 357 |
-| base | x50 | 5.000 % | 0.1000 % | 1 / 1 000 |
-| base | x100 | 4.000 % | 0.0400 % | 1 / 2 500 |
-| BOSS FIGHT | x5 | 1.667 % | 0.3333 % | 1 / 300 |
-| BOSS FIGHT | x12 | 2.200 % | 0.1833 % | 1 / 545 |
-| BOSS FIGHT | x30 | 2.700 % | 0.0900 % | 1 / 1 111 |
-| BOSS FIGHT | x75 | 2.925 % | 0.0390 % | 1 / 2 564 |
-| BOSS FIGHT | x200 | 2.940 % | 0.0147 % | 1 / 6 803 |
-| BOSS FIGHT | x500 | 2.362 % | 0.0047 % | 1 / 21 164 |
-| BOSS FIGHT | x1000 | 1.575 % | 0.0016 % | 1 / 63 492 |
-| — | **x0 (perte)** | 0 % | **66.8813 %** | — |
-| **Total** | | **96.5000 %** | 100 % | |
-
-| Bande | Probabilité | Part de RTP |
-|---|---|---|
-| PERTE (x0) | 66.881 % | 0.00 % |
-| RÉCUP. (x0.1-x0.9) | 8.000 % | 4.00 % |
-| PETIT (x1-x4.9) | 21.232 % | 42.13 % |
-| MOYEN (x5-x24.9) | 3.317 % | 21.87 % |
-| GROS (x25-x99.9) | 0.509 % | 17.62 % |
-| ÉNORME (x100-x999) | 0.059 % | 9.30 % |
-| LÉGENDAIRE (x1000+) | 0.002 % | 1.57 % |
-
-### UNHINGED (volatilité haute), max x5 000
-
-BOSS FIGHT : EV = 35.4315x, fréquence 1 / 150, part de RTP = 23.621 %
-
-| Source | Multiplicateur | Part de RTP | Probabilité | Fréquence |
-|---|---|---|---|---|
-| base | x1.5 | 4.500 % | 3.0000 % | 1 / 33 |
-| base | x2 | 9.000 % | 4.5000 % | 1 / 22 |
-| base | x3 *(équilibre)* | 13.379 % | 4.4597 % | 1 / 22 |
-| base | x5 | 8.000 % | 1.6000 % | 1 / 62 |
-| base | x10 | 8.000 % | 0.8000 % | 1 / 125 |
-| base | x25 | 7.500 % | 0.3000 % | 1 / 333 |
-| base | x50 | 7.000 % | 0.1400 % | 1 / 714 |
-| base | x100 | 6.000 % | 0.0600 % | 1 / 1 667 |
-| base | x250 | 5.000 % | 0.0200 % | 1 / 5 000 |
-| base | x500 | 4.500 % | 0.0090 % | 1 / 11 111 |
-| BOSS FIGHT | x5 | 1.500 % | 0.3000 % | 1 / 333 |
-| BOSS FIGHT | x12 | 2.200 % | 0.1833 % | 1 / 545 |
-| BOSS FIGHT | x30 | 3.025 % | 0.1008 % | 1 / 992 |
-| BOSS FIGHT | x75 | 3.712 % | 0.0495 % | 1 / 2 020 |
-| BOSS FIGHT | x200 | 4.290 % | 0.0215 % | 1 / 4 662 |
-| BOSS FIGHT | x500 | 4.043 % | 0.0081 % | 1 / 12 369 |
-| BOSS FIGHT | x1000 | 2.599 % | 0.0026 % | 1 / 38 480 |
-| BOSS FIGHT | x2000 | 1.386 % | 0.0007 % | 1 / 144 300 |
-| BOSS FIGHT | x5000 | 0.866 % | 0.0002 % | 1 / 577 201 |
-| — | **x0 (perte)** | 0 % | **84.4447 %** | — |
-| **Total** | | **96.5000 %** | 100 % | |
-
-| Bande | Probabilité | Part de RTP |
-|---|---|---|
-| PERTE (x0) | 84.445 % | 0.00 % |
-| RÉCUP. (x0.1-x0.9) | 0.000 % | 0.00 % |
-| PETIT (x1-x4.9) | 11.960 % | 26.88 % |
-| MOYEN (x5-x24.9) | 2.883 % | 19.70 % |
-| GROS (x25-x99.9) | 0.590 % | 21.24 % |
-| ÉNORME (x100-x999) | 0.119 % | 23.83 % |
-| LÉGENDAIRE (x1000+) | 0.003 % | 4.85 % |
-
-## 4.5 Échelles du BOSS FIGHT
-
-Probabilités d'enchaînement **décroissantes** : chaque coup est plus dur que le précédent, et le suspense monte avec l'enjeu.
-
-**GRUMPY**
-
-| Palier | Multiplicateur | P(enchaîner le coup suivant) | P(atteindre ce palier) | P(finir ici) |
-|---|---|---|---|---|
-| 1 | x5 | 45 % | 100.000 % | 55.000 % |
-| 2 | x12 | 35 % | 45.000 % | 29.250 % |
-| 3 | x30 | 30 % | 15.750 % | 11.025 % |
-| 4 | x75 | 25 % | 4.725 % | 3.544 % |
-| 5 | x200 | K.O. (fin) | 1.181 % | 1.181 % |
-
-EV du BOSS FIGHT = 14.5878x la mise
-
-**FURIOUS**
-
-| Palier | Multiplicateur | P(enchaîner le coup suivant) | P(atteindre ce palier) | P(finir ici) |
-|---|---|---|---|---|
-| 1 | x5 | 50 % | 100.000 % | 50.000 % |
-| 2 | x12 | 45 % | 50.000 % | 27.500 % |
-| 3 | x30 | 40 % | 22.500 % | 13.500 % |
-| 4 | x75 | 35 % | 9.000 % | 5.850 % |
-| 5 | x200 | 30 % | 3.150 % | 2.205 % |
-| 6 | x500 | 25 % | 0.945 % | 0.709 % |
-| 7 | x1000 | K.O. (fin) | 0.236 % | 0.236 % |
-
-EV du BOSS FIGHT = 24.5538x la mise
-
-**UNHINGED**
-
-| Palier | Multiplicateur | P(enchaîner le coup suivant) | P(atteindre ce palier) | P(finir ici) |
-|---|---|---|---|---|
-| 1 | x5 | 55 % | 100.000 % | 45.000 % |
-| 2 | x12 | 50 % | 55.000 % | 27.500 % |
-| 3 | x30 | 45 % | 27.500 % | 15.125 % |
-| 4 | x75 | 40 % | 12.375 % | 7.425 % |
-| 5 | x200 | 35 % | 4.950 % | 3.218 % |
-| 6 | x500 | 30 % | 1.732 % | 1.213 % |
-| 7 | x1000 | 25 % | 0.520 % | 0.390 % |
-| 8 | x2000 | 20 % | 0.130 % | 0.104 % |
-| 9 | x5000 | K.O. (fin) | 0.026 % | 0.026 % |
-
-EV du BOSS FIGHT = 35.4315x la mise
-
-## 4.6 Rythme ressenti et sessions
-
-**Propriété de design importante** : les moments forts (≥ x5) arrivent **à peu près au même rythme** dans les trois modes. Ce qui change, c'est ce qu'il y a entre eux (petits gains ou rien) et le plafond.
-
-| | GRUMPY | FURIOUS | UNHINGED |
+| Nombre médian de manches jusqu'à… (inclus) | GRUMPY | FURIOUS | UNHINGED |
 |---|---|---|---|
-| Gain ≥ x5 | 1 manche / 34 | 1 / 26 | 1 / 28 |
-| Gain ≥ x25 | 1 / 408 | 1 / 175 | 1 / 140 |
-| Gain ≥ x100 | 1 / 12 698 | 1 / 1 639 | 1 / 820 |
-| P(10 pertes x0 d'affilée) | 0,02 % | 1,79 % | 18,4 % |
-| P(20 pertes x0 d'affilée) | ~0 % | 0,03 % | 3,4 % |
-| P(paiement < mise) | 57,9 % | 74,9 % | 84,4 % |
+| un gain ≥ x5 | 24 | 18 | 19 |
+| un gain ≥ x25 | 252 | 115 | 86 |
+| un gain ≥ x100 | 3 668 | 899 | 438 |
+| un BOSS FIGHT | 104 | 104 | 104 |
 
-BOSS FIGHT : P(au moins un en 100 manches) = 1 − (149/150)^100 = **48,8 %**. En 300 manches (~15 min) : **86,6 %**.
+Ce sont des médianes exactes (loi géométrique). Elles sont confirmées par une simulation de 3 000 000 manches par mode (écart ≤ 6 %, cf. rapport §5). Pour ≥ x100 en GRUMPY, l'écart atteint 6 % car l'échantillon ne compte que 589 événements.
 
-**Monte Carlo** (10 000 sessions, mise fixe de 1, résultat net en mises) :
+Les moments forts (≥ x5) arrivent au **même rythme** dans les 3 modes. UNHINGED se distingue par le **vide entre eux** et par le plafond.
 
-| Mode | Manches | P(finir gagnant) | P5 | Médiane | P95 |
-|---|---|---|---|---|---|
-| GRUMPY | 100 | 31,6 % | −30,8 | −9,0 | +36,5 |
-| GRUMPY | 1 000 | 26,5 % | −145,8 | −50,4 | +133,2 |
-| FURIOUS | 100 | 29,3 % | −50,5 | −19,0 | +78,5 |
-| FURIOUS | 1 000 | 30,1 % | −265,0 | −84,5 | +374,5 |
-| UNHINGED | 100 | 25,4 % | −70,0 | −35,5 | +162,0 |
-| UNHINGED | 1 000 | 32,3 % | −423,0 | −140,5 | +659,5 |
+## 4.6 Séries de pertes (analyse demandée)
 
-Perte moyenne attendue : 3,5 mises par 100 manches, quel que soit le mode. À ~1 000 manches par heure, cela fait **~35 mises par heure**. C'est un argument pour que le turbo et l'autoplay restent soumis aux règles de juridiction.
+Perte sèche = x0. Calcul exact (chaîne de Markov). « À partir de maintenant » = probabilité que les k prochaines manches soient toutes perdues.
 
-## 4.7 Du modèle au lookup table Stake (poids entiers exacts)
+| P(k pertes x0 d'affilée, à partir de maintenant) | GRUMPY | FURIOUS | UNHINGED |
+|---|---|---|---|
+| 5 | 1,29 % | 13,27 % | **42,98 %** |
+| 10 | 0,017 % | 1,76 % | **18,47 %** |
+| 15 | 0,0002 % | 0,23 % | **7,94 %** |
+| 20 | ~0 % | 0,031 % | **3,41 %** |
 
-Le poids total est le **PPCM des dénominateurs** des probabilités exactes. Tous les poids sont donc des entiers et le RTP est **exactement** 96,5 %, sans erreur d'arrondi. Totaux : GRUMPY 14 400 000 · FURIOUS 12 000 000 · UNHINGED 1 200 000 000 (tous < 2^64).
+| Sur une session de 300 manches (~15-20 min) | GRUMPY | FURIOUS | UNHINGED |
+|---|---|---|---|
+| P(au moins une série ≥ 10 x0) | 2,8 % | 83,9 % | 100 % |
+| P(au moins une série ≥ 15 x0) | 0,04 % | 20,3 % | 99,0 % |
+| P(au moins une série ≥ 20 x0) | ~0 % | 2,9 % | **81,9 %** |
+| Plus longue série typique (médiane) | 6 | 12 | **24** |
 
-Exemple FURIOUS (lignes agrégées par multiplicateur : x5 = base + BOSS FIGHT) :
+Si l'on compte les x0,5 comme des manches perdantes (paiement < mise), GRUMPY monte à une plus longue série typique de 9 sur 300 manches. FURIOUS monte à 16. UNHINGED ne change pas : il n'a pas de x0,5.
 
-| payoutMultiplier (entier Stake) | Poids entier | RTP partiel exact |
+**Lecture :**
+1. **UNHINGED fait vivre une longue traversée du désert à presque tous les joueurs.** Sur 300 manches, 82 % des joueurs subissent au moins 20 pertes sèches consécutives. À ~2,5 s par perte, cela représente **près d'une minute de ratés d'affilée**.
+2. Ce n'est pas un défaut de calcul, c'est la signature d'un hit rate de 15,5 %. **Cela confirme ta priorité** : les animations x0 et l'anti-répétition sont critiques, surtout pour le pool UNHINGED.
+3. **Aucune compensation adaptative** ne sera ajoutée (charte §3.6 : la présentation ne dépend jamais de l'historique).
+4. **Levier disponible, non appliqué** : ajouter une ligne x1,2 dans UNHINGED, financée par la ligne d'équilibre x3. **σ reste inchangé**, car il dépend de la queue de distribution.
+
+   | Variante UNHINGED | Hit rate | P(10 x0 d'affilée) | P(série ≥ 20 sur 300) | Plus longue série typique | σ |
+   |---|---|---|---|---|---|
+   | Actuelle | 15,5 % | 18,5 % | 81,9 % | 24 | 11,59 |
+   | + x1,2 à 6 % du RTP | 18,5 % | 12,9 % | 60,7 % | 21 | 11,58 |
+   | + x1,2 à 10 % du RTP | 20,5 % | 10,0 % | 45,9 % | 19 | 11,58 |
+
+   Décision à prendre après les premiers tests joueurs.
+
+## 4.7 Du modèle au lookup table Stake
+
+Poids entiers exacts (PPCM des dénominateurs) : GRUMPY 90 000 000 · FURIOUS 1 200 000 000 · UNHINGED 72 000 000 000. Le RTP recalculé depuis les entiers vaut exactement 96,500000 % pour les 3 modes (détail dans le rapport §7).
+
+En phase 2, chaque ligne est répartie entre plusieurs books (un par combinaison script × variante). Pour le BOSS FIGHT, c'est un book par chemin de combat, avec des variantes d'attaque. Le poids total de la ligne ne change pas, donc le RTP non plus.
+
+## 4.8 Leviers d'ajustement (tous dans `config/rage_levels.json`)
+
+| Besoin | Levier | Effet |
 |---|---|---|
-| 0 | 8 025 750 | 0.0000 % |
-| 50 | 960 000 | 4.0000 % |
-| 150 | 1 040 000 | 13.0000 % |
-| 200 | 1 027 850 | 17.1308 % |
-| 300 | 480 000 | 12.0000 % |
-| 500 | 280 000 | 11.6667 % |
-| 1000 | 96 000 | 8.0000 % |
-| 1200 | 22 000 | 2.2000 % |
-| 2500 | 33 600 | 7.0000 % |
-| 3000 | 10 800 | 2.7000 % |
-| 5000 | 12 000 | 5.0000 % |
-| 7500 | 4 680 | 2.9250 % |
-| 10000 | 4 800 | 4.0000 % |
-| 20000 | 1 764 | 2.9400 % |
-| 50000 | 567 | 2.3625 % |
-| 100000 | 189 | 1.5750 % |
+| Changer le RTP (ex. 96,0 %) | `target_rtp` | La ligne d'équilibre absorbe. Pour garder la forme, on peut aussi multiplier toutes les probabilités de gain par k = RTP'/RTP |
+| Moins de séries de pertes en UNHINGED | Ajouter une ligne x1,2 (§4.6) | Hit rate en hausse, σ stable |
+| Retrouver σ ≈ 13 en UNHINGED | Augmenter la dernière probabilité d'enchaînement (15 % → 30 %) | σ 11,59 → 13,34, P(x5 000) passe de ~1/550 000 à ~1/275 000, la part de RTP du bonus passe de 23,7 % à 24,4 % et la ligne x3 baisse d'autant |
+| Changer la fréquence du BOSS FIGHT | `boss_fight_frequency` | Part de RTP du bonus proportionnelle |
 
-RTP recalculé à partir des entiers = 1 158 000 000 / (100 × 12 000 000) = **96.500000 %**
+## 4.9 Choix de multiplicateurs (rappel)
 
-En phase 2, chaque ligne sera **répartie entre plusieurs books** (un par combinaison script × variante, §3.6 de la partie 2). La somme des poids d'une ligne reste inchangée, donc le RTP aussi. Exemple : les 8 025 750 de poids de x0 sont répartis entre CLEAN_MISS (50 %), BACKFIRE (35 %) et TEASE (15 %), puis entre leurs variantes.
+x0,8 et x1 sont retirés. x0,5 (« RECOVERED ») n'existe qu'en GRUMPY et FURIOUS, et n'est jamais célébré. Les max wins restent x200, x1 000 et x5 000. x10 000 n'est pas retenu (voir v1).
 
-## 4.8 Changer le RTP cible (ex. 96,0 %)
+## 4.10 INFORMATION STAKE ENGINE REQUISE
 
-Si Stake Engine ou un opérateur impose un autre RTP, on multiplie **toutes les probabilités de gain** par k = RTP' / RTP, et la perte absorbe la différence. La forme de la distribution est conservée.
+- Plage de RTP autorisée et portée des contrôles « 3-star ».
+- Acceptation de 3 modes à coût 1,0 comme niveaux de volatilité.
+- Nombre minimal ou recommandé de books par mode, et exigences sur la fréquence du max win.
+- Règles d'affichage (le RTP s'affiche si `jurisdiction.displayRTP` ; les autres mentions obligatoires sont à confirmer).
 
-- Pour 96,0 % : k = 0,960 / 0,965 = 0,99482.
-- FURIOUS : hit rate 33,119 % → 32,947 %, P(perte) 66,881 % → 67,053 %, σ 6,81 → 6,79.
-- Les fréquences de BOSS FIGHT passent de 1/150 à ~1/150,8. Si l'on veut garder exactement 1/150, on préfère réduire **seulement la ligne d'équilibre** (une ligne par mode, prévue pour cela).
+## 4.11 Plan de la phase 2
 
-Dans le code : modifier `TARGET_RTP` dans `math/model/bad_boss_math.py`. La ligne d'équilibre s'ajuste automatiquement.
-
-## 4.9 Challenge des multiplicateurs proposés dans le brief
-
-| Proposé | Décision | Raison |
-|---|---|---|
-| x0,5 | **Gardé** (GRUMPY, FURIOUS), présenté comme « RECOVERED » | Amortit la volatilité basse. Mais c'est une **perte nette** : jamais célébré (charte §3.6) |
-| x0,8 | **Retiré** | Perte déguisée en gain (−20 %), confusion et aucun apport émotionnel |
-| x1 | **Retiré** | « Rien ne se passe » : aucun intérêt visuel, et perçu comme une perte de temps |
-| x1,2 | Gardé en GRUMPY (ligne d'équilibre) | Plus petit vrai gain. Donne le rythme « ça tape souvent » |
-| x1,5 à x100 | Gardés selon le mode | Base des distributions |
-| x250 / x500 | UNHINGED uniquement (base) | Réservés au mode volatil |
-| x1 000 | FURIOUS (K.O. du bonus) et UNHINGED (palier 7) | |
-| x5 000 | **Max win UNHINGED**, uniquement par K.O. en BOSS FIGHT | Récit clair : « pour x5 000, il faut mettre K.O. le boss géant » |
-| Max win unique pour tout le jeu | **Non** : un max par mode (x200 / x1 000 / x5 000) | Affiché sur chaque carte, c'est la meilleure communication du risque |
-
-Pourquoi pas x10 000 ? P(≥x10 000) et l'ETL10k restent loin des limites du SDK. Mais pour une fréquence raisonnable (~1/2 M), le palier coûterait ~0,5 % de RTP pour un gain rarissime. **À réévaluer** après les tests joueurs. C'est une simple modification de l'échelle d'UNHINGED.
-
-## 4.10 Points non couverts par la documentation consultée
-
-- **INFORMATION STAKE ENGINE REQUISE** : plage de RTP autorisée pour la publication (le SDK ne contient qu'un contrôle local nommé « 3-star » à 0,967 ; on ne sait pas s'il est bloquant ni ce que « 3-star » implique commercialement).
-- **INFORMATION STAKE ENGINE REQUISE** : acceptation de **plusieurs modes à coût 1,0** représentant des profils de volatilité (et non des bonus buys). Le mécanisme est documenté (`mode` dans `/play`) mais aucun exemple officiel ne le montre pour cet usage.
-- **INFORMATION STAKE ENGINE REQUISE** : nombre minimal ou recommandé de books distincts par mode, et exigences éventuelles sur la fréquence minimale du max win.
-- **INFORMATION STAKE ENGINE REQUISE** : règles d'affichage obligatoires (RTP, max win, probabilités dans les règles du jeu).
-
-## 4.11 Plan de la phase 2 (production des fichiers mathématiques)
-
-1. Porter `TIERS` et l'échelle du BOSS FIGHT dans un jeu du math-sdk officiel (`games/bad_boss/`) avec 3 `BetMode` : `grumpy`, `furious`, `unhinged` (cost 1.0, rtp 0.965, max_win = x200 / x1 000 / x5 000).
-2. Générer les books : un book par (multiplicateur × script × variante). Les events suivent le schéma de la partie 2, §3.9.
-3. Écrire les poids entiers (§4.7), répartis entre les books.
-4. Lancer `utils/rgs_verification.py` : format, correspondance books/CSV, contrôles de volatilité.
-5. Publier `index.json` + 3 CSV + 3 `.jsonl.zst`.
+1. Jeu `games/bad_boss/` dans le math-sdk officiel, qui lit `config/rage_levels.json`.
+2. Books : un par (multiplicateur × script × variante) pour la base, un par chemin de combat pour le BOSS FIGHT. Events selon le schéma de la partie 2, §3.9.
+3. Poids entiers exacts répartis entre les books, puis `utils/rgs_verification.py`.
+4. Publication de `index.json`, des 3 CSV et des 3 fichiers `.jsonl.zst`.

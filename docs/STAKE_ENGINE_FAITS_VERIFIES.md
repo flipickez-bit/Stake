@@ -55,7 +55,11 @@ URL du jeu : `https://{TeamName}.cdn.stake-engine.com/{GameID}/{GameVersion}/ind
 - Mise valide : `minBet ≤ mise ≤ maxBet` et multiple de `stepBet`.
 - `round` (schéma web-sdk) : `roundID`, `amount`, `payout`, `payoutMultiplier`, `active`, `mode`, `event`, `state` (« Describes the state of the game. This is up to the developer »).
 - Erreurs 400 : `ERR_VAL`, `ERR_IPB` (solde insuffisant), `ERR_IS` (session invalide ou expirée), `ERR_ATE`, `ERR_GLE` (limites de jeu), `ERR_LOC` (localisation). Erreurs 500 : `ERR_GEN`, `ERR_MAINTENANCE`. Le schéma web-sdk mentionne aussi `ERR_BE` (« Player already has an active bet »).
-- `jurisdiction` contient au moins `socialCasino`, `disabledFullscreen`, `disabledTurbo`, puis « … ». **INFORMATION STAKE ENGINE REQUISE** : liste complète (autoplay ? bonus buy ? durée minimale de manche ?).
+- `jurisdiction` : liste **vérifiée** dans le web-sdk (`packages/rgs-fetcher/src/schema.ts`, `packages/state-shared/src/stateConfig.svelte.ts`, exemple commenté dans `packages/components-shared/src/components/Authenticate.svelte`) :
+  - booléens : `socialCasino`, `disabledFullscreen`, `disabledTurbo`, `disabledSuperTurbo`, `disabledAutoplay`, `disabledSlamstop`, `disabledSpacebar`, `disabledBuyFeature`, `displayNetPosition`, `displayRTP`, `displaySessionTimer` ;
+  - nombre : `minimumRoundDuration` (valeur par défaut 0 dans le web-sdk).
+  - Utilisation dans BAD BOSS : `GDD_07`, §8.1.6. **INFORMATION STAKE ENGINE REQUISE** : sémantique exacte, notamment l'unité de `minimumRoundDuration`, la portée de « slamstop » pour un jeu non-slot, et les emplacements d'affichage imposés par `display*`.
+- Requête `/wallet/play` dans le web-sdk : `{mode, currency, sessionID, amount}` (le champ `currency` est absent de l'exemple de `RGS.md`), plus un champ optionnel `meta` : « values that are not determined by the RGS but by the Game… sent as is and is not validated by the RGS ». Il pourrait transporter l'identifiant du gadget affiché. **INFORMATION STAKE ENGINE REQUISE** : `meta` est-il renvoyé dans `round` à la reprise ?
 
 ## 5. Front-end (`web-sdk/README.md`)
 
@@ -71,9 +75,11 @@ URL du jeu : `https://{TeamName}.cdn.stake-engine.com/{GameID}/{GameVersion}/ind
 
 1. **INFORMATION STAKE ENGINE REQUISE** : plage de RTP autorisée et signification des « 3-star limits ».
 2. **INFORMATION STAKE ENGINE REQUISE** : acceptation de 3 modes à coût 1,0 comme niveaux de volatilité.
-3. **INFORMATION STAKE ENGINE REQUISE** : clés complètes de `jurisdiction` (turbo, autoplay, bonus buy, durée minimale de manche, affichage obligatoire du RTP).
+3. ~~Clés de `jurisdiction`~~ **vérifiées** (web-sdk). Reste **INFORMATION STAKE ENGINE REQUISE** : leur sémantique exacte, et les règles d'autoplay au-delà de `disabledAutoplay` (limites de pertes obligatoires ?).
 4. **INFORMATION STAKE ENGINE REQUISE** : fermeture automatique côté RGS des manches à gain nul (le web-sdk n'appelle pas `end-round` pour `noWin`).
 5. **INFORMATION STAKE ENGINE REQUISE** : unités monétaires (6 décimales contre le commentaire « 1000 = $10.00 »).
 6. **INFORMATION STAKE ENGINE REQUISE** : limites de taille des assets, polices et requêtes externes autorisées, processus d'upload du front (ACP).
 7. **INFORMATION STAKE ENGINE REQUISE** : guidelines de contenu (thème violence cartoon) et d'approbation des jeux.
 8. **INFORMATION STAKE ENGINE REQUISE** : existence d'un mode « replay / historique de manche » imposé au front.
+9. **INFORMATION STAKE ENGINE REQUISE** : taille maximale et format du champ `event` de `/bet/event` (utilisé pour la reprise du BOSS FIGHT).
+10. **INFORMATION STAKE ENGINE REQUISE** : renvoi de `meta` dans `round`.
