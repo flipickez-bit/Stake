@@ -13,8 +13,12 @@ import { BossAnimator } from './placeholder/BossAnimator';
 import { CooAnimator, HandsAnimator, WendellAnimator } from './placeholder/minorCharacters';
 import { C } from './placeholder/palette';
 
-/** Zone de jeu à toujours montrer (coordonnées du monde logique 1000 × 700). */
-const SAFE = { width: 920, height: 640 };
+/**
+ * Zone de jeu à toujours montrer (coordonnées du monde logique 1000 × 700).
+ * En portrait, on recadre plus serré : la caméra suit l'action (contenu), pas les bords du bureau.
+ */
+const SAFE_LANDSCAPE = { width: 920, height: 640 };
+const SAFE_PORTRAIT = { width: 760, height: 640 };
 
 type Updater = (frame: ActorFrame, all: FrameState) => void;
 
@@ -173,7 +177,7 @@ export class PixiStage implements SceneSink {
     const g = this.fuseLine;
     g.clear();
     if (!this.gadgetProps.has('fuse') || f.states.main === 'burnt') return;
-    const end = f.states.main === 'lit' ? (all.actors.spark?.transform.x ?? 952) : 952;
+    const end = f.states.main === 'lit' ? (all.actors.spark?.transform.x ?? 900) : 900;
     g.moveTo(716, 556).quadraticCurveTo((716 + end) / 2, 572, end, 552).stroke({ width: 4, color: 0x3b2a1a });
   }
 
@@ -200,7 +204,8 @@ export class PixiStage implements SceneSink {
     }
     this.drawParticles(frame);
     const cam = frame.camera;
-    const base = Math.min(this.width / SAFE.width, this.height / SAFE.height);
+    const safe = this.width / this.height < 0.8 ? SAFE_PORTRAIT : SAFE_LANDSCAPE;
+    const base = Math.min(this.width / safe.width, this.height / safe.height);
     const s = base * cam.zoom;
     this.world.scale.set(s);
     this.world.pivot.set(cam.x, cam.y);

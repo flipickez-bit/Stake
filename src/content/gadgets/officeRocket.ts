@@ -12,14 +12,14 @@ export const officeRocket: GadgetDef = {
   layout: {
     boss: { transform: { x: 650, y: 560 }, states: { seat: 'rocket', mug: 'normal', face: 'normal' }, anim: 'sip' },
     fuse: { transform: { x: 700, y: 556 }, states: { main: 'unlit' } },
-    spark: { transform: { x: 952, y: 552, alpha: 0 } },
+    spark: { transform: { x: 900, y: 552, alpha: 0 } },
   },
   props: ['fuse', 'spark'],
   trunk: ['RKT_IN', 'RKT_FUSE'],
   hold: { sound: 'fuse', everyMs: 500 },
   segments: segments([
     seg('RKT_IN', 'intro', 450, 'compress', [
-      anim(0, 'hands', 'lighter'), tw(0, 'hands', { x: 958, y: 520 }, 380, 'outBack'), anim(0, 'boss', 'sip'), sound(380, 'click', 1.4),
+      anim(0, 'hands', 'lighter'), tw(0, 'hands', { x: 906, y: 520 }, 380, 'outBack'), anim(0, 'boss', 'sip'), sound(380, 'click', 1.4),
     ]),
     seg('RKT_FUSE', 'setup', 900, 'compress', [
       state(0, 'fuse', 'lit'), tw(0, 'spark', { alpha: 1 }, 60, 'linear'), sound(0, 'fuse'),
@@ -51,10 +51,11 @@ export const officeRocket: GadgetDef = {
       tw(0, 'boss', { x: 820, y: 380, rot: 0.4 }, 250, 'inOutQuad'), tw(250, 'boss', { x: 380, y: 300, rot: -0.4 }, 250, 'inOutQuad'),
       tw(500, 'boss', { x: 700, y: 220, rot: 0.3 }, 220, 'inOutQuad'), tw(720, 'boss', { x: 236, y: 330, rot: -0.6 }, 360, 'inQuad'),
       fx(250, 'smoke', 0, -40, 6, 'boss'), fx(500, 'smoke', 0, -40, 6, 'boss'), fx(720, 'smoke', 0, -40, 6, 'boss'),
-      sound(500, 'whoosh'),
+      sound(500, 'whoosh'), tw(700, 'camera', { x: 420 }, 380, 'outQuad'),
     ]),
     seg('RKT_BW_AWAY', 'impact', 700, 'compress', [
       anim(0, 'boss', 'away'), tw(0, 'boss', { x: 120, y: 160, z: 1800, alpha: 0, rot: -5 }, 650, 'outQuad'), sound(60, 'fall', 1.2),
+      tw(300, 'camera', { x: 500 }, 400, 'inOutQuad'),
     ]),
     // ---------------------------------------------------------------- BOSS FIGHT : rallumage, il plane… et se fâche
     seg('RKT_BF_HOVER', 'action', 900, 'compress', [

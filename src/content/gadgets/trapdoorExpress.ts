@@ -13,18 +13,18 @@ export const trapdoorExpress: GadgetDef = {
   layout: {
     boss: { transform: { x: 650, y: 560 }, states: { seat: 'none', mug: 'normal', face: 'normal' }, anim: 'tapfoot' },
     trapdoor: { transform: { x: 650, y: 560 }, states: { main: 'closed' } },
-    lever: { transform: { x: 945, y: 560, rot: -0.35 } },
+    lever: { transform: { x: 885, y: 560, rot: -0.35 } },
   },
   props: ['trapdoor', 'lever'],
   trunk: ['TRP_IN', 'TRP_PULL'],
   hold: { sound: 'creak', everyMs: 650 },
   segments: segments([
     seg('TRP_IN', 'intro', 450, 'compress', [
-      anim(0, 'hands', 'open'), tw(0, 'hands', { x: 945, y: 445 }, 380, 'outBack'),
+      anim(0, 'hands', 'open'), tw(0, 'hands', { x: 885, y: 445 }, 380, 'outBack'),
       anim(0, 'boss', 'tapfoot'), anim(400, 'hands', 'grab'), sound(400, 'click'),
     ]),
     seg('TRP_PULL', 'setup', 650, 'compress', [
-      anim(0, 'hands', 'strain'), tw(0, 'lever', { rot: 0.1 }, 600, 'inOutQuad'), tw(0, 'hands', { x: 925, y: 455 }, 600, 'inOutQuad'),
+      anim(0, 'hands', 'strain'), tw(0, 'lever', { rot: 0.1 }, 600, 'inOutQuad'), tw(0, 'hands', { x: 865, y: 455 }, 600, 'inOutQuad'),
       sound(0, 'creak'), sound(300, 'creak', 0.9), anim(300, 'boss', 'oblivious'),
       tw(0, 'camera', { x: 600, sx: 1.05 }, 600, 'inOutQuad'),
     ]),

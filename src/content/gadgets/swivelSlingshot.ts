@@ -43,15 +43,17 @@ export const swivelSlingshot: GadgetDef = {
     seg('SLG_W_SNAP', 'action', 420, 'compress', [
       state(20, 'slingPost', 'elastic=snapped'), sound(20, 'twang', 1.6), anim(60, 'boss', 'scared'),
       tw(0, 'boss', { x: 176 }, 420, 'inQuad'), fx(40, 'dust', 0, -8, 5, 'boss'),
+      tw(60, 'camera', { x: 390 }, 360, 'outQuad'),
     ]),
     // ---------------------------------------------------------------- BIG WIN : décollage vers la fenêtre
     seg('SLG_BW_LAUNCH', 'action', 560, 'compress', [
       state(20, 'slingPost', 'elastic=snapped'), sound(20, 'twang', 1.6), anim(60, 'boss', 'scared'),
       tw(0, 'boss', { x: 330, y: 400, rot: -0.5 }, 400, 'outQuad'), tw(400, 'boss', { x: 236, y: 330 }, 160, 'inQuad'),
-      sound(120, 'whoosh'),
+      sound(120, 'whoosh'), tw(60, 'camera', { x: 420 }, 420, 'outQuad'),
     ]),
     seg('SLG_BW_AWAY', 'impact', 700, 'compress', [
       anim(0, 'boss', 'away'), tw(0, 'boss', { x: 150, y: 240, z: 1600, alpha: 0, rot: -4 }, 650, 'outQuad'), sound(60, 'fall', 1.1),
+      tw(300, 'camera', { x: 500 }, 400, 'inOutQuad'),
     ]),
     // ---------------------------------------------------------------- BOSS FIGHT : il freine des deux pieds
     seg('SLG_BF_SKID', 'action', 700, 'compress', [

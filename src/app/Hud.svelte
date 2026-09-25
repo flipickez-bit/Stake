@@ -85,6 +85,7 @@
   .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border-radius: 12px; border: 3px solid transparent; background: #1f2447; color: #fff; text-align: left; cursor: pointer; min-width: 0; }
   .card .name { font-weight: 900; font-size: 15px; letter-spacing: 1px; }
+  @media (max-width: 520px) { .card { padding: 6px 7px; } .card .name { font-size: 12px; } .card .gadget { font-size: 9px; } .card .meta { font-size: 9px; } .fire { height: 48px; font-size: 19px; flex-basis: 100%; max-width: none; order: -1; } }
   .card .gadget { font-size: 11px; opacity: 0.85; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .card .meta { font-size: 10px; opacity: 0.7; }
   .card.grumpy { --c: var(--grumpy); }
