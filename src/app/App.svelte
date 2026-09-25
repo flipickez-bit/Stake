@@ -97,7 +97,7 @@
 {/if}
 
 <style>
-  .game { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); height: 100dvh; width: 100vw; overflow: hidden; }
+  .game { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); height: 100%; width: 100%; overflow: hidden; }
   .topbar { display: flex; align-items: center; gap: 10px; padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top)); background: #12152b; border-bottom: 2px solid #2b3160; color: #fff; }
   .title { flex: 1; font-weight: 900; letter-spacing: 2px; font-size: 15px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .title small { font-weight: 700; letter-spacing: 0; font-size: 9px; opacity: 0.55; margin-left: 6px; }

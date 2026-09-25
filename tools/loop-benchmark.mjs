@@ -18,8 +18,12 @@ const speed = arg('speed', 'turbo');
 const markdown = arg('markdown', null);
 const port = 4173;
 
-const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { stdio: 'ignore' });
-const stop = () => server.kill('SIGTERM');
+const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { stdio: 'ignore', detached: true });
+const stop = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {}
+};
 process.on('exit', stop);
 await new Promise((r) => setTimeout(r, 2500));
 

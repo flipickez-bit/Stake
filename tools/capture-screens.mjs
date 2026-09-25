@@ -8,8 +8,12 @@ import { chromium } from '@playwright/test';
 
 const port = 4174;
 const OUT = 'docs/phase0/screens';
-const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { stdio: 'ignore' });
-process.on('exit', () => server.kill('SIGTERM'));
+const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { stdio: 'ignore', detached: true });
+process.on('exit', () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {}
+});
 await new Promise((r) => setTimeout(r, 2500));
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 
