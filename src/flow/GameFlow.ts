@@ -79,6 +79,16 @@ export interface RoundRecord {
   resultClass: ResultClass;
   multiplier100: number;
   branchId: string | null;
+  gadgetId: string | null;
+  betAmount: number;
+  payout: number;
+  bossFight: boolean;
+  /** Vitesse de la présentation (turbo et super turbo compris). */
+  speed: Speed;
+  /** Le joueur a utilisé le skip / slamstop pendant la manche. */
+  skipped: boolean;
+  /** Durée réelle de la présentation (début → fin), en ms d'horloge. */
+  animationMs: number;
   firedAt: number;
   readyAt: number;
 }
@@ -127,6 +137,10 @@ export class GameFlow {
   private roundActiveOnServer = false;
   private roundStartedAt = 0;
   private firedAt = 0;
+  private presentStartedAt = 0;
+  private presentEndedAt = 0;
+  private presentSpeed: Speed = 'normal';
+  private skipUsed = false;
   private lastKnownRoundId: string | null = null;
   /** Lancé en mode replay (URL) : aucune mise possible, jamais d'appel wallet. */
   private replayOnly = false;
@@ -265,7 +279,9 @@ export class GameFlow {
 
   skip(): boolean {
     if (!this.s.canSkip || !this.handle) return false;
-    return this.handle.skipToReveal();
+    const skipped = this.handle.skipToReveal();
+    if (skipped) this.skipUsed = true;
+    return skipped;
   }
 
   async retry(): Promise<void> {
@@ -409,6 +425,10 @@ export class GameFlow {
     this.lastOutcome = outcome;
     this.lastRound = { ...round, active: false };
     const speed: Speed = source === 'play' ? this.s.speed : this.s.capabilities.turbo ? 'turbo' : 'normal';
+    this.presentSpeed = speed;
+    this.skipUsed = false;
+    this.presentStartedAt = this.clock.now();
+    this.presentEndedAt = this.presentStartedAt;
     const handle = this.presenter.present(outcome, { speed, mode: source });
     this.handle = handle;
     this.set({
@@ -426,7 +446,10 @@ export class GameFlow {
     });
     const [settled] = await Promise.all([
       this.roundActiveOnServer ? this.finishSettlement() : Promise.resolve(true),
-      waitPresentation(handle.done, guard),
+      waitPresentation(handle.done, guard).then((r) => {
+        this.presentEndedAt = this.clock.now();
+        return r;
+      }),
     ]);
     this.handle = null;
     if (!settled) return; // ERROR avec « Réessayer » déjà affiché
@@ -449,6 +472,13 @@ export class GameFlow {
       resultClass: outcome.resultClass,
       multiplier100: outcome.payoutMultiplier100,
       branchId,
+      gadgetId: this.s.presentation?.gadgetId ?? null,
+      betAmount: outcome.betAmount,
+      payout: outcome.payout,
+      bossFight: outcome.bossFight !== null,
+      speed: this.presentSpeed,
+      skipped: this.skipUsed,
+      animationMs: Math.max(0, this.presentEndedAt - this.presentStartedAt),
       firedAt: this.firedAt,
       readyAt: this.clock.now(),
     });
