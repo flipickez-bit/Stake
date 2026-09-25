@@ -58,6 +58,8 @@ export interface ReplayRequest {
   version: string;
   mode: string;
   event: string;
+  /** Mise d'origine (unités RGS), fournie par l'URL de replay si disponible. */
+  amount?: number;
 }
 
 export type RgsErrorKind =
