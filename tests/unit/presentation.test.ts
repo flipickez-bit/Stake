@@ -9,7 +9,7 @@ import type { Outcome } from '../../src/domain/outcome';
 import { mulberry32 } from '../../src/domain/seed';
 import { RAGE_LEVEL_IDS, type RageLevelId, type Speed } from '../../src/domain/types';
 import type { ForcedOutcome } from '../../src/platform/rgs/mock/mockMath';
-import { compileSequence, compileTrunk, impactTierFor } from '../../src/presentation/compileSequence';
+import { candidateBranches, compileSequence, compileTrunk, impactTierFor } from '../../src/presentation/compileSequence';
 import { SequencePlayer, type PlayerSinks } from '../../src/presentation/SequencePlayer';
 import { buildTimeline, evaluate } from '../../src/presentation/timeline';
 import type { AnimationSequence, ScheduledCue, Signal } from '../../src/presentation/types';
@@ -54,10 +54,9 @@ class RecordingSinks implements PlayerSinks {
 }
 
 describe('contenu placeholder (Phase 0)', () => {
-  it('3 gadgets, un par Rage Level, 4 branches chacun (LOSS, WIN, BIG WIN, BOSS FIGHT) : 12 branches', () => {
+  it('3 gadgets, un par Rage Level (le détail des branches est audité dans variety.test.ts)', () => {
     expect(GADGETS).toHaveLength(3);
     expect(GADGETS.map((g) => g.rageLevel).sort()).toEqual([...RAGE_LEVEL_IDS].sort());
-    expect(GADGETS.flatMap((g) => g.branches)).toHaveLength(12);
   });
 
   it('chaque combinaison classe × script du book a une branche, à chaque vitesse, avec un seul reveal', () => {
@@ -125,6 +124,7 @@ describe('déterminisme de la présentation', () => {
 
   it('DIFFERENT COSMETIC SEED : seuls les éléments autorisés changent', () => {
     for (const level of RAGE_LEVEL_IDS) {
+      const gadget = gadgetFor(level);
       for (const kind of KINDS) {
         const a = outcome(level, { kind, bossFightRung: 2, seed: 1 }, 7);
         const b = outcome(level, { kind, bossFightRung: 2, seed: 987654321 }, 7);
@@ -135,18 +135,24 @@ describe('déterminisme de la présentation', () => {
         expect(mathA).toEqual(mathB);
         const qa = compile(a);
         const qb = compile(b);
-        // Autorisé : branche parmi les équivalentes (une seule en Phase 0), réaction, caméo, particules, bruit de caméra.
-        expect(qa.branchId).toBe(qb.branchId);
+        // Autorisé : une autre branche, mais seulement parmi celles compatibles avec le résultat déjà fixé.
+        const compatible = candidateBranches(a, gadget).map((x) => x.id);
+        expect(compatible).toContain(qa.branchId);
+        expect(compatible).toContain(qb.branchId);
         expect(qa.markers.d1).toBe(qb.markers.d1);
-        expect(qa.markers.reveal).toBe(qb.markers.reveal);
-        expect(signals(qa, ['bfStart', 'bfRung', 'bfBlocked', 'bfKo', 'reveal'])).toEqual(signals(qb, ['bfStart', 'bfRung', 'bfBlocked', 'bfKo', 'reveal']));
+        expect(signals(qa, ['bfStart', 'bfRung', 'bfBlocked', 'bfKo', 'reveal']).map((x) => x.split(':')[0]).filter((x) => x === 'reveal')).toHaveLength(1);
+        expect(signals(qa, ['bfRung', 'bfBlocked', 'bfKo'])).toEqual(signals(qb, ['bfRung', 'bfBlocked', 'bfKo']));
         const tier = impactTierFor(a.resultClass);
-        const impacts = (q: AnimationSequence) => q.segments.filter((s) => s.phase === 'impact').map((s) => s.id);
-        expect(impacts(qa)).toEqual(impacts(qb));
-        if (tier && !a.bossFight) expect(impacts(qa).some((id) => id.startsWith(`IMP_${tier}_`))).toBe(true);
-        // Tout ce qui précède le reveal est identique, graines d'effets mises à part.
+        const impacts = (q: AnimationSequence) => q.segments.filter((s) => s.id.startsWith('IMP_')).map((s) => s.id.split('_')[1]);
+        if (tier && !a.bossFight) {
+          expect(impacts(qa)).toEqual([tier]);
+          expect(impacts(qb)).toEqual([tier]);
+        }
+        // À branche égale (forcée), tout ce qui précède la révélation est identique, graines d'effets mises à part.
+        const fa = compileSequence(a, gadget, 'normal', LIBRARY, { forceBranchId: qa.branchId });
+        const fb = compileSequence(b, gadget, 'normal', LIBRARY, { forceBranchId: qa.branchId });
         const upTo = (q: AnimationSequence) => stripSeeds(q.cues.filter((c) => c.at <= q.markers.reveal));
-        expect(upTo(qa)).toEqual(upTo(qb));
+        expect(upTo(fa)).toEqual(upTo(fb));
       }
     }
   });

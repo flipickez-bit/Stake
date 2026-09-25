@@ -12,6 +12,7 @@ const rec = (i: number, over: Partial<RoundRecord> = {}): RoundRecord => ({
   resultClass: i % 3 ? 'MISS' : 'HIT',
   multiplier100: i % 3 ? 0 : 200,
   branchId: i % 3 ? 'SLG-L' : 'SLG-W',
+  variant: i % 3 ? 'SLG-L' : 'SLG-W',
   gadgetId: 'swivel-slingshot',
   betAmount: 1_000_000,
   payout: i % 3 ? 0 : 2_000_000,
@@ -25,9 +26,10 @@ const rec = (i: number, over: Partial<RoundRecord> = {}): RoundRecord => ({
 });
 
 describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
-  it('six questions exactement, dans l\'ordre demandé', () => {
-    expect(PLAYTEST_QUESTIONS).toHaveLength(6);
+  it('sept questions, dans l\'ordre demandé (Q7 : nouvelles animations en fin de session)', () => {
+    expect(PLAYTEST_QUESTIONS).toHaveLength(7);
     expect(PLAYTEST_QUESTIONS[5]).toContain('51e manche');
+    expect(PLAYTEST_QUESTIONS[6]).toContain('découvrir de nouvelles animations');
   });
 
   it('rien n\'est enregistré hors session ; replays et aperçus ignorés ; questionnaire seulement après la 50e', () => {
@@ -62,9 +64,9 @@ describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
     const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
     p.start(DEVICE);
     for (let i = 1; i <= PLAYTEST_TARGET; i++) p.onRoundComplete(rec(i));
-    p.submitAnswers({ scores: [5, 4, 0, 9, 3, 2], memorable: '  le pigeon  ' });
+    p.submitAnswers({ scores: [5, 4, 0, 9, null, 2, 4], memorable: '  le pigeon  ' });
     const s = p.snapshot.sessions[0]!;
-    expect(s.answers).toEqual({ scores: [5, 4, 1, 5, 3, 2], memorable: 'le pigeon' });
+    expect(s.answers).toEqual({ scores: [5, 4, 1, 5, null, 2, 4], memorable: 'le pigeon' });
     expect(p.current).toBeNull();
     p.onRoundComplete(rec(51));
     p.onRoundComplete(rec(52));
@@ -73,6 +75,23 @@ describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
     p.onRoundComplete(rec(53));
     expect(p.snapshot.sessions[0]!.extraRounds).toBe(2);
     expect(JSON.parse(p.exportJson()).note).toContain('LOCAL DEV ONLY');
+  });
+
+  it('nouveauté : branches nouvelles marquées ; un aperçu BOSS FIGHT n\'altère que le délai suivant', () => {
+    const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
+    p.start(DEVICE);
+    p.onRoundComplete(rec(1, { branchId: 'SLG-A1', variant: 'SLG-A1/SIP' }));
+    p.onRoundComplete(rec(2, { branchId: 'SLG-A1', variant: 'SLG-A1/LAUGH' }));
+    p.excludeNextDelay();
+    p.onRoundComplete(rec(3, { branchId: 'SLG-B1', variant: 'SLG-B1' }));
+    const [a, b, c] = p.current!.rounds;
+    expect([a!.newBranch, b!.newBranch, c!.newBranch]).toEqual([true, false, true]);
+    expect([a!.newVariant, b!.newVariant]).toEqual([true, true]);
+    expect(b!.readyToBetMs).toBe(6000);
+    expect(c!.readyToBetMs).toBeNull();
+    const s = summarize(p.current!);
+    expect(s.distinctBranchesAt['10']).toBe(2);
+    expect(s.distinctVariants).toBe(3);
   });
 
   it('résumé : délais READY → mise (global et après perte / gain), parts turbo et skip', () => {

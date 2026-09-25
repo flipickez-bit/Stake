@@ -223,7 +223,7 @@ test('DEV PANEL: force outcome + branch + seed through the panel, then preview w
   await page.getByTestId('fire').click();
   await expect(page.getByTestId('result')).toHaveAttribute('data-multiplier', '2500');
   expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.presenter().seed)).toBe(777);
-  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.presenter().branchId)).toBe('TRP-BW');
+  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.presenter().branchId)).toMatch(/^TRP-/);
   await untilState(page, 'READY');
   const c = await calls(page);
   await page.getByTestId('dev-preview').click();
@@ -258,16 +258,18 @@ test('PLAYTEST 50 (LOCAL DEV ONLY): 50 uninterrupted rounds, questionnaire at th
   }
   await expect(page.getByTestId('questionnaire')).toBeVisible();
   await expect(page.getByTestId('q-submit')).toBeDisabled();
-  for (let q = 1; q <= 6; q++) await page.getByTestId(`q${q}-${(q % 5) + 1}`).check({ force: true });
+  for (const q of [1, 2, 3, 4, 6, 7]) await page.getByTestId(`q${q}-${(q % 5) + 1}`).check({ force: true });
+  await expect(page.getByTestId('q-submit')).toBeDisabled();
+  await page.getByTestId('q5-na').check({ force: true });
   await page.getByTestId('q-memorable').fill('Le pigeon qui salue.');
   await page.getByTestId('q-submit').click();
   await expect(page.getByTestId('playtest-results')).toBeVisible();
   const exported = JSON.parse(await page.getByTestId('pt-json').inputValue());
   const session = exported.sessions[0];
   expect(session.rounds).toHaveLength(50);
-  expect(session.answers.scores).toEqual([2, 3, 4, 5, 1, 2]);
+  expect(session.answers.scores).toEqual([2, 3, 4, 5, null, 2, 3]);
   expect(session.answers.memorable).toBe('Le pigeon qui salue.');
-  expect(Object.keys(session.rounds[0])).toEqual(expect.arrayContaining(['n', 'level', 'gadget', 'outcome', 'multiplier', 'branch', 'animationMs', 'readyToBetMs', 'speed', 'skipped', 'bossFight']));
+  expect(Object.keys(session.rounds[0])).toEqual(expect.arrayContaining(['n', 'level', 'gadget', 'outcome', 'multiplier', 'branch', 'animationMs', 'readyToBetMs', 'speed', 'skipped', 'bossFight', 'variant', 'newBranch']));
   expect(session.rounds.every((r: { speed: string }) => r.speed === 'super')).toBe(true);
   await page.getByTestId('pt-close').click();
   // Manche volontaire après la 50e : comptée localement, sans aucune incitation.
@@ -276,4 +278,34 @@ test('PLAYTEST 50 (LOCAL DEV ONLY): 50 uninterrupted rounds, questionnaire at th
   await untilState(page, 'READY');
   const stored = JSON.parse((await page.evaluate(() => localStorage.getItem('badboss.playtest.local-dev-only.v2')))!);
   expect(stored.sessions[0].extraRounds).toBe(1);
+});
+
+test('PREVIEW BOSS FIGHT: no bet, no wallet call, playtest data untouched', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.flow.setSpeed('super'));
+  await page.getByTestId('playtest-open').click();
+  await page.getByTestId('playtest-go').click();
+  await untilState(page, 'READY');
+  await page.getByTestId('fire').click();
+  await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__.state().state !== 'READY');
+  await untilState(page, 'READY');
+  const before = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.playtest.snapshot.current.rounds.length);
+  const c0 = await calls(page);
+  // Pendant la session, l'aperçu passe par le DEV PANEL.
+  await page.getByTestId('dev-toggle').click();
+  await page.getByTestId('bf-preview-dev').click();
+  await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__.presenter().bossFight.active, null, { timeout: 60_000 });
+  await untilState(page, 'READY', 90_000);
+  const after = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.playtest.snapshot.current);
+  expect(after.rounds).toHaveLength(before);
+  expect(await calls(page)).toEqual(c0);
+  // La manche suivante n'hérite pas d'un délai READY → mise faussé par l'aperçu.
+  await page.getByTestId('fire').click();
+  await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__.state().state !== 'READY');
+  await untilState(page, 'READY');
+  const last = await page.evaluate(() => {
+    const r = (window as unknown as Win).__BADBOSS__.ctx.playtest.snapshot.current.rounds;
+    return r[r.length - 1];
+  });
+  expect(last.readyToBetMs).toBeNull();
 });

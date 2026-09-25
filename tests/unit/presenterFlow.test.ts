@@ -8,6 +8,7 @@ import { MockRgsAdapter } from '../../src/platform/rgs/mock/MockRgsAdapter';
 import { MockServer } from '../../src/platform/rgs/mock/MockServer';
 import { mulberry32 } from '../../src/domain/seed';
 import { Presenter, type AudioSink, type SceneSink } from '../../src/presenter/Presenter';
+import { gadgetFor } from '../../src/content/gadgets';
 import type { KeyValueStore } from '../../src/platform/storage';
 import { createMock, waitFor } from './helpers';
 
@@ -41,7 +42,8 @@ describe('Presenter réel + GameFlow + MockRGS', () => {
     server.update((s) => (s.nextForced = { mode: 'furious', forced: { kind: 'BIG_WIN', multiplier: 10 } }));
     flow.fire();
     await waitFor(() => presenter.status.mode === 'playing', 3000, 'playing');
-    expect(presenter.status.branchId).toBe('TRP-BW');
+    const branch = gadgetFor('furious').branches.find((b) => b.id === presenter.status.branchId);
+    expect(branch?.classes).toContain('BIG');
     await waitFor(() => flow.snapshot.state === 'READY' && server.snapshot().settledRounds === 1, 8000, 'ready');
     expect(flow.snapshot.revealed?.multiplier100).toBe(1000);
     expect(server.snapshot().calls.play).toBe(1);
