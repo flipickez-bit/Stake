@@ -45,12 +45,24 @@ lines.push(`Sessions : ${sessions.length} (dont ${complete.length} de 50 manches
 lines.push('## Questionnaire (1 = pas du tout d\'accord, 5 = tout à fait d\'accord)', '');
 lines.push(`| Affirmation | Moyenne | Min | Max | n | ${answered.map((s) => s.id).join(' | ')} |`);
 lines.push(`|---|---:|---:|---:|---:|${answered.map(() => '---:').join('|')}|`);
+const valid = (x) => typeof x === 'number';
 questions.forEach((q, i) => {
-  const xs = answered.map((s) => s.answers.scores[i]);
-  lines.push(`| ${i + 1}. ${q} | ${f2(mean(xs))} | ${xs.length ? Math.min(...xs) : '—'} | ${xs.length ? Math.max(...xs) : '—'} | ${xs.length} | ${xs.join(' | ')} |`);
+  const cells = answered.map((s) => s.answers.scores[i]);
+  const xs = cells.filter(valid);
+  lines.push(`| ${i + 1}. ${q} | ${f2(mean(xs))} | ${xs.length ? Math.min(...xs) : '—'} | ${xs.length ? Math.max(...xs) : '—'} | ${xs.length} | ${cells.map((x) => (valid(x) ? x : x === null ? 'pas rencontré' : '—')).join(' | ')} |`);
 });
-const overall = answered.flatMap((s) => s.answers.scores);
-lines.push('', `Moyenne générale des 6 questions : **${f2(mean(overall))}**.`, '');
+const overall = answered.flatMap((s) => s.answers.scores).filter(valid);
+lines.push('', `Moyenne générale (réponses données) : **${f2(mean(overall))}**.`, '');
+// Comparaison par version de contenu (PLAYTEST #1 = P05-A, #2 = P05-B…), métrique principale Q1.
+const versions = [...new Set(answered.map((s) => s.contentVersion))];
+if (versions.length) {
+  lines.push('### Par version de contenu', '', `| Version | Sessions | ${questions.map((_, i) => `Q${i + 1}`).join(' | ')} |`, `|---|---:|${questions.map(() => '---:').join('|')}|`);
+  for (const v of versions) {
+    const ss = answered.filter((s) => s.contentVersion === v);
+    lines.push(`| ${v} | ${ss.length} | ${questions.map((_, i) => f2(mean(ss.map((s) => s.answers.scores[i]).filter(valid)))).join(' | ')} |`);
+  }
+  lines.push('');
+}
 
 lines.push('## « Quel moment t\'a le plus marqué ? »', '');
 const comments = answered.filter((s) => s.answers.memorable);
@@ -59,15 +71,17 @@ else lines.push('- aucun commentaire');
 lines.push('');
 
 lines.push('## Métriques comportementales (sessions de 50 manches)', '');
-lines.push('| Session | Contenu | Appareil | G / F / U | Changements de niveau | Anim. médiane | READY → mise (médiane) | Turbo / Super / Skip | BOSS FIGHT | Manches après la 50e | DEV ouvert |');
-lines.push('|---|---|---|---|---:|---:|---:|---|---:|---:|---|');
+lines.push('| Session | Contenu | Appareil | G / F / U | Changements de niveau | Anim. médiane | READY → mise (médiane) | Turbo / Super / Skip | BOSS FIGHT | Branches distinctes à 10 / 25 / 50 | Nouvelles (41–50) | Manches après la 50e | DEV ouvert |');
+lines.push('|---|---|---|---|---:|---:|---:|---|---:|---|---:|---:|---|');
 for (const s of complete) {
   const r = s.rounds;
   const by = (lv) => r.filter((x) => x.level === lv).length;
   const switches = r.filter((x, i) => i > 0 && r[i - 1].level !== x.level).length;
   const ready = r.map((x) => x.readyToBetMs).filter((x) => x !== null);
+  const distinct = (n) => new Set(r.slice(0, n).map((x) => x.branch)).size;
+  const newLate = r.slice(40, 50).filter((x, i) => !r.slice(0, 40 + i).some((y) => y.branch === x.branch)).length;
   lines.push(
-    `| ${s.id} | ${s.contentVersion} | ${s.device.width}×${s.device.height}${s.device.touch ? ' tactile' : ''} | ${by('grumpy')} / ${by('furious')} / ${by('unhinged')} | ${switches} | ${sec(median(r.map((x) => x.animationMs)))} | ${sec(median(ready))} | ${pct(r.filter((x) => x.speed === 'turbo').length / r.length)} / ${pct(r.filter((x) => x.speed === 'super').length / r.length)} / ${pct(r.filter((x) => x.skipped).length / r.length)} | ${r.filter((x) => x.bossFight).length} | ${s.extraRounds} | ${s.devPanelOpened ? 'oui' : 'non'} |`,
+    `| ${s.id} | ${s.contentVersion} | ${s.device.width}×${s.device.height}${s.device.touch ? ' tactile' : ''} | ${by('grumpy')} / ${by('furious')} / ${by('unhinged')} | ${switches} | ${sec(median(r.map((x) => x.animationMs)))} | ${sec(median(ready))} | ${pct(r.filter((x) => x.speed === 'turbo').length / r.length)} / ${pct(r.filter((x) => x.speed === 'super').length / r.length)} / ${pct(r.filter((x) => x.skipped).length / r.length)} | ${r.filter((x) => x.bossFight).length} | ${distinct(10)} / ${distinct(25)} / ${distinct(50)} | ${newLate} | ${s.extraRounds} | ${s.devPanelOpened ? 'oui' : 'non'} |`,
   );
 }
 lines.push('');

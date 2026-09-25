@@ -1,7 +1,7 @@
 <script lang="ts">
   import { PLAYTEST_TARGET } from '../dev/playtest';
 
-  let { onStart, onCancel }: { onStart: () => void; onCancel: () => void } = $props();
+  let { onStart, onCancel, onPreviewBossFight }: { onStart: () => void; onCancel: () => void; onPreviewBossFight: () => void } = $props();
 </script>
 
 <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="pt-intro-title" data-testid="playtest-intro">
@@ -14,6 +14,7 @@
       <li>Les données restent dans ce navigateur. Tu choisis ensuite de les copier ou de les enregistrer.</li>
     </ul>
     <p class="small">Le solde fictif est remis à $1,000.00 au départ.</p>
+    <button class="preview" onclick={onPreviewBossFight} data-testid="bf-preview-intro">▶ PREVIEW BOSS FIGHT <small>(sans mise, hors données)</small></button>
     <div class="buttons">
       <button class="primary" onclick={onStart} data-testid="playtest-go">Commencer</button>
       <button onclick={onCancel}>Annuler</button>
@@ -29,6 +30,8 @@
   ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.4; font-size: 14px; }
   .small { font-size: 12px; opacity: 0.7; }
   .buttons { display: flex; gap: 8px; margin-top: 14px; }
+  .preview { width: 100%; height: 40px; border-radius: 10px; border: 2px dashed var(--bb-yellow); background: transparent; color: var(--bb-yellow); font-weight: 800; cursor: pointer; }
+  .preview small { font-weight: 600; opacity: 0.8; }
   button { flex: 1; height: 44px; border-radius: 12px; border: 2px solid #3a4280; background: #2b3160; color: #fff; font-weight: 800; cursor: pointer; }
   .primary { background: var(--bb-yellow); color: var(--bb-ink); border-color: var(--bb-yellow); }
   button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }

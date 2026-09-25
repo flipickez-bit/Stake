@@ -12,6 +12,8 @@
   import Questionnaire from './Questionnaire.svelte';
   import { formatBalance } from './format';
   import { PLAYTEST_TARGET, type PlaytestAnswers, type PlaytestState } from '../dev/playtest';
+  import { makeBossFightPreview } from '../dev/devOutcomes';
+  import { cryptoRandom } from '../platform/rgs/mock/mockMath';
 
   let host: HTMLDivElement;
   let ctx = $state<GameContext | null>(null);
@@ -91,6 +93,17 @@
     await ctx.flow.start();
   }
 
+  /** Aperçu d'un BOSS FIGHT : aucune mise, aucun appel wallet, rien dans les données du playtest. */
+  function previewBossFight() {
+    if (!ctx || snap?.state !== 'READY') return;
+    ptIntro = false;
+    ptResultsId = null;
+    devOpen = false;
+    gesture();
+    if (ctx.playtest.current) ctx.playtest.excludeNextDelay();
+    void ctx.flow.replayRound(makeBossFightPreview(snap.level, cryptoRandom));
+  }
+
   function submitAnswers(answers: PlaytestAnswers | null) {
     const id = ptCurrent?.id ?? null;
     ctx?.playtest.submitAnswers(answers);
@@ -143,17 +156,17 @@
 </div>
 
 {#if ctx && snap && devOpen}
-  <DevPanel {ctx} {snap} onClose={() => (devOpen = false)} onShowSession={(id) => { devOpen = false; ptResultsId = id; }} />
+  <DevPanel {ctx} {snap} onClose={() => (devOpen = false)} onShowSession={(id) => { devOpen = false; ptResultsId = id; }} onPreviewBossFight={previewBossFight} />
 {/if}
 
 {#if ptIntro}
-  <PlaytestIntro onStart={startPlaytest} onCancel={() => (ptIntro = false)} />
+  <PlaytestIntro onStart={startPlaytest} onCancel={() => (ptIntro = false)} onPreviewBossFight={previewBossFight} />
 {/if}
 {#if showQuestionnaire}
   <Questionnaire onSubmit={submitAnswers} />
 {/if}
 {#if ctx && ptResults}
-  <PlaytestResults recorder={ctx.playtest} session={ptResults} onClose={() => (ptResultsId = null)} />
+  <PlaytestResults recorder={ctx.playtest} session={ptResults} onClose={() => (ptResultsId = null)} onPreviewBossFight={previewBossFight} />
 {/if}
 
 <style>

@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { PLAYTEST_FREE_QUESTION, PLAYTEST_QUESTIONS, type PlaytestAnswers } from '../dev/playtest';
+  import { PLAYTEST_FREE_QUESTION, PLAYTEST_NA_ALLOWED, PLAYTEST_QUESTIONS, type PlaytestAnswers } from '../dev/playtest';
 
   let { onSubmit }: { onSubmit: (answers: PlaytestAnswers | null) => void } = $props();
 
   let scores = $state<(number | null)[]>(PLAYTEST_QUESTIONS.map(() => null));
+  let notSeen = $state<boolean[]>(PLAYTEST_QUESTIONS.map(() => false));
   let memorable = $state('');
-  const complete = $derived(scores.every((s) => s !== null));
+  const complete = $derived(scores.every((s, i) => s !== null || notSeen[i]));
 </script>
 
 <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="pt-q-title" data-testid="questionnaire">
@@ -13,23 +14,26 @@
     class="panel"
     onsubmit={(e) => {
       e.preventDefault();
-      if (complete) onSubmit({ scores: scores as number[], memorable });
+      if (complete) onSubmit({ scores: scores.map((x, i) => (notSeen[i] ? null : x)), memorable });
     }}
   >
     <h2 id="pt-q-title">Session terminée</h2>
-    <p class="intro">6 affirmations. Note chacune selon ce que tu as ressenti pendant ces 50 manches.</p>
+    <p class="intro">{PLAYTEST_QUESTIONS.length} affirmations. Note chacune selon ce que tu as ressenti pendant ces 50 manches.</p>
     <p class="scale"><span>1 = pas du tout d'accord</span><span>5 = tout à fait d'accord</span></p>
     {#each PLAYTEST_QUESTIONS as q, i (i)}
       <fieldset>
         <legend>{i + 1}. {q}</legend>
         <div class="scores">
           {#each [1, 2, 3, 4, 5] as v (v)}
-            <label class:on={scores[i] === v}>
-              <input type="radio" name="q{i}" id="q{i}-{v}" value={v} checked={scores[i] === v} onchange={() => (scores[i] = v)} data-testid="q{i + 1}-{v}" />
+            <label class:on={scores[i] === v && !notSeen[i]}>
+              <input type="radio" name="q{i}" id="q{i}-{v}" value={v} checked={scores[i] === v && !notSeen[i]} onchange={() => { scores[i] = v; notSeen[i] = false; }} data-testid="q{i + 1}-{v}" />
               <span>{v}</span>
             </label>
           {/each}
         </div>
+        {#if PLAYTEST_NA_ALLOWED.includes(i)}
+          <label class="na"><input type="checkbox" id="q{i}-na" checked={notSeen[i]} onchange={(e) => (notSeen[i] = (e.currentTarget as HTMLInputElement).checked)} data-testid="q{i + 1}-na" /> Pas rencontré pendant la session</label>
+        {/if}
       </fieldset>
     {/each}
     <label class="free" for="pt-memorable">{PLAYTEST_FREE_QUESTION} <small>(facultatif)</small></label>
@@ -54,6 +58,7 @@
   .scores label.on { background: #e8ecff; color: var(--bb-ink); border-color: #e8ecff; }
   .scores input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
   .scores label:focus-within { outline: 3px solid #fff; outline-offset: 2px; }
+  .na { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 13px; opacity: 0.85; }
   .free { font-size: 14px; font-weight: 600; }
   .free small { opacity: 0.6; font-weight: 400; }
   textarea { width: 100%; background: #12152b; color: #fff; border: 2px solid #3a4280; border-radius: 10px; padding: 8px; font: inherit; resize: vertical; }

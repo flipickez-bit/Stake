@@ -20,7 +20,10 @@ export const PLAYTEST_QUESTIONS = [
   'Les manches m\'ont semblé suffisamment rapides.',
   'Les gros résultats semblaient réellement spéciaux.',
   "J'aurais volontairement lancé une 51e manche.",
+  "À la fin de la session, avais-tu encore l'impression de découvrir de nouvelles animations ?",
 ] as const;
+/** Questions qui acceptent « pas rencontré » (Q5 : on ne peut pas juger un gros gain qu'on n'a pas vu). */
+export const PLAYTEST_NA_ALLOWED: readonly number[] = [4];
 export const PLAYTEST_FREE_QUESTION = 'Quel moment t\'a le plus marqué ?';
 
 export type PlaytestOutcome = 'LOSS' | 'SCRAPE' | 'WIN' | 'BIG WIN' | 'BOSS FIGHT';
@@ -48,11 +51,17 @@ export interface PlaytestRound {
   resumed: boolean;
   bet: number;
   payout: number;
+  /** Présentation vue (branche + variations cosmétiques). Absent dans les sessions P05-A. */
+  variant?: string | null;
+  /** Première fois que cette branche apparaît dans la session. */
+  newBranch?: boolean;
+  /** Première fois que cette présentation exacte apparaît dans la session. */
+  newVariant?: boolean;
 }
 
 export interface PlaytestAnswers {
-  /** Notes 1 à 5, dans l'ordre de PLAYTEST_QUESTIONS. */
-  scores: number[];
+  /** Notes 1 à 5, dans l'ordre de PLAYTEST_QUESTIONS ; null = « pas rencontré » (seulement si autorisé). */
+  scores: (number | null)[];
   memorable: string;
 }
 
@@ -82,6 +91,8 @@ export interface PlaytestState {
   /** Id de la dernière session terminée qui compte encore les manches supplémentaires. */
   trackingExtraFor: string | null;
   lastReadyAt: number | null;
+  /** Un aperçu (BOSS FIGHT sans mise) a eu lieu : le prochain délai READY → mise n'est pas significatif. */
+  skipNextDelay?: boolean;
 }
 
 export function outcomeOf(r: Pick<RoundRecord, 'bossFight' | 'multiplier100'>): PlaytestOutcome {
@@ -152,6 +163,12 @@ export class PlaytestRecorder {
     this.save();
   }
 
+  /** Appelé quand un aperçu sans mise est joué pendant une session : n'affecte aucune donnée, sauf ce délai. */
+  excludeNextDelay(): void {
+    this.state = { ...this.state, skipNextDelay: true };
+    this.save();
+  }
+
   markDevPanelOpened(): void {
     const s = this.state.current;
     if (s && s.status === 'playing' && !s.devPanelOpened) {
@@ -170,6 +187,8 @@ export class PlaytestRecorder {
       this.save();
       return;
     }
+    const branch = r.branchId;
+    const variant = r.variant ?? branch;
     const round: PlaytestRound = {
       n: s.rounds.length + 1,
       roundId: r.roundId,
@@ -181,13 +200,19 @@ export class PlaytestRecorder {
       branch: r.branchId,
       animationMs: Math.round(r.animationMs),
       roundMs: Math.round(r.readyAt - r.firedAt),
-      readyToBetMs: this.state.lastReadyAt === null || r.source === 'resume' ? null : Math.max(0, Math.round(r.firedAt - this.state.lastReadyAt)),
+      readyToBetMs:
+        this.state.lastReadyAt === null || r.source === 'resume' || this.state.skipNextDelay
+          ? null
+          : Math.max(0, Math.round(r.firedAt - this.state.lastReadyAt)),
       speed: r.speed,
       skipped: r.skipped,
       bossFight: r.bossFight,
       resumed: r.source === 'resume',
       bet: r.betAmount,
       payout: r.payout,
+      variant,
+      newBranch: branch !== null && !s.rounds.some((x) => x.branch === branch),
+      newVariant: variant !== null && !s.rounds.some((x) => (x.variant ?? x.branch) === variant),
     };
     const rounds = [...s.rounds, round];
     const full = rounds.length >= PLAYTEST_TARGET;
@@ -195,6 +220,7 @@ export class PlaytestRecorder {
       ...this.state,
       current: { ...s, rounds, status: full ? 'questionnaire' : 'playing', finishedAt: full ? this.now().toISOString() : null },
       lastReadyAt: r.readyAt,
+      skipNextDelay: false,
     };
     this.save();
   }
@@ -205,7 +231,17 @@ export class PlaytestRecorder {
     const done: PlaytestSession = {
       ...s,
       status: 'done',
-      answers: answers ? { scores: answers.scores.map((x) => Math.min(5, Math.max(1, Math.round(x)))), memorable: answers.memorable.trim().slice(0, 1000) } : null,
+      answers: answers
+        ? {
+            scores: PLAYTEST_QUESTIONS.map((_q, i) => {
+              const x = answers.scores[i];
+              // Jamais de note inventée : une réponse absente reste absente (l'UI ne permet « pas rencontré » que pour Q5).
+              if (x === null || x === undefined) return null;
+              return Math.min(5, Math.max(1, Math.round(x)));
+            }),
+            memorable: answers.memorable.trim().slice(0, 1000),
+          }
+        : null,
       questionnaireSkipped: answers === null,
     };
     this.state = { ...this.state, current: null, sessions: [...this.state.sessions, done], trackingExtraFor: done.id };
@@ -261,7 +297,11 @@ export interface PlaytestSummary {
   skipShare: number;
   bossFights: number;
   netResult: number;
-  scores: number[] | null;
+  scores: (number | null)[] | null;
+  /** Nouveauté : branches distinctes vues après 10, 25 et 50 manches ; nouvelles branches entre la 41e et la 50e. */
+  distinctBranchesAt: Record<'10' | '25' | '50', number>;
+  newBranchesLast10: number;
+  distinctVariants: number;
 }
 
 const median = (xs: number[]): number | null => {
@@ -310,5 +350,12 @@ export function summarize(session: PlaytestSession): PlaytestSummary {
     bossFights: rounds.filter((r) => r.bossFight).length,
     netResult: rounds.reduce((a, r) => a + r.payout - r.bet, 0),
     scores: session.answers?.scores ?? null,
+    distinctBranchesAt: {
+      '10': new Set(rounds.slice(0, 10).map((r) => r.branch)).size,
+      '25': new Set(rounds.slice(0, 25).map((r) => r.branch)).size,
+      '50': new Set(rounds.slice(0, 50).map((r) => r.branch)).size,
+    },
+    newBranchesLast10: rounds.slice(40, 50).filter((r, i) => !rounds.slice(0, 40 + i).some((x) => x.branch === r.branch)).length,
+    distinctVariants: new Set(rounds.map((r) => r.variant ?? r.branch)).size,
   };
 }

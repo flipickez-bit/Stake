@@ -13,7 +13,7 @@
   import type { GameContext } from './bootstrap';
   import { formatBalance, formatX } from './format';
 
-  let { ctx, snap, onClose, onShowSession }: { ctx: GameContext; snap: FlowSnapshot; onClose: () => void; onShowSession: (id: string) => void } = $props();
+  let { ctx, snap, onClose, onShowSession, onPreviewBossFight }: { ctx: GameContext; snap: FlowSnapshot; onClose: () => void; onShowSession: (id: string) => void; onPreviewBossFight: () => void } = $props();
   const { flow, presenter, mock, perf, stage, playtest } = $derived(ctx);
 
   type Kind = ForcedOutcome['kind'] | 'RANDOM';
@@ -226,7 +226,7 @@
     <label>BRANCH
       <select value={branchId} onchange={(e) => { const v = (e.currentTarget as HTMLSelectElement).value; const b = gadget.branches.find((x) => x.id === v); if (b) pickBranch(b); else branchId = 'auto'; }}>
         <option value="auto">auto (book + seed)</option>
-        {#each gadget.branches as b (b.id)}<option value={b.id}>{b.id} — {b.label}</option>{/each}
+        {#each gadget.branches as b (b.id)}<option value={b.id}>{b.id} — {b.label} · {b.rarity}</option>{/each}
       </select>
     </label>
     <label>COSMETIC SEED
@@ -237,6 +237,7 @@
         <option value="normal">NORMAL</option><option value="turbo">TURBO</option><option value="super">SUPER TURBO</option>
       </select>
     </label>
+    <button class="bf" onclick={onPreviewBossFight} disabled={!ready} data-testid="bf-preview-dev">▶ PREVIEW BOSS FIGHT (no bet, not recorded)</button>
     <div class="buttons">
       <button onclick={preview} disabled={!ready} data-testid="dev-preview">▶ PLAY ANIMATION (no bet)</button>
       {#if mock}<button onclick={armNextBet} data-testid="dev-arm">ARM NEXT BET</button>{/if}
@@ -381,6 +382,7 @@
   .buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
   button, .btn { background: #2b3160; color: #fff; border: 1px solid #3a4280; border-radius: 6px; padding: 6px 8px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
   button:disabled { opacity: 0.4; cursor: default; }
+  .bf { width: 100%; margin: 6px 0 2px; border: 2px dashed #ffc400; color: #ffc400; background: transparent; }
   .kv { width: 100%; border-collapse: collapse; margin-top: 6px; }
   .kv td { padding: 2px 0; vertical-align: top; }
   .kv td:first-child { color: #8f97c4; width: 45%; }

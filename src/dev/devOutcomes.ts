@@ -4,6 +4,7 @@
  */
 import { parseRound, type Outcome } from '../domain/outcome';
 import type { InternalRound } from '../domain/round';
+import { getRageLevel } from '../domain/rageLevels';
 import type { RageLevelId } from '../domain/types';
 import { generateBook, type ForcedOutcome, type RandomSource } from '../platform/rgs/mock/mockMath';
 
@@ -23,4 +24,17 @@ export function makeDevRound(level: RageLevelId, forced: ForcedOutcome | null, r
 
 export function makeDevOutcome(level: RageLevelId, forced: ForcedOutcome | null, rnd: RandomSource, roundId = 'DEV'): Outcome {
   return parseRound(makeDevRound(level, forced, rnd, roundId), 'dev');
+}
+
+/** Palier final d'un BOSS FIGHT tiré selon les probabilités de continuation du Rage Level (aperçu réaliste). */
+export function randomBossFightRung(level: RageLevelId, rnd: RandomSource): number {
+  const lv = getRageLevel(level);
+  let k = 0;
+  while (k < lv.bossFightLadder.length - 1 && rnd() < (lv.bossFightContinue[k] ?? 0)) k++;
+  return k;
+}
+
+/** Manche de BOSS FIGHT pour l'aperçu : aucune mise, aucun appel wallet. */
+export function makeBossFightPreview(level: RageLevelId, rnd: RandomSource): InternalRound {
+  return makeDevRound(level, { kind: 'BOSS_FIGHT', bossFightRung: randomBossFightRung(level, rnd) }, rnd, `BF-PREVIEW-${Math.floor(rnd() * 1e6).toString(36)}`);
 }
