@@ -1,5 +1,7 @@
 # BAD BOSS — GDD partie 6 : le boss mascotte et son univers (étape 7)
 
+> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
+
 > Objectif : qu'une capture d'écran d'une seconde suffise pour dire « c'est BAD BOSS ».
 > Recette de reconnaissance : **rectangle violet + cravate jaune + la mèche + le mug à son effigie**.
 
@@ -101,7 +103,7 @@
 
 ## 7.4 Idles : drôle même quand il ne se passe rien
 
-Les idles se jouent en état READY. Pool pondéré de séquences de 3 à 6 s, avec un anti-répétition (pas deux fois la même dans les 4 dernières).
+Les idles se jouent en état READY. Pool pondéré de séquences de 3 à 6 s, avec un anti-répétition (pas deux fois la même dans les 4 dernières). Les idles ne font partie d'aucune manche : ils ne sont ni repris ni rejoués, et peuvent utiliser un générateur aléatoire de session.
 - **Règles** : l'idle ne passe jamais devant l'UI ni les cartes. Au tap sur FIRE, il est interrompu en 100 ms et le boss reprend sa pose d'occupation (téléphone ou paperasse) pour le tronc commun.
 
 | Idle | Description | Poids |
@@ -178,6 +180,8 @@ Si le joueur tire pendant le retour, le retour est coupé net : le rythme passe 
 | K.O. du BOSS FIGHT | couronne de bandages + **mug neuf avec autocollant « NEW »** | 5 |
 
 Les blessures diminuent d'un niveau par manche, **quel que soit le résultat**. Elles sont purement cosmétiques, et les règles le disent : le boss n'est **jamais** « affaibli », et les manches sont indépendantes. Elles se lisent comme une **réaction**, pas comme une progression.
+
+**Décision v3 (reprise et replay déterministes)** : les blessures n'existent **qu'en état READY**, entre deux manches. Au tap sur FIRE, un petit nuage « pouf » de 150 ms, **identique pour toutes les branches** et intégré à l'INTRO neutre, fait disparaître pansements et plâtres : le boss se remet au travail « comme neuf ». La présentation d'une manche ne dépend ainsi **que** des données de la manche, jamais de l'historique, et une reprise ou un replay donne exactement la même animation.
 
 ## 7.8 Le cast récurrent
 

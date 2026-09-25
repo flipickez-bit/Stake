@@ -1,5 +1,7 @@
 # BAD BOSS — rapport mathematique genere
 
+> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
+
 > **Fichier genere** par `python3 math/model/bad_boss_math.py --write-report docs/generated/MATH_REPORT.md`. Ne pas modifier a la main : modifier `config/rage_levels.json` puis regenerer.
 > RTP cible : 96.50 % (PROVISOIRE - validation Stake Engine requise avant publication).
 

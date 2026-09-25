@@ -1,5 +1,7 @@
 # BAD BOSS — GDD partie 7 : UI, caméra et sound design (étape 8)
 
+> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
+
 > Principe directeur : **l'animation d'abord**. L'interface occupe le minimum d'espace, ne montre aucun chiffre de résultat avant la révélation, et ne propose **que** les fonctionnalités autorisées par la juridiction.
 
 ---
@@ -56,7 +58,7 @@
 |---|---|---|
 | READY | Jaune, « FIRE! », légère pulsation | Lance la manche |
 | EN MANCHE (avant le book) | Assombri, pas de libellé | Rien (anti double tap) |
-| EN MANCHE (book reçu) | Icône ⏭ **seulement si `disabledSlamstop` est faux** | Saute au REVEAL (la pose finale et le résultat restent affichés) |
+| EN MANCHE (book reçu) | Icône ⏭ **seulement si le skip est autorisé** (capacité séparée de la vitesse, liée à `disabledSlamstop`) | Saute au REVEAL (la pose finale et le résultat restent affichés) |
 | AUTOPLAY | Compteur des manches restantes | Arrête l'autoplay à la fin de la manche en cours |
 | INDISPONIBLE | Normal | Ouvre une explication (solde insuffisant, etc.) |
 
@@ -111,7 +113,7 @@ Les seuils dépendent **du multiplicateur, jamais du montant**.
 
 - **Décompte** : de 0 jusqu'au montant final, sans jamais le dépasser. Un tap l'accélère jusqu'à la valeur finale.
 - **Formatage** : conforme aux métadonnées de devise de la doc Stake (symbole, décimales, position). Les devises XGC et XSC s'affichent « GC » et « SC ».
-- **FIRE est réactivé** dès le début du REVEAL : le joueur peut relancer pendant le décompte (qui se termine alors instantanément), sauf si `minimumRoundDuration` l'interdit.
+- **FIRE est réactivé** dès que la manche est réglée (`end-round` confirmé ou manche déjà fermée) **et** que la durée minimale éventuelle est écoulée (état READY_GATE du GameFlow). Le joueur peut relancer pendant le décompte, qui se termine alors instantanément.
 
 ## 8.1.6 Fonctionnalités conditionnées par la juridiction
 
@@ -129,7 +131,7 @@ Les clés proviennent de `config.jurisdiction` dans la réponse de `/wallet/auth
 | `displayRTP` | affichage du RTP requis | RTP visible sur la fiche de chaque carte et dans le menu (pas seulement dans les règles) | **INFORMATION REQUISE** : emplacement exigé |
 | `displayNetPosition` | position nette requise | compteur « ± » de la session dans la barre haute | **INFORMATION REQUISE** : définition exacte (depuis l'ouverture ?) |
 | `displaySessionTimer` | minuteur requis | minuteur ⏱ dans la barre haute | **INFORMATION REQUISE** : départ du chronomètre |
-| `minimumRoundDuration` | durée minimale | le séquenceur **tient la pose finale** jusqu'à la durée minimale depuis FIRE. Turbo et passer ne descendent jamais en dessous | **INFORMATION REQUISE** : unité (ms ou s) |
+| `minimumRoundDuration` | durée minimale | **Les animations ne sont pas modifiées.** Le GameFlow attend le temps restant (état READY_GATE) avant d'autoriser la mise suivante. Turbo et skip ne raccourcissent donc jamais la manche en dessous du minimum | **INFORMATION REQUISE** : unité (ms ou s) et point de départ |
 | `socialCasino` | casino social | vocabulaire adapté (ex. « play » plutôt que « bet ») et devises GC / SC | **INFORMATION REQUISE** : lexique imposé |
 
 **Règle d'implémentation (étape 11)** : un unique module `FeatureGate` lit `jurisdiction` une seule fois, puis expose `can(feature)`. L'UI ne construit que les widgets autorisés. **Aucun widget n'est créé puis masqué.**

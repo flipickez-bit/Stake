@@ -1,5 +1,7 @@
 # BAD BOSS — GDD partie 5 : le BOSS FIGHT (étape 6)
 
+> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
+
 > Paramètres mathématiques : `config/rage_levels.json` (source de vérité). Chiffres générés : `docs/generated/MATH_REPORT.md`.
 > Règle absolue : **le combat entier est dans le book renvoyé par `/wallet/play`**. Le joueur ne décide rien qui change le gain.
 
@@ -134,17 +136,17 @@ Manche suivante : le boss revient avec un mug **neuf**, orné d'un petit autocol
 | Normal | Tap pour attaquer, ou auto après 1,5 s sans action |
 | Turbo (si `disabledTurbo` est faux) | Entrée 1,0 s, attaques de 0,7 à 0,9 s, pas de ralenti ni de silence, BLOQUÉ 0,8 s, K.O. 2,0 s |
 | Super turbo (si `disabledSuperTurbo` est faux) | Entrée 0,6 s, puis montée directe de l'échelle palier par palier (0,25 s chacun), puis résultat |
-| Passer (slam stop) | Bouton « Skip » disponible après l'entrée, **seulement si `disabledSlamstop` est faux** : saut direct au RESULT. **INFORMATION STAKE ENGINE REQUISE** : confirmer que « slamstop » couvre bien ce saut d'animation |
+| Passer (skip / slam stop) | Capacité **séparée** de la vitesse (normal / turbo) : saut direct au RESULT, proposé **seulement si `disabledSlamstop` est faux**. **INFORMATION STAKE ENGINE REQUISE** : comportement contractuel exact de « slamstop » |
 | Autoplay (si `disabledAutoplay` est faux) | Attaques automatiques. L'autoplay continue après le combat selon ses propres règles d'arrêt (GDD_07) |
-| `minimumRoundDuration` | Le RESULT n'est jamais affiché avant la durée minimale. Au besoin, l'outro est prolongé, pas les attaques |
+| `minimumRoundDuration` | Les animations ne sont **jamais** modifiées. Après le RESULT, le GameFlow attend éventuellement le temps réglementaire restant avant d'autoriser la mise suivante (état READY_GATE). **INFORMATION STAKE ENGINE REQUISE** : contrat exact (unité, point de départ) |
 | Déconnexion en plein combat | Voir §6.9 |
 
 ## 6.9 Intégration Stake Engine
 
 - **Book** : un événement `bossFightTrigger` (palier 1 = x5), puis un `bossFightHit` par attaque (`outcome` HIT ou BLOCKED, `variant`), puis `finalWin`. Format provisoire : GDD_02, §3.9. Le `payoutMultiplier` du book **est** le palier final.
 - **Clôture** : `POST /wallet/end-round` n'est appelé **qu'après** l'outro (schéma `bonusWin` du web-sdk). La manche reste donc active, et reprenable, pendant le combat.
-- **Progression** : après chaque attaque affichée, `POST /bet/event` enregistre le dernier événement joué (ex. `"bf:3"`). **INFORMATION STAKE ENGINE REQUISE** : taille maximale et format accepté du champ `event`. Le schéma web-sdk le déclare seulement comme une chaîne.
-- **Reprise** : si `/wallet/authenticate` renvoie une manche `active`, le client relit le book (`round.state`), saute à l'attaque qui suit le dernier événement enregistré, rejoue une entrée courte (0,8 s) puis continue. Si l'événement est absent, il reprend au début du combat. Le gain n'en dépend pas.
+- **Progression** : **aucune dépendance à `/bet/event`** (décision v3). Son contrat pour notre cas reste une **INFORMATION STAKE ENGINE REQUISE**. Une fois ce contrat confirmé, il pourra servir d'optimisation facultative pour reprendre directement à la bonne attaque.
+- **Reprise** : si `/wallet/authenticate` renvoie une manche `active`, le client relit le book (`round.state`) et **rejoue tout le combat en mode rattrapage** (vitesse turbo, bandeau « Reprise de votre manche »), puis appelle `end-round`. Le combat étant entièrement déterminé par le book, la reprise est identique à l'original : même issue, même gain, aucun nouveau tir possible.
 - **Gain affiché** : il correspond toujours au `payoutMultiplier` du book multiplié par la mise.
 
 ## 6.10 Production

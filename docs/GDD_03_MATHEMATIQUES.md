@@ -1,9 +1,22 @@
 # BAD BOSS — GDD partie 3 : mathématiques (étape 4, v2)
 
+> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
+
 > **Source de vérité des paramètres : `config/rage_levels.json`** (RTP cible, fréquence du BOSS FIGHT, distributions, échelles). Aucun autre fichier ne doit recopier ces valeurs.
 > **Tableaux complets** (générés, à ne pas modifier à la main) : [`docs/generated/MATH_REPORT.md`](generated/MATH_REPORT.md).
 > Régénérer : `python3 math/model/bad_boss_math.py --write-report docs/generated/MATH_REPORT.md`.
 > Statut : **validé** (étapes 1 à 4). `TARGET_RTP = 0.965`, **provisoire, validation Stake Engine requise avant publication**.
+
+## Décisions de validation (v3), définitives pour le MVP
+
+| Sujet | Décision |
+|---|---|
+| RTP | `TARGET_RTP = 0.965` pour les 3 modes, défini **uniquement** dans `config/rage_levels.json`. Validation Stake Engine requise avant publication |
+| Max wins | GRUMPY x200, FURIOUS x1 000, UNHINGED x5 000 |
+| UNHINGED | **σ ≈ 11,6 conservé.** On ne remonte **pas** la dernière probabilité d'enchaînement à 30 %. Hit rate ≈ 15,5 % conservé. **Pas de ligne x1,2** pour l'instant |
+| Variante x1,2 | Documentée comme **variante expérimentale désactivée** dans `config/rage_levels.json` (`experimental_variants.unhinged_x12`). Activation pour test uniquement, sans reconstruire le modèle : `python3 math/model/bad_boss_math.py --quick --variant unhinged_x12`. Résultat de la variante : hit rate 20,54 %, σ 11,58, P(10 x0 d'affilée) 10,0 % |
+| BOSS FIGHT | Échelle x5 → x5 000 plafonnée par niveau, fréquence 1/150. La baisse de volatilité liée à la suppression de x2 000 est **acceptée et non compensée** |
+| Production | Le calculateur **ne remplace pas** les artefacts Stake Engine. Books, lookup tables, index et validations seront produits avec le math-sdk officiel (`MVP_ROADMAP.md`, phase 2) |
 
 ## Changements v1 → v2
 

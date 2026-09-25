@@ -1,5 +1,7 @@
 # BAD BOSS — GDD partie 1 : vision et risques (étapes 1 et 2)
 
+> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
+
 > Nom de travail : **BAD BOSS**. Les propositions de nom viendront plus tard (voir `TODO.md`).
 > Langue de travail : français. Interface du jeu : anglais par défaut, localisée (Stake Engine transmet `lang`).
 

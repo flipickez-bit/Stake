@@ -67,5 +67,16 @@
         "continue": ["0.70", "0.60", "0.55", "0.45", "0.35", "0.25", "0.20", "0.15"]
       }
     }
-  ]
+  ],
+  "experimental_variants": {
+    "_doc": "Variantes de TEST uniquement. Jamais appliquees par defaut, jamais publiees. Activation : python3 math/model/bad_boss_math.py --variant <id>",
+    "unhinged_x12": {
+      "status": "DISABLED - test mathematique uniquement",
+      "description": "Ajoute un gain x1.2 a UNHINGED, finance par la ligne d'equilibre x3. Hit rate ~20.5 %, sigma inchange. Voir GDD_03 §4.6.",
+      "level": "unhinged",
+      "add_base": [
+        {"multiplier": "1.2", "rtp_share": "0.100"}
+      ]
+    }
+  }
 }

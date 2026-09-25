@@ -1,5 +1,7 @@
 # BAD BOSS — GDD partie 2 : core gameplay verrouillé (étape 3)
 
+> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
+
 > Statut : **VERROUILLÉ pour le prototype** (modifiable seulement par décision explicite, à consigner dans `PROJECT_STATE.md`).
 > Les faits Stake Engine cités ici sont sourcés dans `docs/STAKE_ENGINE_FAITS_VERIFIES.md`.
 
@@ -180,9 +182,9 @@ Fréquence effective des TEASE sur l'ensemble des manches : GRUMPY 6,3 %, FURIOU
 | Tir (FIRE) | `POST /wallet/play {amount, sessionID, mode}` : débit, puis book renvoyé dans `round` |
 | Résultat, script, variante | Dans `events` du book : **schéma défini par nous** (Stake n'impose que `id`, `events`, `payoutMultiplier`) |
 | Gadget affiché | Client uniquement : non transmis au RGS, sans effet sur le résultat |
-| Gain normal | `/wallet/end-round` appelé dès la réception du book, solde affiché au REVEAL (schéma `singleRoundWin` du web-sdk) |
-| BOSS FIGHT | `/wallet/end-round` appelé après le combat (schéma `bonusWin`). Progression éventuellement tracée via `/bet/event` pour la reprise |
-| Perte (x0) | Schéma `noWin` du web-sdk : aucun appel `end-round` côté client. **INFORMATION STAKE ENGINE REQUISE** : confirmer la fermeture automatique côté RGS |
+| Fin de manche (v3) | **Toutes** les manches (pertes comprises) restent actives jusqu'à un `/wallet/end-round` explicite, envoyé au REVEAL : modes configurés avec `auto_close_disabled=True`, ce qui écrit `autoEndRoundDisabled` dans la config backend du math-sdk. Une fermeture de page avant le REVEAL laisse donc une manche reprenable. Détail : `TECH_ARCHITECTURE.md` §2.4. **INFORMATION STAKE ENGINE REQUISE** : sémantique exacte du drapeau |
+| BOSS FIGHT | `/wallet/end-round` appelé après le combat. Reprise par rejeu complet du combat depuis le book. **Aucune dépendance à `/bet/event`** |
+| Repli | Si `/wallet/play` renvoie une manche déjà inactive (`round.active = false`, fermeture automatique côté RGS), le client n'appelle pas `end-round`. La présentation est identique ; seule la reprise après fermeture de page devient un « récapitulatif » de la manche déjà réglée |
 
 Exemple de book (schéma provisoire, entiers ×100 comme `payoutMultiplier`) :
 

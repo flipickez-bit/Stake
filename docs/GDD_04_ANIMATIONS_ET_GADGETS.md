@@ -1,5 +1,7 @@
 # BAD BOSS — GDD partie 4 : système d'animation modulaire et gadgets (étape 5)
 
+> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
+
 > Ce document définit **comment** les animations sont construites, partagées et choisies.
 > Le catalogue détaillé des 15 gadgets (branches, durées, assets, VFX, SFX, caméra, complexité) est dans
 > [`GDD_04b_CATALOGUE_15_GADGETS.md`](GDD_04b_CATALOGUE_15_GADGETS.md).
@@ -75,7 +77,7 @@ gadget affiché ──────────┼──────────�
 
 - **Déterministe** : un même book et un même gadget donnent toujours la même branche (support, replays, audits).
 - **Rareté** : le book tire une rareté (**common 75 % / rare 20 % / epic 5 %**, fixée dans les books et identique pour tous les joueurs). Chaque branche porte une étiquette de rareté. Des pertes « epic » continuent ainsi de surprendre après 500 manches. La rareté ne sert qu'**à l'intérieur d'une catégorie** qui a plusieurs branches. La fréquence d'une catégorie (TEASE, COMEBACK…) est fixée par le book, jamais par la rareté.
-- **Micro-variations cosmétiques** (réaction parmi des équivalents, props, angle de caméra, réplique en *Bossish*) : elles sont tirées côté client avec un **anti-répétition** (mémoire des 5 dernières). Elles ne portent aucune information de résultat. En mode replay, on utilise la graine seule.
+- **Micro-variations cosmétiques** (réaction parmi des équivalents, props, angle de caméra, réplique en *Bossish*) : elles sont **dérivées de la graine de présentation écrite dans le book** (PRNG déterministe, un flux par usage). Elles ne portent aucune information de résultat et **ne modifient jamais les mathématiques**. `Math.random()` est interdit dans la présentation d'une manche : une reprise ou un replay reproduit exactement la même animation (décision v3, voir `TECH_ARCHITECTURE.md` §2.7). La variété entre manches vient de la variété des books (plusieurs graines par combinaison multiplicateur × script × rareté).
 - **Repli** : si une combinaison manque (contenu en cours de production), on joue la branche générique de la catégorie. Une manche n'est jamais bloquée. Le menu de debug liste les trous.
 
 ### 5.2.4 Modèle de données (conceptuel, pas encore du code)
@@ -113,7 +115,7 @@ Chaque segment porte un drapeau `turbo: keep | compress | drop`. Le séquenceur 
 - caméra simplifiée (pas de slow-mo ni de dutch, secousses réduites de 50 %) ;
 - sons : versions courtes des stingers (GDD_07).
 
-Le **super turbo**, s'il est autorisé, saute ACTION et TWIST : tronc court (250 ms), IMPACT, puis RESULT. `minimumRoundDuration` et les drapeaux `disabledTurbo` / `disabledSuperTurbo` s'imposent au séquenceur (GDD_07, §8.1.6).
+Le **super turbo**, s'il est autorisé, saute ACTION et TWIST : tronc court (250 ms), IMPACT, puis RESULT. Les drapeaux `disabledTurbo` / `disabledSuperTurbo` décident des vitesses **proposées**. Le skip (slamstop) est une capacité séparée. `minimumRoundDuration` est géré par le GameFlow (état READY_GATE), **sans modifier les animations** (`TECH_ARCHITECTURE.md` §2.9).
 
 ---
 
@@ -345,6 +347,13 @@ Contrainte structurelle : le MVP a besoin **d'un gadget par Rage Level**. Sinon,
 | Coût | LOW | LOW | **LOWEST** | MEDIUM | HIGH | MEDIUM | LOW-MED |
 
 ### Décision : SWIVEL SLINGSHOT (GRUMPY) + TRAPDOOR EXPRESS (FURIOUS) + OFFICE ROCKET (UNHINGED)
+
+**Affectation confirmée (v3).** La validation proposait l'inverse pour les deux premiers (TRAPDOOR en GRUMPY, SLINGSHOT en FURIOUS), en autorisant l'affectation documentée s'il existe une raison de game design claire. Elle existe :
+1. **Le gadget est la représentation visuelle du niveau de risque.** Une chaise tirée à l'élastique est une farce à taille humaine : elle se lit « risque faible ». Une trappe qui envoie le boss traverser 12 étages est déjà une catastrophe : elle se lit « risque moyen ». Inverser brouillerait l'échelle visuelle GRUMPY < FURIOUS < UNHINGED qui s'affiche sur les cartes.
+2. **Cohérence des pools** : GRUMPY = objets de bureau à taille humaine, FURIOUS = mécanismes déréglés.
+3. **Tout le catalogue est construit ainsi** : les 32 branches MVP, leurs durées, la matrice de non-révélation et les priorités. L'inversion n'apporterait rien techniquement, car les deux gadgets ont chacun une branche de récupération (x0,5).
+
+Les trois gadgets du MVP restent donc SWIVEL SLINGSHOT (GRUMPY), TRAPDOOR EXPRESS (FURIOUS) et OFFICE ROCKET (UNHINGED).
 
 | Exigence | Couverte par | Comment |
 |---|---|---|

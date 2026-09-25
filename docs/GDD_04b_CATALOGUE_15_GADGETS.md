@@ -1,5 +1,7 @@
 # BAD BOSS — GDD partie 4b : catalogue des 15 gadgets (étape 5)
 
+> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
+
 > Système, bibliothèques partagées, archétypes, matrice de non-révélation et choix du MVP : [`GDD_04_ANIMATIONS_ET_GADGETS.md`](GDD_04_ANIMATIONS_ET_GADGETS.md).
 
 ## Mode d'emploi

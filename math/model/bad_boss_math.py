@@ -21,6 +21,8 @@ Usage :
     python3 math/model/bad_boss_math.py --quick          # sans simulations (instantane)
     python3 math/model/bad_boss_math.py --markdown       # rapport markdown sur stdout
     python3 math/model/bad_boss_math.py --write-report docs/generated/MATH_REPORT.md
+    python3 math/model/bad_boss_math.py --list-variants
+    python3 math/model/bad_boss_math.py --quick --variant unhinged_x12   # test uniquement
 """
 
 from __future__ import annotations
@@ -63,8 +65,18 @@ SIM_SEED = 20260925
 
 # --------------------------------------------------------------------------- config
 
-def load_config(path: Path = CONFIG_PATH) -> dict:
+def load_config(path: Path = CONFIG_PATH, variant: str | None = None) -> dict:
+    """Charge la configuration. `variant` applique une variante experimentale
+    (section experimental_variants) SANS modifier le fichier : usage test uniquement."""
     raw = json.loads(path.read_text(encoding="utf-8"))
+    if variant is not None:
+        variants = raw.get("experimental_variants", {})
+        if variant not in variants or variant.startswith("_"):
+            raise SystemExit(f"Variante inconnue : {variant}. Disponibles : "
+                             + ", ".join(k for k in variants if not k.startswith("_")))
+        v = variants[variant]
+        level = next(lv for lv in raw["rage_levels"] if lv["id"] == v["level"])
+        level["base"] = list(v.get("add_base", [])) + level["base"]
     cfg = {
         "target_rtp": F(raw["target_rtp"]),
         "target_rtp_status": raw.get("target_rtp_status", ""),
@@ -432,6 +444,8 @@ def markdown_report(cfg: dict, with_sim: bool) -> str:
     parts = [
         "# BAD BOSS — rapport mathematique genere",
         "",
+        "> **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**",
+        "",
         "> **Fichier genere** par `python3 math/model/bad_boss_math.py --write-report docs/generated/MATH_REPORT.md`."
         " Ne pas modifier a la main : modifier `config/rage_levels.json` puis regenerer.",
         f"> RTP cible : {pct(cfg['target_rtp'], 2)} ({cfg['target_rtp_status']}).",
@@ -477,8 +491,17 @@ def text_report(cfg: dict, with_sim: bool) -> None:
 
 
 def main():
-    cfg = load_config()
     args = sys.argv[1:]
+    if "--list-variants" in args:
+        raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8")).get("experimental_variants", {})
+        for key, v in raw.items():
+            if not key.startswith("_"):
+                print(f"{key}: [{v.get('status')}] {v.get('description')}")
+        return
+    variant = args[args.index("--variant") + 1] if "--variant" in args else None
+    cfg = load_config(variant=variant)
+    if variant:
+        cfg["target_rtp_status"] += f" | VARIANTE EXPERIMENTALE ACTIVE : {variant} (ne pas publier)"
     with_sim = "--quick" not in args
     if "--write-report" in args:
         target = Path(args[args.index("--write-report") + 1])
