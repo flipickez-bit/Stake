@@ -258,16 +258,23 @@ test('PLAYTEST 50 (LOCAL DEV ONLY): 50 uninterrupted rounds, questionnaire at th
   }
   await expect(page.getByTestId('questionnaire')).toBeVisible();
   await expect(page.getByTestId('q-submit')).toBeDisabled();
-  for (const q of [1, 2, 3, 4, 6, 7]) await page.getByTestId(`q${q}-${(q % 5) + 1}`).check({ force: true });
+  for (const q of [1, 2, 3, 4, 6, 7, 8]) await page.getByTestId(`q${q}-${(q % 5) + 1}`).check({ force: true });
   await expect(page.getByTestId('q-submit')).toBeDisabled();
   await page.getByTestId('q5-na').check({ force: true });
   await page.getByTestId('q-memorable').fill('Le pigeon qui salue.');
+  await page.getByTestId('q-wish').fill('Un mug en or.');
   await page.getByTestId('q-submit').click();
   await expect(page.getByTestId('playtest-results')).toBeVisible();
   const exported = JSON.parse(await page.getByTestId('pt-json').inputValue());
   const session = exported.sessions[0];
   expect(session.rounds).toHaveLength(50);
-  expect(session.answers.scores).toEqual([2, 3, 4, 5, null, 2, 3]);
+  expect(session.answers.scores).toEqual([2, 3, 4, 5, null, 2, 3, 4]);
+  expect(session.answers.wish).toBe('Un mug en or.');
+  // COLLECTION BOOK : mesures locales de la session.
+  expect(session.collection.atStart).toEqual({ discovered: 0, total: 51 });
+  expect(session.collection.discoveries).toBe(session.collection.atEnd.discovered);
+  expect(session.collection.discoveries).toBeGreaterThan(5);
+  expect(session.rounds.filter((r: { discovered: boolean }) => r.discovered)).toHaveLength(session.collection.discoveries);
   expect(session.answers.memorable).toBe('Le pigeon qui salue.');
   expect(Object.keys(session.rounds[0])).toEqual(expect.arrayContaining(['n', 'level', 'gadget', 'outcome', 'multiplier', 'branch', 'animationMs', 'readyToBetMs', 'speed', 'skipped', 'bossFight', 'variant', 'newBranch']));
   expect(session.rounds.every((r: { speed: string }) => r.speed === 'super')).toBe(true);

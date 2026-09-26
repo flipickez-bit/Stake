@@ -49,7 +49,8 @@ const valid = (x) => typeof x === 'number';
 questions.forEach((q, i) => {
   const cells = answered.map((s) => s.answers.scores[i]);
   const xs = cells.filter(valid);
-  lines.push(`| ${i + 1}. ${q} | ${f2(mean(xs))} | ${xs.length ? Math.min(...xs) : '—'} | ${xs.length ? Math.max(...xs) : '—'} | ${xs.length} | ${cells.map((x) => (valid(x) ? x : x === null ? 'pas rencontré' : '—')).join(' | ')} |`);
+  const na = i === 7 ? 'collection non ouverte' : 'pas rencontré';
+  lines.push(`| ${i + 1}. ${q} | ${f2(mean(xs))} | ${xs.length ? Math.min(...xs) : '—'} | ${xs.length ? Math.max(...xs) : '—'} | ${xs.length} | ${cells.map((x) => (valid(x) ? x : x === null ? na : '—')).join(' | ')} |`);
 });
 const overall = answered.flatMap((s) => s.answers.scores).filter(valid);
 lines.push('', `Moyenne générale (réponses données) : **${f2(mean(overall))}**.`, '');
@@ -69,6 +70,25 @@ const comments = answered.filter((s) => s.answers.memorable);
 if (comments.length) for (const s of comments) lines.push(`- (${s.id}) ${s.answers.memorable.replace(/\n/g, ' ')}`);
 else lines.push('- aucun commentaire');
 lines.push('');
+
+lines.push('## « Quel élément voudrais-tu débloquer en complétant une collection ? »', '');
+const wishes = answered.filter((s) => s.answers.wish);
+if (wishes.length) for (const s of wishes) lines.push(`- (${s.id}) ${s.answers.wish.replace(/\n/g, ' ')}`);
+else lines.push('- aucune réponse');
+lines.push('');
+
+const withCollection = complete.filter((s) => s.collection);
+if (withCollection.length) {
+  lines.push('## COLLECTION BOOK (mesures locales)', '');
+  lines.push('| Session | Collection au début | À la fin (50e manche) | Nouvelles animations découvertes | Ouvertures de la collection | Rage Levels utilisés | Manches après la 50e |');
+  lines.push('|---|---:|---:|---:|---:|---|---:|');
+  for (const s of withCollection) {
+    const c = s.collection;
+    const used = ['grumpy', 'furious', 'unhinged'].filter((lv) => s.rounds.some((r) => r.level === lv));
+    lines.push(`| ${s.id} | ${c.atStart.discovered} / ${c.atStart.total} | ${c.atEnd.discovered} / ${c.atEnd.total} | ${c.discoveries} | ${c.opens} | ${used.join(', ')} | ${s.extraRounds} |`);
+  }
+  lines.push('');
+}
 
 lines.push('## Métriques comportementales (sessions de 50 manches)', '');
 lines.push('| Session | Contenu | Appareil | G / F / U | Changements de niveau | Anim. médiane | READY → mise (médiane) | Turbo / Super / Skip | BOSS FIGHT | Branches distinctes à 10 / 25 / 50 | Nouvelles (41–50) | Manches après la 50e | DEV ouvert |');

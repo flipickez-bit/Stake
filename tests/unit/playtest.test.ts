@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PLAYTEST_QUESTIONS, PLAYTEST_TARGET, PlaytestRecorder, outcomeOf, summarize } from '../../src/dev/playtest';
+import { PLAYTEST_NA_ALLOWED, PLAYTEST_QUESTIONS, PLAYTEST_TARGET, PlaytestRecorder, outcomeOf, summarize } from '../../src/dev/playtest';
 import type { RoundRecord } from '../../src/flow/GameFlow';
 import { createMemoryStore } from '../../src/platform/storage';
 
@@ -26,10 +26,12 @@ const rec = (i: number, over: Partial<RoundRecord> = {}): RoundRecord => ({
 });
 
 describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
-  it('sept questions, dans l\'ordre demandé (Q7 : nouvelles animations en fin de session)', () => {
-    expect(PLAYTEST_QUESTIONS).toHaveLength(7);
+  it('huit questions, dans l\'ordre demandé (Q7 : nouveauté ; Q8 : collection)', () => {
+    expect(PLAYTEST_QUESTIONS).toHaveLength(8);
     expect(PLAYTEST_QUESTIONS[5]).toContain('51e manche');
     expect(PLAYTEST_QUESTIONS[6]).toContain('découvrir de nouvelles animations');
+    expect(PLAYTEST_QUESTIONS[7]).toContain('animations manquantes dans la collection');
+    expect(PLAYTEST_NA_ALLOWED).toEqual([4, 7]);
   });
 
   it('rien n\'est enregistré hors session ; replays et aperçus ignorés ; questionnaire seulement après la 50e', () => {
@@ -64,9 +66,9 @@ describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
     const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
     p.start(DEVICE);
     for (let i = 1; i <= PLAYTEST_TARGET; i++) p.onRoundComplete(rec(i));
-    p.submitAnswers({ scores: [5, 4, 0, 9, null, 2, 4], memorable: '  le pigeon  ' });
+    p.submitAnswers({ scores: [5, 4, 0, 9, null, 2, 4, null], memorable: '  le pigeon  ', wish: ' un mug en or ' });
     const s = p.snapshot.sessions[0]!;
-    expect(s.answers).toEqual({ scores: [5, 4, 1, 5, null, 2, 4], memorable: 'le pigeon' });
+    expect(s.answers).toEqual({ scores: [5, 4, 1, 5, null, 2, 4, null], memorable: 'le pigeon', wish: 'un mug en or' });
     expect(p.current).toBeNull();
     p.onRoundComplete(rec(51));
     p.onRoundComplete(rec(52));
@@ -106,5 +108,37 @@ describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
     expect(s.skipShare).toBeCloseTo(0.2);
     expect(s.byLevel).toEqual({ grumpy: 5, furious: 0, unhinged: 5 });
     expect(outcomeOf({ bossFight: false, multiplier100: 50 })).toBe('SCRAPE');
+  });
+  it('COLLECTION BOOK : découvertes, ouvertures et progression mesurées pendant les 50 manches seulement', () => {
+    const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
+    p.start(DEVICE, { discovered: 3, total: 51 });
+    p.markCollectionOpened();
+    // Découverte au reveal, puis fin de la manche.
+    p.onDiscovery(true, { discovered: 4, total: 51 });
+    p.onRoundComplete(rec(1));
+    // Déjà connue : pas une découverte.
+    p.onDiscovery(false, { discovered: 4, total: 51 });
+    p.onRoundComplete(rec(2));
+    const s = p.current!;
+    expect(s.rounds.map((r) => r.discovered)).toEqual([true, false]);
+    expect(s.collection).toEqual({ atStart: { discovered: 3, total: 51 }, atEnd: { discovered: 4, total: 51 }, discoveries: 1, opens: 1 });
+    for (let i = 3; i <= PLAYTEST_TARGET; i++) p.onRoundComplete(rec(i, { level: 'furious' }));
+    const sum = summarize(p.current!);
+    expect(sum.levelsUsed).toEqual(['grumpy', 'furious', 'unhinged']);
+    expect(sum.collection?.discoveries).toBe(1);
+    // Après la 50e manche (questionnaire) : plus rien n'est compté.
+    p.markCollectionOpened();
+    p.onDiscovery(true, { discovered: 5, total: 51 });
+    expect(p.current!.collection?.opens).toBe(1);
+    expect(p.current!.collection?.discoveries).toBe(1);
+  });
+
+  it('collection désactivée : aucune donnée de collection dans la session', () => {
+    const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
+    p.start(DEVICE, null);
+    p.onDiscovery(true, { discovered: 1, total: 51 });
+    p.onRoundComplete(rec(1));
+    expect(p.current!.collection).toBeUndefined();
+    expect(p.current!.rounds[0]!.discovered).toBeUndefined();
   });
 });
