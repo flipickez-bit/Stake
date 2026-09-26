@@ -13,7 +13,7 @@ import policy from '../../config/presentation_policy.json';
 import { buildCatalog, isBossFightBranch } from '../../src/collection/catalog';
 import { Collection } from '../../src/collection/Collection';
 import { COPY, FORBIDDEN_PHRASES, NEW_TITLE, RARITY_LABEL } from '../../src/collection/copy';
-import { COSMETICS, MILESTONES, milestoneCounter, progress } from '../../src/collection/rewards';
+import { COSMETICS, MELTDOWN_RULE, MILESTONES, meltdownProgress, milestoneCounter, progress } from '../../src/collection/rewards';
 import { LocalCollectionStore, MemoryCollectionStore, sanitizeCollection } from '../../src/collection/store';
 import { attachCollectionTracker, shouldObserve } from '../../src/collection/tracker';
 import { CARD_TEXTS, SETUP_HINTS } from '../../src/content/collectionCards';
@@ -135,21 +135,73 @@ describe('observation : seules les manches jouées comptent', () => {
     expect(c.observe({ roundId: 'R3', branchId: 'FALLBACK', source: 'play', loss: true })).toBeNull();
   });
 
-  it('jalons : 5 et 10 découvertes débloquent (et portent) leurs cosmétiques ; 100 % débloque OFFICE MELTDOWN', () => {
+  it('jalons : 5 et 10 découvertes débloquent (et portent) leurs cosmétiques ; 8/8/8 débloque OFFICE MELTDOWN ; 100 % = trophée', () => {
     const c = newCollection();
     const events = catalog.cards.map((card, i) => c.observe({ roundId: `R${i}`, branchId: card.id, source: 'play', loss: false })!);
     expect(events[4]!.milestones.map((m) => m.id)).toEqual(['count-5']);
     expect(events[4]!.unlocked.map((u) => u.id)).toEqual(['mug.okayest']);
     expect(events[9]!.unlocked.map((u) => u.id)).toEqual(['tie.polka']);
     expect(c.state.equipped).toMatchObject({ mug: 'mug.okayest', tie: 'tie.polka' });
-    expect(events[50]!.milestones.map((m) => m.id)).toContain('full-mvp');
-    expect(c.unlocked.map((u) => u.id)).toContain('episode.meltdown');
+    // OFFICE MELTDOWN : débloqué par la découverte qui porte le 3e Rage Level à 8 (pas par le 100 %).
+    const meltIndex = events.findIndex((e) => e.milestones.some((m) => m.id === 'explorer'));
+    expect(meltIndex).toBeGreaterThan(0);
+    expect(events[meltIndex]!.unlocked.map((u) => u.id)).toEqual(['episode.meltdown']);
+    const counts = (upTo: number) => {
+      const seen = catalog.cards.slice(0, upTo + 1);
+      return (['grumpy', 'furious', 'unhinged'] as const).map((lv) => seen.filter((x) => x.section === lv).length);
+    };
+    expect(Math.min(...counts(meltIndex))).toBe(8);
+    expect(Math.min(...counts(meltIndex - 1))).toBe(7);
+    // 100 % : trophée et thème d'album, rien d'autre (aucune valeur, aucun avantage).
+    const full = events[50]!;
+    expect(full.milestones.map((m) => m.id)).toContain('full-mvp');
+    const fullRewards = MILESTONES.find((m) => m.id === 'full-mvp')!.rewards;
+    expect([...fullRewards].sort()).toEqual(['album.hallofshame', 'trophy.collector']);
+    expect(full.unlocked.map((u) => u.id)).toEqual(expect.arrayContaining(['album.hallofshame', 'trophy.collector']));
+    expect(full.unlocked.map((u) => u.id)).not.toContain('episode.meltdown');
+    // Le trophée et l'épisode ne se « portent » pas.
+    c.equip('trophy', 'trophy.collector');
+    c.equip('episode', 'episode.meltdown');
+    expect(c.state.equipped.trophy).toBeUndefined();
+    expect(c.state.equipped.episode).toBeUndefined();
     expect(Object.keys(c.state.milestones).sort()).toEqual(MILESTONES.map((m) => m.id).sort());
     // Retirer un cosmétique, puis le remettre.
     c.equip('mug', null);
     expect(c.state.equipped.mug).toBeUndefined();
     c.equip('mug', 'mug.okayest');
     expect(c.state.equipped.mug).toBe('mug.okayest');
+  });
+
+  it('OFFICE MELTDOWN : ≥ 8 dans CHAQUE Rage Level, cartes BOSS FIGHT non requises, compteur factuel « 23 / 24 »', () => {
+    const c = newCollection();
+    // Beaucoup de cartes mais un mode peu exploré : pas de déblocage.
+    c.setSectionCounts({ grumpy: 15, furious: 14, unhinged: 7, bossfight: 6 }, mulberry32(2));
+    expect(c.progress.discovered).toBe(42);
+    expect(c.state.milestones.explorer).toBeUndefined();
+    expect(meltdownProgress(c.progress)).toMatchObject({ grumpy: 8, furious: 8, unhinged: 7, current: 23, required: 24, unlocked: false });
+    // 7 / 8 / 8 sans aucune carte BOSS FIGHT, puis une découverte GRUMPY.
+    c.setSectionCounts({ grumpy: 7, furious: 8, unhinged: 8 }, mulberry32(3));
+    expect(milestoneCounter(MELTDOWN_RULE, c.progress)).toEqual({ current: 23, target: 24 });
+    const e = c.forceNewDiscovery(mulberry32(4), 'grumpy');
+    expect(e?.card.section).toBe('grumpy');
+    expect(e?.milestones.map((m) => m.id)).toEqual(['explorer']);
+    expect(c.unlocked.map((u) => u.id)).toContain('episode.meltdown');
+    expect(c.progress.bySection.bossfight.discovered).toBe(0);
+  });
+
+  it('jalon satisfait mais non enregistré (règle changée) → enregistré au chargement, sans badge', async () => {
+    const store = new MemoryCollectionStore();
+    const a = new Collection(store, catalog, fixedNow);
+    a.setSectionCounts({ grumpy: 8, furious: 8, unhinged: 8 }, mulberry32(5));
+    const raw = JSON.parse(JSON.stringify(a.state));
+    delete raw.milestones.explorer;
+    await store.save(raw);
+    const b = new Collection(store, catalog, fixedNow);
+    let events = 0;
+    b.onDiscovery(() => events++);
+    await b.init();
+    expect(b.state.milestones.explorer).toBeDefined();
+    expect(events).toBe(0);
   });
 
   it('un cosmétique non débloqué ne peut pas être porté', () => {
@@ -213,17 +265,19 @@ describe('stockage (localStorage NON sécurisé, chargement tolérant)', () => {
 });
 
 describe('outils DEV (COLLECTION DEBUG)', () => {
-  it('SET 49/51, FORCE NEW DISCOVERY ×2 → 51/51 et OFFICE MELTDOWN ; RESET → 0', async () => {
+  it('SET 49/51 (OFFICE MELTDOWN déjà ouvert), FORCE NEW DISCOVERY ×2 → 51/51 et trophée ; RESET → 0', async () => {
     const c = newCollection();
     c.setDiscoveredCount(49, mulberry32(7));
     expect(c.progress.discovered).toBe(49);
     expect(c.state.milestones['full-mvp']).toBeUndefined();
+    expect(c.state.milestones.explorer).toBeDefined();
     const e1 = c.forceNewDiscovery(mulberry32(8));
     expect(e1?.isNew).toBe(true);
     expect(e1?.source).toBe('dev');
     const e2 = c.forceNewDiscovery(mulberry32(9));
     expect(e2?.progress).toEqual({ discovered: 51, total: 51 });
-    expect(e2?.unlocked.map((u) => u.id)).toContain('episode.meltdown');
+    expect(e2?.unlocked.map((u) => u.id)).toContain('trophy.collector');
+    expect(e2?.unlocked.map((u) => u.id)).not.toContain('episode.meltdown');
     expect(c.forceNewDiscovery(mulberry32(10))).toBeNull();
     await c.reset();
     expect(c.progress.discovered).toBe(0);
@@ -390,12 +444,16 @@ if (reportPath) {
           const ps = cardsP((id) => catalog.byId.get(id)!.section === r.section, 1 / 3);
           return row(m.label, ps, ps.length);
         }
+        if (r.kind === 'perSection') {
+          const f = (t: number) => r.sections.map((sec) => atLeast(cardsP((id) => catalog.byId.get(id)!.section === sec, 1 / 3), t, r.n)).reduce((a, b) => a * b, 1);
+          return `| ${m.label} (≥ ${r.n} dans ${r.sections.map((x) => x.toUpperCase()).join(', ')}) | ${quantile(f, 0.5)} | ${quantile(f, 0.9)} |`;
+        }
         return row(m.label, all, all.length);
       }),
       '', '## Courbe de découverte (jeu réparti)', '',
       '| Manches | 10 | 25 | 50 | 100 | 200 | 500 | 1 000 |', '|---|---:|---:|---:|---:|---:|---:|---:|',
       `| Cartes découvertes (espérance, sur ${all.length}) | ${[10, 25, 50, 100, 200, 500, 1000].map((n) => all.reduce((a, x) => a + 1 - Math.exp(-x * n), 0).toFixed(1)).join(' | ')} |`,
-      '', '## Alternatives pour OFFICE MELTDOWN (voir COLLECTION_BOOK.md §E.3)', '',
+      '', '## Règles étudiées pour OFFICE MELTDOWN (retenue : ≥ 8 dans chaque Rage Level, COLLECTION_BOOK.md §E.3)', '',
       '| Règle | Manches (médiane) | Manches (90 %) |', '|---|---:|---:|',
       ...[5, 8].map((k) => {
         const f = (t: number) =>

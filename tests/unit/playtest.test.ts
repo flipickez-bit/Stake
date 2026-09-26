@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYTEST_NA_ALLOWED, PLAYTEST_QUESTIONS, PLAYTEST_TARGET, PlaytestRecorder, outcomeOf, summarize } from '../../src/dev/playtest';
+import type { Progress } from '../../src/collection/types';
 import type { RoundRecord } from '../../src/flow/GameFlow';
 import { createMemoryStore } from '../../src/platform/storage';
 
 const DEVICE = { width: 390, height: 844, portrait: true, touch: true };
+
+/** Progression de collection synthétique (GRUMPY, FURIOUS, UNHINGED, BOSS FIGHT). */
+const P = (g: number, f: number, u: number, b = 0): Progress => ({
+  discovered: g + f + u + b,
+  total: 51,
+  bySection: { grumpy: { discovered: g, total: 15 }, furious: { discovered: f, total: 14 }, unhinged: { discovered: u, total: 16 }, bossfight: { discovered: b, total: 6 } },
+  byGadget: {},
+});
 
 const rec = (i: number, over: Partial<RoundRecord> = {}): RoundRecord => ({
   roundId: `M-${i}`,
@@ -109,36 +118,76 @@ describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
     expect(s.byLevel).toEqual({ grumpy: 5, furious: 0, unhinged: 5 });
     expect(outcomeOf({ bossFight: false, multiplier100: 50 })).toBe('SCRAPE');
   });
-  it('COLLECTION BOOK : découvertes, ouvertures et progression mesurées pendant les 50 manches seulement', () => {
+  it('COLLECTION BOOK : découvertes par section, ouvertures, changement de mode après ouverture, progression MELTDOWN', () => {
     const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
-    p.start(DEVICE, { discovered: 3, total: 51 });
-    p.markCollectionOpened();
-    // Découverte au reveal, puis fin de la manche.
-    p.onDiscovery(true, { discovered: 4, total: 51 });
+    p.start(DEVICE, P(1, 1, 1));
+    expect(p.current!.collection).toMatchObject({ atStart: { discovered: 3, total: 51 }, firstOpenAfterRound: null, meltdownAtStart: { current: 3, required: 24, unlocked: false } });
+    // Ouverture avant la 1re manche, sur GRUMPY ; la manche suivante (rec(1)) est en GRUMPY : pas de changement.
+    p.markCollectionOpened('grumpy');
+    p.onDiscovery({ isNew: true, section: 'grumpy' }, P(2, 1, 1));
     p.onRoundComplete(rec(1));
     // Déjà connue : pas une découverte.
-    p.onDiscovery(false, { discovered: 4, total: 51 });
+    p.onDiscovery({ isNew: false, section: 'unhinged' }, P(2, 1, 1));
     p.onRoundComplete(rec(2));
+    // Ouverture après la 2e manche, sur UNHINGED ; la manche suivante (rec(3)) est en GRUMPY : changement.
+    p.markCollectionOpened('unhinged');
+    p.onDiscovery({ isNew: true, section: 'bossfight' }, P(2, 1, 1, 1));
+    p.onRoundComplete(rec(3));
     const s = p.current!;
-    expect(s.rounds.map((r) => r.discovered)).toEqual([true, false]);
-    expect(s.collection).toEqual({ atStart: { discovered: 3, total: 51 }, atEnd: { discovered: 4, total: 51 }, discoveries: 1, opens: 1 });
-    for (let i = 3; i <= PLAYTEST_TARGET; i++) p.onRoundComplete(rec(i, { level: 'furious' }));
+    expect(s.rounds.map((r) => r.discovered)).toEqual([true, false, true]);
+    expect(s.collection).toMatchObject({
+      discoveries: 2,
+      opens: 2,
+      firstOpenAfterRound: 0,
+      openLog: [{ afterRound: 0, level: 'grumpy' }, { afterRound: 2, level: 'unhinged' }],
+      discoveriesBySection: { grumpy: 1, furious: 0, unhinged: 0, bossfight: 1 },
+      atEnd: { discovered: 5, total: 51 },
+      meltdownUnlock: null,
+    });
+    expect(summarize(s).levelChangesAfterOpen).toEqual({ opens: 2, changed: 1 });
+  });
+
+  it('OFFICE MELTDOWN : le déblocage NATUREL (8 / 8 / 8) est enregistré une seule fois, jamais forcé', () => {
+    const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
+    p.start(DEVICE, P(7, 8, 8));
+    p.onRoundComplete(rec(1));
+    p.onRoundComplete(rec(2));
+    p.onDiscovery({ isNew: true, section: 'grumpy' }, P(8, 8, 8, 1));
+    p.onRoundComplete(rec(3));
+    p.onDiscovery({ isNew: true, section: 'grumpy' }, P(9, 8, 8, 1));
+    p.onRoundComplete(rec(4));
+    const c = p.current!.collection!;
+    expect(c.meltdownUnlock).toEqual({ roundUnlocked: 3, rageCountsAtUnlock: { grumpy: 8, furious: 8, unhinged: 8 }, collectionCountAtUnlock: 25 });
+    expect(c.meltdownAtEnd).toMatchObject({ grumpy: 8, furious: 8, unhinged: 8, current: 24, required: 24, unlocked: true });
+    // Le joueur décide lui-même de lancer l'épisode.
+    expect(c.episodePlays).toBe(0);
+    p.markEpisodePlayed();
+    expect(p.current!.collection!.episodePlays).toBe(1);
+    for (let i = 5; i <= PLAYTEST_TARGET; i++) p.onRoundComplete(rec(i, { level: 'furious' }));
     const sum = summarize(p.current!);
     expect(sum.levelsUsed).toEqual(['grumpy', 'furious', 'unhinged']);
-    expect(sum.collection?.discoveries).toBe(1);
     // Après la 50e manche (questionnaire) : plus rien n'est compté.
-    p.markCollectionOpened();
-    p.onDiscovery(true, { discovered: 5, total: 51 });
-    expect(p.current!.collection?.opens).toBe(1);
-    expect(p.current!.collection?.discoveries).toBe(1);
+    p.markCollectionOpened('grumpy');
+    p.onDiscovery({ isNew: true, section: 'furious' }, P(9, 9, 8, 1));
+    expect(p.current!.collection!.opens).toBe(0);
+    expect(p.current!.collection!.discoveries).toBe(2);
+  });
+
+  it('OFFICE MELTDOWN déjà débloqué au début de la session : aucun « déblocage » enregistré', () => {
+    const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
+    p.start(DEVICE, P(8, 8, 8));
+    p.onDiscovery({ isNew: true, section: 'unhinged' }, P(8, 8, 9));
+    p.onRoundComplete(rec(1));
+    expect(p.current!.collection!.meltdownUnlock).toBeNull();
   });
 
   it('collection désactivée : aucune donnée de collection dans la session', () => {
     const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
     p.start(DEVICE, null);
-    p.onDiscovery(true, { discovered: 1, total: 51 });
+    p.onDiscovery({ isNew: true, section: 'grumpy' }, P(1, 0, 0));
     p.onRoundComplete(rec(1));
     expect(p.current!.collection).toBeUndefined();
     expect(p.current!.rounds[0]!.discovered).toBeUndefined();
+    expect(summarize(p.current!).levelChangesAfterOpen).toBeNull();
   });
 });

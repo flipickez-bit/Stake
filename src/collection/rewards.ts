@@ -4,7 +4,7 @@
  * Tant que Stake Engine n'a pas confirmé la compatibilité de récompenses persistantes (INFORMATION STAKE ENGINE
  * REQUISE), rien ici n'a ni n'aura de valeur financière — et rien ne dépendra du stockage local, modifiable.
  */
-import type { Catalog, CollectionState, CosmeticDef, CosmeticId, MilestoneDef, MilestoneRule, Progress, SectionId } from './types';
+import type { Catalog, CollectionState, CosmeticDef, CosmeticId, CosmeticSlot, MilestoneDef, MilestoneRule, Progress, SectionId } from './types';
 
 export const COSMETICS: readonly CosmeticDef[] = [
   { id: 'mug.okayest', slot: 'mug', name: "MUG: WORLD'S OKAYEST BOSS", description: 'A teal mug for B.B.' },
@@ -17,24 +17,33 @@ export const COSMETICS: readonly CosmeticDef[] = [
   { id: 'album.arcade', slot: 'album', name: 'ALBUM: ARCADE NIGHT', description: 'A neon cover for this album.' },
   { id: 'album.hallofshame', slot: 'album', name: 'ALBUM: HALL OF SHAME', description: 'A velvet cover for this album.' },
   { id: 'episode.meltdown', slot: 'episode', name: 'SPECIAL EPISODE: OFFICE MELTDOWN', description: 'A showcase with every gag at once. No bet, no payout.' },
+  { id: 'trophy.collector', slot: 'trophy', name: "COLLECTOR'S TROPHY", description: 'A mark on the album cover for a complete collection.' },
 ];
+
+/** Emplacements qui ne se « portent » pas : l'épisode se joue, le trophée s'affiche sur l'album. */
+export const NON_EQUIPABLE: ReadonlySet<CosmeticSlot> = new Set<CosmeticSlot>(['episode', 'trophy']);
 
 export const COSMETIC_BY_ID: ReadonlyMap<CosmeticId, CosmeticDef> = new Map(COSMETICS.map((c) => [c.id, c]));
 
+/** OFFICE MELTDOWN récompense l'EXPLORATION des trois Rage Levels (décision du 2026-09-26, COLLECTION_BOOK.md §E.3). */
+export const MELTDOWN_RULE = { kind: 'perSection', sections: ['grumpy', 'furious', 'unhinged'], n: 8 } as const satisfies MilestoneRule;
+
 /**
- * Jalon qui débloque OFFICE MELTDOWN. Demande actuelle : 100 % de la collection MVP (médiane ≈ 9 800 manches,
- * voir COLLECTION_BOOK.md §E.3). Pour une règle d'exploration, déplacer 'episode.meltdown' vers un autre jalon.
+ * Jalons. OFFICE MELTDOWN : ≥ 8 découvertes dans GRUMPY, FURIOUS ET UNHINGED (≈ 63 manches en médiane, jeu réparti) ;
+ * les cartes BOSS FIGHT ne sont pas requises. 100 % reste un accomplissement de collectionneur, purement cosmétique
+ * (trophée + thème d'album), sans aucune facilité ajoutée. Aucune fréquence de branche n'est modifiée pour l'un ou l'autre.
  */
 export const MILESTONES: readonly MilestoneDef[] = [
   { id: 'count-5', label: '5 DISCOVERED', rule: { kind: 'count', n: 5 }, rewards: ['mug.okayest'] },
   { id: 'count-10', label: '10 DISCOVERED', rule: { kind: 'count', n: 10 }, rewards: ['tie.polka'] },
   { id: 'count-25', label: '25 DISCOVERED', rule: { kind: 'count', n: 25 }, rewards: ['desk.duck'] },
   { id: 'half', label: '50 %', rule: { kind: 'fraction', f: 0.5 }, rewards: ['ding.deluxe'] },
+  { id: 'explorer', label: 'OFFICE MELTDOWN', rule: MELTDOWN_RULE, rewards: ['episode.meltdown'] },
   { id: 'full-grumpy', label: '100 % GRUMPY', rule: { kind: 'section', section: 'grumpy' }, rewards: ['elastic.candy'] },
   { id: 'full-furious', label: '100 % FURIOUS', rule: { kind: 'section', section: 'furious' }, rewards: ['trapdoor.arctic'] },
   { id: 'full-unhinged', label: '100 % UNHINGED', rule: { kind: 'section', section: 'unhinged' }, rewards: ['rocket.retro'] },
   { id: 'full-bossfight', label: '100 % BOSS FIGHT', rule: { kind: 'section', section: 'bossfight' }, rewards: ['album.arcade'] },
-  { id: 'full-mvp', label: '100 % MVP COLLECTION', rule: { kind: 'all' }, rewards: ['episode.meltdown', 'album.hallofshame'] },
+  { id: 'full-mvp', label: '100 % MVP COLLECTION', rule: { kind: 'all' }, rewards: ['trophy.collector', 'album.hallofshame'] },
 ];
 
 export function progress(state: CollectionState, catalog: Catalog): Progress {
@@ -69,12 +78,31 @@ export function milestoneCounter(rule: MilestoneRule, p: Progress): { current: n
       const s = p.bySection[rule.section as SectionId] ?? { discovered: 0, total: 0 };
       return { current: s.discovered, target: s.total };
     }
+    case 'perSection':
+      return sectionCounters(rule, p).reduce((a, c) => ({ current: a.current + c.current, target: a.target + c.target }), { current: 0, target: 0 });
     case 'all':
       return { current: p.discovered, target: p.total };
   }
 }
 
+/** Détail par section d'une règle `perSection` (plafonné à n) : « GRUMPY 6 / 8 ». */
+export function sectionCounters(rule: Extract<MilestoneRule, { kind: 'perSection' }>, p: Progress): { section: SectionId; current: number; target: number; done: boolean }[] {
+  return rule.sections.map((section) => {
+    const current = Math.min(p.bySection[section]?.discovered ?? 0, rule.n);
+    return { section, current, target: rule.n, done: current >= rule.n };
+  });
+}
+
+/** Progression vers OFFICE MELTDOWN (affichage REWARDS, mesures du PLAYTEST). */
+export function meltdownProgress(p: Progress) {
+  const bySection = sectionCounters(MELTDOWN_RULE, p);
+  const count = (id: SectionId) => bySection.find((c) => c.section === id)?.current ?? 0;
+  const { current, target } = milestoneCounter(MELTDOWN_RULE, p);
+  return { grumpy: count('grumpy'), furious: count('furious'), unhinged: count('unhinged'), current, required: target, unlocked: bySection.every((c) => c.done), bySection };
+}
+
 export function ruleMet(rule: MilestoneRule, p: Progress): boolean {
+  if (rule.kind === 'perSection') return sectionCounters(rule, p).every((c) => c.done);
   const { current, target } = milestoneCounter(rule, p);
   return target > 0 && current >= target;
 }

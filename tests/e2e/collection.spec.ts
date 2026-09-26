@@ -77,7 +77,7 @@ test('RESUME: a round interrupted before its reveal unlocks its card once, at th
   expect(entries[ids[0]!]).toMatchObject({ seen: 1, source: 'resume' });
 });
 
-test('COLLECTION BOOK + DEBUG: tabs, card detail, SET 49/51 → FORCE NEW ×2 → OFFICE MELTDOWN with no wallet call', async ({ page }) => {
+test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 8/8/8 (no BOSS FIGHT card), played with no wallet call; 100 % = trophy', async ({ page }) => {
   await boot(page);
   await page.getByTestId('dev-toggle').click();
   await page.getByTestId('dev-coll-random10').click();
@@ -93,7 +93,7 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail, SET 49/51 → FORCE NEW ×2 �
   await page.getByTestId('tab-bossfight').click();
   await page.getByTestId('tab-rewards').click();
   await expect(page.getByTestId('milestone-count-10')).toHaveAttribute('data-reached', 'true');
-  await expect(page.getByTestId('episode-play')).toHaveCount(0);
+  await expect(page.getByTestId('meltdown-progress')).toBeVisible();
   // Une carte découverte : fiche détaillée.
   await page.getByTestId('tab-grumpy').click();
   const found = book.locator('[data-found=true]');
@@ -104,18 +104,31 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail, SET 49/51 → FORCE NEW ×2 �
   }
   await page.getByTestId('collection-close').click();
 
+  // 7 / 8 / 8, aucune carte BOSS FIGHT : progression factuelle, épisode verrouillé.
   await page.getByTestId('dev-toggle').click();
-  await page.getByTestId('dev-coll-49').click();
-  await expect(page.getByTestId('dev-coll-count')).toContainText('49 / 51');
+  await page.getByTestId('dev-coll-788').click();
+  await expect(page.getByTestId('dev-coll-count')).toContainText('23 / 51');
+  await page.getByTestId('dev-coll-view').click();
+  await page.getByTestId('tab-rewards').click();
+  await expect(page.getByTestId('meltdown-grumpy')).toContainText('7 / 8');
+  await expect(page.getByTestId('meltdown-grumpy')).not.toContainText('✓');
+  await expect(page.getByTestId('meltdown-furious')).toContainText('8 / 8 ✓');
+  await expect(page.getByTestId('meltdown-unhinged')).toContainText('8 / 8 ✓');
+  await expect(page.getByTestId('meltdown-total')).toHaveText('23 / 24 required discoveries');
+  await expect(page.getByTestId('episode-play')).toHaveCount(0);
+  await page.getByTestId('collection-close').click();
+
+  // Une découverte GRUMPY (Rage Level courant) → 8 / 8 / 8 : l'épisode est débloqué, jamais ouvert automatiquement.
+  await page.getByTestId('dev-toggle').click();
   await page.getByTestId('dev-coll-new').click();
-  await page.getByTestId('dev-coll-new').click();
-  await expect(page.getByTestId('dev-coll-count')).toContainText('51 / 51');
   await page.getByLabel('Close dev panel').click();
-  await expect(page.getByTestId('new-badge-unlock')).toBeVisible();
+  await expect(page.getByTestId('new-badge-unlock')).toContainText('OFFICE MELTDOWN');
+  await expect(page.getByTestId('showcase')).toHaveCount(0);
 
   const calls = (await hook(page)).calls;
   await page.getByTestId('collection-open').click();
   await page.getByTestId('tab-rewards').click();
+  await expect(page.getByTestId('meltdown-total')).toHaveText('24 / 24 required discoveries');
   await page.getByTestId('episode-play').click();
   const show = page.getByTestId('showcase');
   await expect(show).toBeVisible();
@@ -132,6 +145,15 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail, SET 49/51 → FORCE NEW ×2 �
   const after = await hook(page);
   expect(after.calls).toEqual(calls);
   await expect(page.getByTestId('fire')).toBeEnabled();
+
+  // 100 % : trophée de collectionneur sur l'album (cosmétique uniquement).
+  await page.getByTestId('dev-toggle').click();
+  await page.getByTestId('dev-coll-49').click();
+  await page.getByTestId('dev-coll-new').click();
+  await page.getByTestId('dev-coll-new').click();
+  await expect(page.getByTestId('dev-coll-count')).toContainText('51 / 51');
+  await page.getByTestId('dev-coll-view').click();
+  await expect(page.getByTestId('collector-trophy')).toBeVisible();
 });
 
 test('URL replay: no collection at all (no button, no badge, no storage)', async ({ page }) => {

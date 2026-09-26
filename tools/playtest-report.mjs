@@ -80,12 +80,22 @@ lines.push('');
 const withCollection = complete.filter((s) => s.collection);
 if (withCollection.length) {
   lines.push('## COLLECTION BOOK (mesures locales)', '');
-  lines.push('| Session | Collection au début | À la fin (50e manche) | Nouvelles animations découvertes | Ouvertures de la collection | Rage Levels utilisés | Manches après la 50e |');
-  lines.push('|---|---:|---:|---:|---:|---|---:|');
+  lines.push('| Session | Collection au début → fin | Nouvelles (total) | G / F / U / BF | Ouvertures | 1re ouverture (après la manche) | Changement de mode après ouverture | OFFICE MELTDOWN début → fin | Déblocage naturel | Épisode lancé | Branches uniques 10 / 25 / 50 | Manches après la 50e |');
+  lines.push('|---|---|---:|---|---:|---:|---|---|---|---:|---|---:|');
   for (const s of withCollection) {
     const c = s.collection;
-    const used = ['grumpy', 'furious', 'unhinged'].filter((lv) => s.rounds.some((r) => r.level === lv));
-    lines.push(`| ${s.id} | ${c.atStart.discovered} / ${c.atStart.total} | ${c.atEnd.discovered} / ${c.atEnd.total} | ${c.discoveries} | ${c.opens} | ${used.join(', ')} | ${s.extraRounds} |`);
+    const by = c.discoveriesBySection;
+    const melt = (m) => (m ? `${m.grumpy}/${m.furious}/${m.unhinged} (${m.current}/${m.required})` : '—');
+    const log = c.openLog ?? [];
+    const after = log.map((o) => ({ o, next: s.rounds[o.afterRound] })).filter((x) => x.next);
+    const changed = after.filter((x) => x.next.level !== x.o.level).length;
+    const unlock = c.meltdownUnlock
+      ? `manche ${c.meltdownUnlock.roundUnlocked} (G ${c.meltdownUnlock.rageCountsAtUnlock.grumpy} / F ${c.meltdownUnlock.rageCountsAtUnlock.furious} / U ${c.meltdownUnlock.rageCountsAtUnlock.unhinged}, ${c.meltdownUnlock.collectionCountAtUnlock} cartes)`
+      : c.meltdownAtStart?.unlocked ? 'déjà débloqué' : 'non';
+    const distinct = (n) => new Set(s.rounds.slice(0, n).map((x) => x.branch)).size;
+    lines.push(
+      `| ${s.id} | ${c.atStart.discovered} → ${c.atEnd.discovered} / ${c.atEnd.total} | ${c.discoveries} | ${by ? `${by.grumpy} / ${by.furious} / ${by.unhinged} / ${by.bossfight}` : '—'} | ${c.opens} | ${c.firstOpenAfterRound ?? 'jamais'} | ${after.length ? `${changed} / ${after.length}` : '—'} | ${melt(c.meltdownAtStart)} → ${melt(c.meltdownAtEnd)} | ${unlock} | ${c.episodePlays ?? '—'} | ${distinct(10)} / ${distinct(25)} / ${distinct(50)} | ${s.extraRounds} |`,
+    );
   }
   lines.push('');
 }

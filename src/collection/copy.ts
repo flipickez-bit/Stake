@@ -49,6 +49,9 @@ export const COPY = {
   episode: 'SPECIAL EPISODE',
   episodeName: 'OFFICE MELTDOWN',
   episodePlay: 'PLAY EPISODE',
+  requiredDiscoveries: (c: number, t: number) => `${c} / ${t} required discoveries`,
+  meltdownRule: (n: number) => `${n} discoveries in each Rage Level · BOSS FIGHT cards not required`,
+  collectorMark: "COLLECTOR'S TROPHY · 100 %",
   showcaseNote: 'SHOWCASE · NO BET · NO PAYOUT',
   nextGag: 'NEXT GAG ▶',
   exit: 'EXIT',
@@ -77,4 +80,5 @@ export const FORBIDDEN_PHRASES: readonly string[] = [
   'FREE SPIN',
   'CLOSE TO',
   'NEARLY',
+  'SO CLOSE',
 ];

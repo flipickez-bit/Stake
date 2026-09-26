@@ -3,7 +3,7 @@
  * Il OBSERVE des manches déjà décidées et déjà présentées : il n'a aucun moyen d'influencer une branche
  * (il ne connaît ni compileSequence, ni le Presenter, ni le book).
  */
-import { newlyReached, progress, unlockedCosmetics, COSMETIC_BY_ID, MILESTONES } from './rewards';
+import { newlyReached, progress, unlockedCosmetics, COSMETIC_BY_ID, MILESTONES, NON_EQUIPABLE } from './rewards';
 import { emptyCollection, RECENT_ROUNDS, sanitizeCollection } from './store';
 import type {
   CardDef,
@@ -16,6 +16,7 @@ import type {
   DiscoveryEvent,
   DiscoverySource,
   Progress,
+  SectionId,
 } from './types';
 
 /** Source de hasard des outils DEV (jamais utilisée pour une vraie découverte). */
@@ -48,7 +49,9 @@ export class Collection {
     } catch {
       this.s = emptyCollection();
     }
-    this.emit();
+    // Jalons déjà satisfaits mais pas encore enregistrés (règle changée, catalogue modifié) : enregistrés sans badge.
+    if (this.reachMilestones(this.now().toISOString()).length > 0) this.commit();
+    else this.emit();
   }
 
   get state(): CollectionState {
@@ -99,7 +102,7 @@ export class Collection {
     if (id === null) delete equipped[slot];
     else {
       const c = COSMETIC_BY_ID.get(id);
-      if (!c || c.slot !== slot || !this.unlocked.some((u) => u.id === id)) return;
+      if (!c || c.slot !== slot || NON_EQUIPABLE.has(slot) || !this.unlocked.some((u) => u.id === id)) return;
       equipped[slot] = id;
     }
     this.s = { ...this.s, equipped };
@@ -130,9 +133,28 @@ export class Collection {
     this.setDiscovered(shuffle(this.catalog.cards.map((c) => c.id), rnd).slice(0, n));
   }
 
-  /** Découvre une carte manquante au hasard par le même chemin qu'une vraie découverte (badge compris). */
-  forceNewDiscovery(rnd: RandomSource): DiscoveryEvent | null {
-    const missing = this.catalog.cards.filter((c) => !this.isDiscovered(c.id));
+  /**
+   * Exactement n cartes découvertes dans chaque section indiquée (les autres sections vides), jalons recalculés.
+   * Sert à tester le passage à 8 / 8 / 8 d'OFFICE MELTDOWN.
+   */
+  setSectionCounts(counts: Partial<Record<SectionId, number>>, rnd: RandomSource): void {
+    const ids: string[] = [];
+    for (const [section, n] of Object.entries(counts)) {
+      const inSection = this.catalog.cards.filter((c) => c.section === section).map((c) => c.id);
+      ids.push(...shuffle(inSection, rnd).slice(0, n));
+    }
+    this.s = { ...this.s, entries: {}, milestones: {}, equipped: {} };
+    this.setDiscovered(ids);
+  }
+
+  /**
+   * Découvre une carte manquante au hasard par le même chemin qu'une vraie découverte (badge compris),
+   * de préférence dans la section indiquée (ex. le Rage Level courant).
+   */
+  forceNewDiscovery(rnd: RandomSource, prefer?: SectionId): DiscoveryEvent | null {
+    const all = this.catalog.cards.filter((c) => !this.isDiscovered(c.id));
+    const preferred = prefer ? all.filter((c) => c.section === prefer) : [];
+    const missing = preferred.length > 0 ? preferred : all;
     if (missing.length === 0) return null;
     const card = missing[Math.floor(rnd() * missing.length)] as CardDef;
     return this.record(card, `DEV-NEW-${++this.devCounter}`, 'dev', false);
@@ -168,7 +190,7 @@ export class Collection {
       milestones[m.id] = at;
       for (const r of m.rewards) {
         const c = COSMETIC_BY_ID.get(r);
-        if (c && c.slot !== 'episode') equipped[c.slot] = c.id;
+        if (c && !NON_EQUIPABLE.has(c.slot)) equipped[c.slot] = c.id;
       }
     }
     this.s = { ...this.s, milestones, equipped };

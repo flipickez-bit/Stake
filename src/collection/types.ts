@@ -59,12 +59,16 @@ export type MilestoneId =
   | 'full-furious'
   | 'full-unhinged'
   | 'full-bossfight'
-  | 'full-mvp';
+  | 'full-mvp'
+  /** OFFICE MELTDOWN : explorer les trois Rage Levels (cartes BOSS FIGHT non requises). */
+  | 'explorer';
 
 export type MilestoneRule =
   | { kind: 'count'; n: number }
   | { kind: 'fraction'; f: number }
   | { kind: 'section'; section: SectionId }
+  /** Au moins n découvertes dans CHACUNE des sections (compteur plafonné à n par section). */
+  | { kind: 'perSection'; sections: readonly SectionId[]; n: number }
   | { kind: 'all' };
 
 export type CosmeticId =
@@ -77,9 +81,10 @@ export type CosmeticId =
   | 'rocket.retro'
   | 'album.arcade'
   | 'album.hallofshame'
-  | 'episode.meltdown';
+  | 'episode.meltdown'
+  | 'trophy.collector';
 
-export type CosmeticSlot = 'mug' | 'tie' | 'desk' | 'ding' | 'elastic' | 'trapdoor' | 'rocket' | 'album' | 'episode';
+export type CosmeticSlot = 'mug' | 'tie' | 'desk' | 'ding' | 'elastic' | 'trapdoor' | 'rocket' | 'album' | 'episode' | 'trophy';
 
 export interface CosmeticDef {
   id: CosmeticId;

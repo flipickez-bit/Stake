@@ -393,14 +393,15 @@
   {#if collection}
     <section>
       <h3>COLLECTION DEBUG <span class="tag warn">MOCK ONLY</span></h3>
-      <p class="small">Local collection only (never affects rounds, branches or maths). Not available in production.</p>
+      <p class="small">Local collection only (never affects rounds, branches or maths). Not available in production. FORCE NEW picks a missing card of the current Rage Level first.</p>
       <table class="kv"><tbody><tr><td>Progress</td><td data-testid="dev-coll-count">{collCount}</td></tr></tbody></table>
       <div class="buttons">
         <button onclick={() => void collection.reset()} data-testid="dev-coll-reset">RESET COLLECTION</button>
         <button onclick={() => collection.unlockAll()} data-testid="dev-coll-all">UNLOCK ALL</button>
         <button onclick={() => collection.unlockRandom(10, cryptoRandom)} data-testid="dev-coll-random10">UNLOCK RANDOM 10</button>
         <button onclick={() => collection.setDiscoveredCount(collection.catalog.cards.length - 2, cryptoRandom)} data-testid="dev-coll-49">SET {collection.catalog.cards.length - 2}/{collection.catalog.cards.length}</button>
-        <button onclick={() => collection.forceNewDiscovery(cryptoRandom)} data-testid="dev-coll-new">FORCE NEW DISCOVERY</button>
+        <button onclick={() => collection.setSectionCounts({ grumpy: 7, furious: 8, unhinged: 8 }, cryptoRandom)} data-testid="dev-coll-788">SET 7/8/8 (MELTDOWN TEST)</button>
+        <button onclick={() => collection.forceNewDiscovery(cryptoRandom, snap.level)} data-testid="dev-coll-new">FORCE NEW DISCOVERY</button>
         <button onclick={onOpenCollection} disabled={!ready} data-testid="dev-coll-view">VIEW COLLECTION</button>
       </div>
     </section>

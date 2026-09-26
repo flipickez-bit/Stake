@@ -110,7 +110,7 @@
       s.faults = { offline: false, playTimeoutAfterSend: false, endRoundTimeoutAfterSend: false, latencyMs: 120 };
       s.balance = 1000 * 1_000_000;
     });
-    const p = ctx.collection?.progress;
+    const p = ctx.collection?.progress ?? null;
     ctx.playtest.start(
       {
         width: window.innerWidth,
@@ -118,7 +118,7 @@
         portrait: window.innerHeight > window.innerWidth,
         touch: navigator.maxTouchPoints > 0,
       },
-      p ? { discovered: p.discovered, total: p.total } : null,
+      p,
     );
     await ctx.flow.start();
   }
@@ -142,7 +142,7 @@
     bookOpen = true;
     thumbs ??= new ThumbnailRenderer();
     ctx.collection.markOpened();
-    ctx.playtest.markCollectionOpened();
+    ctx.playtest.markCollectionOpened(snap.level);
   }
 
   /** SPECIAL EPISODE : aucune mise, aucun appel wallet ; exclu des données de playtest (comme l'aperçu BOSS FIGHT). */
@@ -150,7 +150,10 @@
     if (!ctx || snap?.state !== 'READY') return;
     bookOpen = false;
     gesture();
-    if (ctx.playtest.current) ctx.playtest.excludeNextDelay();
+    if (ctx.playtest.current) {
+      ctx.playtest.excludeNextDelay();
+      ctx.playtest.markEpisodePlayed();
+    }
     showcaseOn = true;
   }
 

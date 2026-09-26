@@ -8,7 +8,7 @@
   import { SECTION_LABEL } from '../../collection/catalog';
   import type { Collection } from '../../collection/Collection';
   import { COPY, RARITY_LABEL } from '../../collection/copy';
-  import { COSMETICS, MILESTONES, milestoneCounter, progress as computeProgress, unlockedCosmetics } from '../../collection/rewards';
+  import { COSMETICS, MELTDOWN_RULE, MILESTONES, NON_EQUIPABLE, meltdownProgress, milestoneCounter, progress as computeProgress, unlockedCosmetics } from '../../collection/rewards';
   import type { CardDef, CollectionState, CosmeticDef, SectionId } from '../../collection/types';
   import { hash32 } from '../../domain/seed';
   import type { ThumbnailRenderer } from '../../render/ThumbnailRenderer';
@@ -55,7 +55,8 @@
       .filter((c): c is CardDef => !!c)
       .filter((c) => filter === 'all' || (filter === 'found') === isFound(c.id));
   const tilt = (id: string) => `${(hash32(id) % 5) - 2}deg`;
-  const cosmetics = COSMETICS.filter((c) => c.slot !== 'episode');
+  const cosmetics = COSMETICS.filter((c) => !NON_EQUIPABLE.has(c.slot));
+  const meltdown = $derived(meltdownProgress(prog));
   const unlockedIds = $derived(new Set(unlockedCosmetics(cs).map((c) => c.id)));
   const episodeUnlocked = $derived(unlockedIds.has('episode.meltdown'));
   const milestoneFor = (c: CosmeticDef) => MILESTONES.find((m) => m.rewards.includes(c.id));
@@ -100,6 +101,7 @@
     <button class="close" onclick={onClose} aria-label="Close" data-testid="collection-close">✕</button>
     <h2 id="cb-title">{COPY.title}</h2>
     <p class="count" data-testid="collection-progress">{COPY.discovered(prog.discovered, prog.total)} · {COPY.toFind(prog.total - prog.discovered)}</p>
+    {#if unlockedIds.has('trophy.collector')}<p class="trophy" data-testid="collector-trophy">★ {COPY.collectorMark} ★</p>{/if}
   </header>
 
   <nav class="tabs" aria-label="Collection sections">
@@ -181,11 +183,17 @@
         <div class="episode" class:locked={!episodeUnlocked} data-testid="episode-card">
           <div class="ep-title">{COPY.episodeName}</div>
           <div class="ep-note">{COPY.showcaseNote}</div>
+          <ul class="ep-progress" data-testid="meltdown-progress">
+            {#each meltdown.bySection as c (c.section)}
+              <li class:done={c.done} data-testid="meltdown-{c.section}"><span>{SECTION_LABEL[c.section]}</span><b>{c.current} / {c.target}{c.done ? ' ✓' : ''}</b></li>
+            {/each}
+          </ul>
+          <div class="ep-total" data-testid="meltdown-total">{COPY.requiredDiscoveries(meltdown.current, meltdown.required)}</div>
+          <div class="ep-rule">{COPY.meltdownRule(MELTDOWN_RULE.n)}</div>
           {#if episodeUnlocked}
             <button class="play" disabled={!canPlayEpisode} onclick={onPlayEpisode} data-testid="episode-play">{COPY.episodePlay}</button>
           {:else}
-            {@const m = milestoneFor(COSMETICS.find((c) => c.id === 'episode.meltdown')!)}
-            <div class="ep-lock">{COPY.locked} · {m?.label} · {m ? `${milestoneCounter(m.rule, prog).current} / ${milestoneCounter(m.rule, prog).target}` : ''}</div>
+            <div class="ep-lock">{COPY.locked}</div>
           {/if}
         </div>
 
@@ -306,7 +314,13 @@
   .episode.locked { border-style: dashed; opacity: 0.8; }
   .ep-title { font-weight: 900; letter-spacing: 2px; font-size: 16px; }
   .ep-note { font-size: 11px; font-weight: 800; letter-spacing: 1px; opacity: 0.75; margin: 2px 0 8px; }
-  .ep-lock { font-size: 12px; font-weight: 700; }
+  .ep-lock { font-size: 12px; font-weight: 800; letter-spacing: 1px; margin-top: 6px; }
+  .ep-progress { list-style: none; margin: 0 auto 6px; padding: 0; max-width: 260px; display: flex; flex-direction: column; gap: 3px; }
+  .ep-progress li { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; padding: 3px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.06); }
+  .ep-progress li.done { color: var(--accent); }
+  .ep-total { font-size: 12px; font-weight: 800; margin-top: 2px; }
+  .ep-rule { font-size: 10.5px; opacity: 0.7; margin: 2px 0 8px; }
+  .trophy { display: inline-block; margin: 6px 0 0; padding: 3px 12px; border-radius: 999px; border: 2px solid var(--ink); background: var(--card); font-size: 11px; font-weight: 900; letter-spacing: 1.5px; }
   .play { height: 42px; padding: 0 18px; border-radius: 12px; border: 2px solid var(--ink); background: var(--accent); color: #fff; font-weight: 900; letter-spacing: 1px; cursor: pointer; }
   .play:disabled { opacity: 0.4; }
   .cosmetics li { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; align-items: center; padding: 7px 9px; border-radius: 10px; background: rgba(255, 255, 255, 0.35); opacity: 0.55; }

@@ -5,6 +5,8 @@
  * (copier / fichier) est un geste volontaire. Toute collecte future auprès de vrais joueurs devra être
  * traitée à part (information, consentement), hors périmètre de ce mode.
  */
+import { meltdownProgress } from '../collection/rewards';
+import type { Progress, SectionId } from '../collection/types';
 import type { RageLevelId, ResultClass, Speed } from '../domain/types';
 import type { RoundRecord } from '../flow/GameFlow';
 import type { KeyValueStore } from '../platform/storage';
@@ -70,6 +72,16 @@ export interface PlaytestRound {
   discovered?: boolean;
 }
 
+/** Progression vers OFFICE MELTDOWN (compteurs plafonnés à 8 par Rage Level). */
+export interface MeltdownSnapshot {
+  grumpy: number;
+  furious: number;
+  unhinged: number;
+  current: number;
+  required: number;
+  unlocked: boolean;
+}
+
 /** Mesures locales du COLLECTION BOOK pendant la session (absent si la collection est désactivée). */
 export interface PlaytestCollectionStats {
   /** Progression au début de la session et à la fin de la 50e manche. */
@@ -79,7 +91,29 @@ export interface PlaytestCollectionStats {
   discoveries: number;
   /** Ouvertures de l'album pendant les 50 manches. */
   opens: number;
+  // Champs ajoutés pour le PLAYTEST #2 (absents des sessions antérieures).
+  /** Nouvelles cartes par section de l'album. */
+  discoveriesBySection?: Record<SectionId, number>;
+  /** Manches déjà terminées lors de la 1re ouverture de l'album (0 = avant la 1re manche) ; null = jamais ouvert. */
+  firstOpenAfterRound?: number | null;
+  /** Chaque ouverture : manches déjà terminées et Rage Level sélectionné à ce moment. */
+  openLog?: { afterRound: number; level: RageLevelId }[];
+  meltdownAtStart?: MeltdownSnapshot;
+  meltdownAtEnd?: MeltdownSnapshot;
+  /** Déblocage NATUREL d'OFFICE MELTDOWN pendant la session (jamais forcé, jamais ouvert automatiquement). */
+  meltdownUnlock?: {
+    roundUnlocked: number;
+    rageCountsAtUnlock: Record<RageLevelId, number>;
+    collectionCountAtUnlock: number;
+  } | null;
+  /** OFFICE MELTDOWN lancé par le joueur (choix libre) pendant les 50 manches. */
+  episodePlays?: number;
 }
+
+const meltdownSnapshot = (p: Progress): MeltdownSnapshot => {
+  const m = meltdownProgress(p);
+  return { grumpy: m.grumpy, furious: m.furious, unhinged: m.unhinged, current: m.current, required: m.required, unlocked: m.unlocked };
+};
 
 export interface PlaytestAnswers {
   /** Notes 1 à 5, dans l'ordre de PLAYTEST_QUESTIONS ; null = « pas rencontré » (seulement si autorisé). */
@@ -159,7 +193,7 @@ export class PlaytestRecorder {
     return () => this.listeners.delete(fn);
   }
 
-  start(device: PlaytestSession['device'], collection: { discovered: number; total: number } | null = null): void {
+  start(device: PlaytestSession['device'], collection: Progress | null = null): void {
     const session: PlaytestSession = {
       id: `PT-${this.now().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}`,
       contentVersion: this.contentVersion,
@@ -172,7 +206,23 @@ export class PlaytestRecorder {
       answers: null,
       questionnaireSkipped: false,
       extraRounds: 0,
-      ...(collection ? { collection: { atStart: { ...collection }, atEnd: { ...collection }, discoveries: 0, opens: 0 } } : {}),
+      ...(collection
+        ? {
+            collection: {
+              atStart: { discovered: collection.discovered, total: collection.total },
+              atEnd: { discovered: collection.discovered, total: collection.total },
+              discoveries: 0,
+              opens: 0,
+              discoveriesBySection: { grumpy: 0, furious: 0, unhinged: 0, bossfight: 0 },
+              firstOpenAfterRound: null,
+              openLog: [],
+              meltdownAtStart: meltdownSnapshot(collection),
+              meltdownAtEnd: meltdownSnapshot(collection),
+              meltdownUnlock: null,
+              episodePlays: 0,
+            },
+          }
+        : {}),
     };
     this.state = { ...this.state, current: session, trackingExtraFor: null, lastReadyAt: null, pendingDiscovery: false };
     this.save();
@@ -205,23 +255,69 @@ export class PlaytestRecorder {
     }
   }
 
-  /** COLLECTION BOOK : ouverture de l'album pendant les 50 manches. */
-  markCollectionOpened(): void {
-    const s = this.state.current;
-    if (s?.status === 'playing' && s.collection) {
-      this.state = { ...this.state, current: { ...s, collection: { ...s.collection, opens: s.collection.opens + 1 } } };
-      this.save();
-    }
-  }
-
-  /** COLLECTION BOOK : une manche jouée a atteint son reveal (la collection ne compte jamais les replays). */
-  onDiscovery(isNew: boolean, progress: { discovered: number; total: number }): void {
+  /** COLLECTION BOOK : ouverture de l'album pendant les 50 manches (avec le Rage Level sélectionné à ce moment). */
+  markCollectionOpened(level: RageLevelId): void {
     const s = this.state.current;
     if (s?.status !== 'playing' || !s.collection) return;
+    const c = s.collection;
+    const afterRound = s.rounds.length;
     this.state = {
       ...this.state,
-      pendingDiscovery: this.state.pendingDiscovery || isNew,
-      current: { ...s, collection: { ...s.collection, atEnd: { ...progress } } },
+      current: {
+        ...s,
+        collection: {
+          ...c,
+          opens: c.opens + 1,
+          firstOpenAfterRound: c.firstOpenAfterRound ?? afterRound,
+          openLog: [...(c.openLog ?? []), { afterRound, level }],
+        },
+      },
+    };
+    this.save();
+  }
+
+  /** OFFICE MELTDOWN lancé par le joueur pendant les 50 manches. */
+  markEpisodePlayed(): void {
+    const s = this.state.current;
+    if (s?.status !== 'playing' || !s.collection) return;
+    this.state = { ...this.state, current: { ...s, collection: { ...s.collection, episodePlays: (s.collection.episodePlays ?? 0) + 1 } } };
+    this.save();
+  }
+
+  /**
+   * COLLECTION BOOK : une manche jouée a atteint son reveal (la collection ne compte jamais les replays ni les outils DEV).
+   * Enregistre aussi, une seule fois, le déblocage naturel d'OFFICE MELTDOWN (8 / 8 / 8).
+   */
+  onDiscovery(e: { isNew: boolean; section: SectionId }, progress: Progress): void {
+    const s = this.state.current;
+    if (s?.status !== 'playing' || !s.collection) return;
+    const c = s.collection;
+    const melt = meltdownSnapshot(progress);
+    const by = c.discoveriesBySection ?? { grumpy: 0, furious: 0, unhinged: 0, bossfight: 0 };
+    const unlockNow = !c.meltdownUnlock && c.meltdownAtStart?.unlocked === false && melt.unlocked;
+    this.state = {
+      ...this.state,
+      pendingDiscovery: this.state.pendingDiscovery || e.isNew,
+      current: {
+        ...s,
+        collection: {
+          ...c,
+          atEnd: { discovered: progress.discovered, total: progress.total },
+          discoveriesBySection: e.isNew ? { ...by, [e.section]: by[e.section] + 1 } : by,
+          meltdownAtEnd: melt,
+          meltdownUnlock: unlockNow
+            ? {
+                roundUnlocked: s.rounds.length + 1,
+                rageCountsAtUnlock: {
+                  grumpy: progress.bySection.grumpy?.discovered ?? 0,
+                  furious: progress.bySection.furious?.discovered ?? 0,
+                  unhinged: progress.bySection.unhinged?.discovered ?? 0,
+                },
+                collectionCountAtUnlock: progress.discovered,
+              }
+            : (c.meltdownUnlock ?? null),
+        },
+      },
     };
     this.save();
   }
@@ -360,6 +456,8 @@ export interface PlaytestSummary {
   levelsUsed: RageLevelId[];
   /** COLLECTION BOOK (null si la collection était désactivée ou session antérieure). */
   collection: PlaytestCollectionStats | null;
+  /** Ouvertures de l'album suivies d'une manche, et combien de fois cette manche a changé de Rage Level. */
+  levelChangesAfterOpen: { opens: number; changed: number } | null;
   extraRounds: number;
 }
 
@@ -418,6 +516,15 @@ export function summarize(session: PlaytestSession): PlaytestSummary {
     distinctVariants: new Set(rounds.map((r) => r.variant ?? r.branch)).size,
     levelsUsed: (Object.keys(byLevel) as RageLevelId[]).filter((lv) => byLevel[lv] > 0),
     collection: session.collection ?? null,
+    levelChangesAfterOpen: session.collection?.openLog
+      ? session.collection.openLog.reduce(
+          (a, o) => {
+            const next = rounds[o.afterRound];
+            return next ? { opens: a.opens + 1, changed: a.changed + (next.level !== o.level ? 1 : 0) } : a;
+          },
+          { opens: 0, changed: 0 },
+        )
+      : null,
     extraRounds: session.extraRounds,
   };
 }

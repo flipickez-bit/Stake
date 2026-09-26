@@ -275,6 +275,15 @@ test('PLAYTEST 50 (LOCAL DEV ONLY): 50 uninterrupted rounds, questionnaire at th
   expect(session.collection.discoveries).toBe(session.collection.atEnd.discovered);
   expect(session.collection.discoveries).toBeGreaterThan(5);
   expect(session.rounds.filter((r: { discovered: boolean }) => r.discovered)).toHaveLength(session.collection.discoveries);
+  // Mesures du PLAYTEST #2 : par section, ouvertures, progression OFFICE MELTDOWN (jamais forcé).
+  const by = session.collection.discoveriesBySection;
+  expect(by.grumpy + by.furious + by.unhinged + by.bossfight).toBe(session.collection.discoveries);
+  expect(session.collection.firstOpenAfterRound).toBeNull();
+  expect(session.collection.openLog).toEqual([]);
+  expect(session.collection.meltdownAtStart).toMatchObject({ current: 0, required: 24, unlocked: false });
+  expect(session.collection.meltdownAtEnd.required).toBe(24);
+  expect(session.collection.episodePlays).toBe(0);
+  expect(exported.summaries[0].levelChangesAfterOpen).toEqual({ opens: 0, changed: 0 });
   expect(session.answers.memorable).toBe('Le pigeon qui salue.');
   expect(Object.keys(session.rounds[0])).toEqual(expect.arrayContaining(['n', 'level', 'gadget', 'outcome', 'multiplier', 'branch', 'animationMs', 'readyToBetMs', 'speed', 'skipped', 'bossFight', 'variant', 'newBranch']));
   expect(session.rounds.every((r: { speed: string }) => r.speed === 'super')).toBe(true);

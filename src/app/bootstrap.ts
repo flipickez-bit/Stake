@@ -78,10 +78,14 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
   const meta = metaFeaturesFor(params.rgs);
   let collection: Collection | null = null;
   if (meta.collection && !params.replay) {
-    collection = new Collection(new LocalCollectionStore(createBrowserStore()), buildCatalog());
-    await collection.init();
-    attachCollectionTracker(flow, collection);
-    collection.onDiscovery((e) => playtest.onDiscovery(e.isNew, e.progress));
+    const c = new Collection(new LocalCollectionStore(createBrowserStore()), buildCatalog());
+    await c.init();
+    attachCollectionTracker(flow, c);
+    // Mesures du PLAYTEST : seulement les manches jouées (jamais les outils DEV).
+    c.onDiscovery((e) => {
+      if (e.source !== 'dev') playtest.onDiscovery({ isNew: e.isNew, section: e.card.section }, c.progress);
+    });
+    collection = c;
   }
 
   // Boucle de rendu unique : le temps réel avance la séquence, puis Pixi dessine.
