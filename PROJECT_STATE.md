@@ -15,6 +15,7 @@ Question : **BAD BOSS est-il déjà satisfaisant à jouer avec des placeholders 
   - gags récurrents sans signification fixe (LE SIP peut finir en gain), doubles twists rares, ascenseur hors champ dans les 3 gadgets ;
   - rareté cosmétique COMMON → VERY_RARE qui ne choisit qu'entre des présentations compatibles avec le résultat (découvertes étalées jusqu'à ~200 manches et au-delà) ;
   - anti-répétition étudiée et **non implémentée** (elle casserait replay et reprise) ; variété sans état à la place ;
+  - vitesse générale conservée : durée moyenne des manches 0 % à +11 % selon le gadget par rapport à P05-A (modules longs resserrés, garde-fou ≤ +15 % en CI) ;
   - bouton **APERÇU BOSS FIGHT** (sans mise, sans donnée de playtest) ; question Q7 sur la nouveauté ; option « pas rencontré » pour Q5.
 - ⏳ **PLAYTEST #2** (vous) : objectif Q1 ≥ 4 / 5 et nouvelles animations encore remarquées après les manches 10, 25 et 50.
 - Autoplay : descendu dans les priorités (pas en Phase 0.5).
@@ -28,7 +29,7 @@ Jeu instantané pour **Stake Engine**. Le joueur se venge, façon cartoon slapst
 ## Phase 0 : état
 **Terminée.** Le prototype prouve l'architecture : boucle complète, coupures réseau et reprise, DEV PANEL, déterminisme.
 - Recette détaillée : **[PHASE_0_ACCEPTANCE.md](PHASE_0_ACCEPTANCE.md)** (PASS / FAIL / NOT TESTED). Aucun critère en FAIL. NOT TESTED : appareils réels, RGS Stake réel, jugement humain du « fun », vraie session PLAYTEST 50.
-- Tests (à la fin de la 0.5B) : **65 unitaires/intégration** (Vitest, dont l'audit de variété) + **14 e2e** (Playwright, Chromium, dont un PLAYTEST 50 complet et l'aperçu BOSS FIGHT) : tous verts.
+- Tests (à la fin de la 0.5B) : **66 unitaires/intégration** (Vitest, dont l'audit de variété et le garde-fou de vitesse) + **14 e2e** (Playwright, Chromium, dont un PLAYTEST 50 complet et l'aperçu BOSS FIGHT) : tous verts.
 - LOOP ×100 (sans mise) : 100/100, 0 erreur, 0 appel wallet (`docs/generated/LOOP_X100.md`).
 - Build : 719 Ko bruts au total, **≈ 196 Ko gzip** au chargement initial (`docs/generated/BUILD_SIZE.md`). Aucun asset binaire.
 - **Préversion jouable** (privée) : https://claude.ai/artifact/2oG78eNrGNuwiL9aL2SWkA (fichier unique `npm run build:single`, Mock RGS, aucun argent réel).
@@ -85,6 +86,7 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 - **Performance réelle inconnue** : seules des mesures headless (rendu logiciel SwiftShader, ≈ 9-15 FPS non représentatifs ; coût CPU de notre code ≈ 1 ms/image).
 - Portrait : corrigé en Phase 0.5 ; à valider sur de vrais téléphones (encoches, barres système, audio).
 - Variété P05-B non encore validée par un humain (PLAYTEST #2). Les gags de gros gain RARE ne se voient qu'après des centaines de manches : utiliser le DEV PANEL (branche forcée) pour les revoir.
+- SLINGSHOT : manches en moyenne +0,4 s (+11 %) par rapport à P05-A, tout avant la révélation ; à surveiller avec Q4 au PLAYTEST #2.
 - Répétition immédiate d'une même branche encore possible (≈ 17 % perte → perte, 20-26 % gain → gain) : pas d'anti-répétition, par choix (déterminisme du replay).
 - Chaque nouvelle branche est un placeholder : la lisibilité de certains gags (chaise qui revient, fumée, ascenseur) sera à revoir avec les vrais assets.
 - Sons placeholders synthétisés ; ambiance minimale ; déverrouillage audio non vérifié sur iOS.
@@ -104,7 +106,7 @@ npm install                     # une fois
 npm run dev                     # développement : http://localhost:5173  (?dev=1 ouvre le DEV PANEL)
 npm run build && npm run preview   # build statique : http://localhost:4173
 npm run build:single            # un seul fichier : dist-single/index.html (s'ouvre aussi en double-cliquant)
-npm test                        # Vitest : 65 tests
+npm test                        # Vitest : 66 tests
 npm run test:e2e                # Playwright : 14 tests (Chromium)
 npm run check                   # svelte-check
 npm run size                    # taille du build (après build)

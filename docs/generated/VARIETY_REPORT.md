@@ -1,10 +1,23 @@
 # Variété et prévisibilité — BAD BOSS (variété V2)
 
-> Généré par `VARIETY_REPORT=docs/generated/VARIETY_REPORT.md npx vitest run tests/unit/variety.test.ts` le 2026-09-25. Ne pas éditer.
+> Généré par `VARIETY_REPORT=docs/generated/VARIETY_REPORT.md npx vitest run tests/unit/variety.test.ts` le 2026-09-26. Ne pas éditer.
 > Calcul exact depuis le contenu, les poids de rareté cosmétique, la distribution des scripts du book (config/presentation_policy.json)
 > et la distribution mathématique du Rage Level (hors BOSS FIGHT). La rareté ne modifie jamais les maths : elle choisit parmi des branches compatibles.
 
 Poids de rareté : COMMON 100 · UNCOMMON 40 · RARE 12 · VERY_RARE 3.
+
+## Durée moyenne d'une manche (hors BOSS FIGHT)
+
+Manches tirées par le mock mathématique (graine fixe). Référence : contenu P05-A (12 branches). Limite testée : P05-A × 1.15.
+
+| Gadget | Vitesse | Reveal moyen | Fin moyenne | P05-A (fin) | Écart |
+|---|---|---:|---:|---:|---:|
+| SWIVEL SLINGSHOT | normal | 2.57 s | 3.93 s | 3.53 s | +11 % |
+| SWIVEL SLINGSHOT | turbo | 1.43 s | 2.35 s | 2.13 s | +10 % |
+| TRAPDOOR EXPRESS | normal | 2.90 s | 4.09 s | 4.10 s | 0 % |
+| TRAPDOOR EXPRESS | turbo | 1.61 s | 2.37 s | 2.37 s | 0 % |
+| OFFICE ROCKET | normal | 3.15 s | 4.50 s | 4.26 s | +6 % |
+| OFFICE ROCKET | turbo | 1.75 s | 2.55 s | 2.39 s | +7 % |
 
 ## SWIVEL SLINGSHOT (grumpy) — 17 branches
 

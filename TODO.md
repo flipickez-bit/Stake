@@ -14,6 +14,7 @@
   - [x] gags récurrents (LE SIP peut finir en gain), doubles twists rares, ascenseur hors champ, pertes en réaction en chaîne ;
   - [x] rareté cosmétique COMMON / UNCOMMON / RARE / VERY_RARE (présentation seulement) ;
   - [x] anti-répétition : étudiée, non implémentée (menace replay / reprise) → variété sans état ;
+  - [x] vitesse générale conservée : modules longs resserrés, durée moyenne ≤ P05-A × 1,15 en CI (SLINGSHOT +11 %, TRAPDOOR 0 %, ROCKET +6 %) ;
   - [x] bouton APERÇU BOSS FIGHT (PLAYTEST / DEV, sans mise, sans donnée de playtest) ;
   - [x] Q7 « nouveauté » + « pas rencontré » pour Q5 ; nouveauté mesurée par manche et dans le rapport.
 - [ ] **PLAYTEST #2 humain** (vous, contenu P05-B) : 50 manches, 7 questions, export. Cible : Q1 ≥ 4 / 5 ; nouvelles animations encore remarquées après les manches 10, 25 et 50.

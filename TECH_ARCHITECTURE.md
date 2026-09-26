@@ -613,5 +613,7 @@ Rien de cette sélection ne lit l'historique, l'horloge ou le stockage : **même
 
 **Audit de prévisibilité** (`tests/unit/variety.test.ts`, en CI) : pour chaque gadget et chaque préfixe de `path` (hors BOSS FIGHT), il faut au moins une issue gagnante et une perdante, et un rapport de vraisemblance P(préfixe | gain) / P(préfixe | perte) dans [0,5 ; 2], calculé à partir de la distribution mathématique réelle des classes (`distributionTable`) et des poids de script (`config/presentation_policy.json`) ; fin → reveal ≤ 800 ms (1 300 ms pour RARE / VERY_RARE). Rapport : `VARIETY_REPORT=docs/generated/VARIETY_REPORT.md npx vitest run tests/unit/variety.test.ts`.
 
+**Vitesse générale.** `paced(k, segment)` (`dsl.ts`) resserre un segment de contenu (durée, instants des cues, tweens, secousses, silences ; les hit stops restent en temps réel). Il est appliqué aux modules les plus longs pour que la durée moyenne d'une manche reste proche de P05-A ; `variety.test.ts` la borne à P05-A × 1,15 (normal et turbo).
+
 **Traçabilité.** `PresentationInfo.variant` = `branche[/réaction][/COO]` ; `RoundRecord.variant` et les champs `variant`, `newBranch`, `newVariant` du PLAYTEST permettent de mesurer la découverte réelle. `CONTENT_VERSION` (`gadgets/index.ts`) compte les branches (`P05-B · 51 branches`) et accompagne chaque export de playtest.
 

@@ -116,7 +116,7 @@ Le « tell » de la fusée (un rallumage annonçait toujours un gain) est corrig
 ## 6. PHASE 0.5B — variété V2 (contenu P05-B)
 
 ### 6.1 Ce qui ne change pas
-Rage Levels, maths (RTP, distributions, 1/150), vitesse générale et durées des segments existants, GameFlow, architecture, cadrage. Les 12 autres gadgets ne sont pas commencés.
+Rage Levels, maths (RTP, distributions, 1/150), GameFlow, architecture, cadrage ; tronc neutre, impacts et réactions (segments partagés) inchangés. **Vitesse générale** : mesurée et bornée en CI (§6.9). Les 12 autres gadgets ne sont pas commencés.
 
 ### 6.2 Structure : SETUPS × TWISTS × FINS
 Chaque branche est composée de **modules visibles partagés** (`compose(id, label, modules, fin, …)` dans `src/content/dsl.ts`) ; `BranchDef.path` retient la suite des modules visibles avant la fin.
@@ -163,6 +163,17 @@ Solution retenue à la place, sans aucun état :
 ### 6.8 APERÇU BOSS FIGHT (PLAYTEST / DEV uniquement)
 Fréquence du BOSS FIGHT inchangée (1/150). Bouton **APERÇU BOSS FIGHT** dans l'écran d'accueil du PLAYTEST, l'écran de résultats et le DEV PANEL : joue un BOSS FIGHT complet en **replay local** (échelle et palier tirés localement, identifiant `BF-PREVIEW-…`) **sans mise, sans appel wallet, sans solde modifié** et **sans aucune donnée de playtest** : la manche n'est pas enregistrée et le délai READY → mise suivant est exclu. Vérifié en e2e.
 
-### 6.9 Validation (P05-B)
-- Tests unitaires : 65 (dont l'audit de prévisibilité `variety.test.ts`, qui échoue si un préfixe devient trop révélateur). e2e : 14 (PLAYTEST 50 avec Q7 et « pas rencontré », aperçu BOSS FIGHT sans appel wallet).
+### 6.9 Vitesse générale
+Les twists ajoutent des temps forts avant la révélation. Première version de P05-B : manches **+10 % à +24 %** plus longues en moyenne (le SLINGSHOT surtout, à cause de la chaîne BACKFIRE › PHEW › SIP › mug vide). Correction : les modules les plus longs sont **resserrés** (`paced(k, segment)` dans `dsl.ts`, k = 0,6 à 0,85 : SIP, mug vide, attente d'ascenseur, PHEW, calage, fumée, toit…), sans toucher au tronc, aux impacts ni aux réactions.
+
+| Durée moyenne d'une manche (hors BOSS FIGHT) | P05-A | P05-B avant resserrage | P05-B |
+|---|---:|---:|---:|
+| SLINGSHOT normal / turbo | 3,53 / 2,13 s | 4,38 / 2,61 s | 3,93 / 2,35 s (**+11 % / +10 %**) |
+| TRAPDOOR normal / turbo | 4,10 / 2,37 s | 4,51 / 2,60 s | 4,09 / 2,37 s (**0 %**) |
+| ROCKET normal / turbo | 4,26 / 2,39 s | 4,94 / 2,79 s | 4,50 / 2,55 s (**+6 % / +7 %**) |
+
+Le supplément restant se place **avant** la révélation (le suspense), la partie après la révélation est un peu plus courte qu'en P05-A. Garde-fou en CI : durée moyenne ≤ P05-A × 1,15 par gadget, en normal et en turbo (`variety.test.ts`, tableau dans `VARIETY_REPORT.md`). Le PLAYTEST #2 (Q4) dira si les +0,4 s du SLINGSHOT se sentent ; sinon, le levier suivant est de resserrer encore la chaîne du mug.
+
+### 6.10 Validation (P05-B)
+- Tests unitaires : 66 (dont `variety.test.ts` : audit de prévisibilité, qui échoue si un préfixe devient trop révélateur, et garde-fou de vitesse). e2e : 14 (PLAYTEST 50 avec Q7 et « pas rencontré », aperçu BOSS FIGHT sans appel wallet).
 - Chaque branche : un seul reveal, anims du manifeste, tronc neutre identique, d1 commun, sélection reproductible (même graine → même variante, y compris en replay).
