@@ -12,6 +12,7 @@
 | 10 DISCOVERED | 12 | 17 |
 | 25 DISCOVERED | 52 | 70 |
 | 50 % | 57 | 77 |
+| OFFICE MELTDOWN (≥ 8 dans GRUMPY, FURIOUS, UNHINGED) | 63 | 95 |
 | 100 % GRUMPY | 6730 | 21929 |
 | 100 % FURIOUS | 2983 | 9372 |
 | 100 % UNHINGED | 4496 | 11303 |
@@ -24,7 +25,7 @@
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Cartes découvertes (espérance, sur 51) | 8.4 | 16.5 | 24.1 | 30.8 | 35.7 | 40.6 | 44.0 |
 
-## Alternatives pour OFFICE MELTDOWN (voir COLLECTION_BOOK.md §E.3)
+## Règles étudiées pour OFFICE MELTDOWN (retenue : ≥ 8 dans chaque Rage Level, COLLECTION_BOOK.md §E.3)
 
 | Règle | Manches (médiane) | Manches (90 %) |
 |---|---:|---:|

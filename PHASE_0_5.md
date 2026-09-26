@@ -40,6 +40,7 @@ Conclusion : le rythme et les Rage Levels fonctionnent ; **le suspense s'use par
 3. Jouer **50 manches** librement : Rage Levels, mise, vitesse, skip. **Aucune question pendant la partie.**
 4. Après la 50e manche : **8 affirmations** notées de 1 à 5 et **deux champs facultatifs**, puis **Copier les résultats** (ou **Enregistrer le fichier**) et me transmettre le texte ou le fichier.
    - Pendant la session, le bouton **📖 COLLECTION** (barre du haut) peut être ouvert librement entre deux manches ; rien n'y oblige.
+   - Si OFFICE MELTDOWN se débloque (8 / 8 / 8), le badge l'indique ; l'épisode ne s'ouvre jamais tout seul, le lancer ou non est un choix libre.
 5. Rien n'oblige à continuer ensuite. Si le testeur relance d'elle-même ou de lui-même des manches, elles sont comptées (« manches après la 50e »), sans aucune incitation à l'écran.
 
 Conception volontairement neutre : pas de récompense, pas de score du questionnaire, pas de message qui cherche une bonne note ; « Passer » est toujours possible.
@@ -208,8 +209,9 @@ Garanties testées :
 - **Album** (bouton discret `📖 x/51`) : onglets par Rage Level + BOSS FIGHT + REWARDS, sections par gadget avec progression, filtres ALL / FOUND / MISSING, fiche de carte (rareté, gadget, Rage Level, description, « Seen N× »).
   - Légende : la rareté est une rareté **d'animation** (à résultat égal), sans lien avec les résultats ni les chances.
   - Textes : des faits uniquement ; liste de formulations interdites vérifiée en CI (ALMOST, ONE MORE, JACKPOT, SOON, DUE, LUCK, BONUS…).
-- **Jalons** 5 / 10 / 25 / 50 % / 100 % par Rage Level / 100 % BOSS FIGHT / 100 % MVP. Récompenses **cosmétiques** uniquement, portées automatiquement et désactivables : mug, cravate, canard sur le bureau, sonnerie deux tons, élastique, trappe, fusée, thèmes d'album. Rendu seul ; aucune n'imite un signal de résultat ; absentes des replays.
-- **SPECIAL EPISODE « OFFICE MELTDOWN »** (débloqué à 100 % MVP, comme demandé) : 5 tableaux rythmés par `NEXT GAG ▶`, tous les running gags.
+- **Jalons** 5 / 10 / 25 / 50 % / OFFICE MELTDOWN / 100 % par Rage Level / 100 % BOSS FIGHT / 100 % MVP. Récompenses **cosmétiques** uniquement, portées automatiquement et désactivables : mug, cravate, canard sur le bureau, sonnerie deux tons, élastique, trappe, fusée, thèmes d'album. Rendu seul ; aucune n'imite un signal de résultat ; absentes des replays.
+- **SPECIAL EPISODE « OFFICE MELTDOWN »**, débloqué par **≥ 8 découvertes dans GRUMPY, FURIOUS ET UNHINGED** (cartes BOSS FIGHT non requises ; décision §7.4). 5 tableaux rythmés par `NEXT GAG ▶`, tous les running gags ; jamais ouvert automatiquement.
+- **100 % MVP** : accomplissement de collectionneur, extrêmement rare. Il donne le COLLECTOR'S TROPHY (marque sur la couverture de l'album) et le thème exclusif HALL OF SHAME. Aucune valeur, aucun avantage, aucune facilité ajoutée.
   - SHOWCASE · NO BET · NO PAYOUT : aucun appel wallet (vérifié en e2e), aucun chiffre ni HUD à l'écran.
   - Le mot « bonus » n'apparaît pas dans l'interface.
 - **Stockage** : interface `CollectionStore`, `LocalCollectionStore` (`badboss.collection.v1`, chargement tolérant). Considéré comme **non sécurisé** : aucune valeur n'en dépend.
@@ -218,22 +220,39 @@ Garanties testées :
 
 ### 7.3 Chiffres clés (jeu réparti sur les 3 modes)
 
-| Découvertes | 5 | 10 | 25 | 50 % | 100 % MVP |
-|---|---:|---:|---:|---:|---:|
-| Manches (médiane) | 5 | 12 | 52 | 57 | **≈ 9 800** |
+| Jalon | 5 | 10 | 25 | 50 % | OFFICE MELTDOWN (8 / 8 / 8) | 100 % MVP |
+|---|---:|---:|---:|---:|---:|---:|
+| Manches (médiane) | 5 | 12 | 52 | 57 | **63** | ≈ 9 800 |
 
 Un joueur d'un seul mode plafonne à 16-18 cartes sur 51 : l'album montre ce qui manque ailleurs, sans toucher aux probabilités.
 
-### 7.4 Décision à prendre (avant tout test avec de vrais joueurs)
-Le 100 % dépend de gags de gros gain présentés rarement (≈ 9 800 manches en médiane). Le compléter revient surtout à miser beaucoup.
+### 7.4 Décision (2026-09-26, validée avant le PLAYTEST #2)
+- **OFFICE MELTDOWN** : ≥ 8 découvertes dans GRUMPY **et** ≥ 8 dans FURIOUS **et** ≥ 8 dans UNHINGED ; cartes BOSS FIGHT non requises.
+  - Il récompense l'exploration des trois Rage Levels, pas des milliers de mises ni l'attente de branches liées à des résultats extrêmement rares.
+  - Environ 63 manches en médiane (90 % : 95).
+  - REWARDS montre la progression factuelle (`GRUMPY 6 / 8`, `FURIOUS 8 / 8 ✓`, `UNHINGED 3 / 8`, `17 / 24 required discoveries`), sans aucune formule de proximité.
+- **100 %** reste présent : trophée et thème d'album. Rien n'a été fait pour le rendre plus facile.
+- **Aucune fréquence de branche n'a été modifiée.**
 
-**Recommandation** : garder 100 % comme badge de prestige, et débloquer OFFICE MELTDOWN à un jalon d'exploration :
-- « ≥ 8 découvertes dans chaque Rage Level » : 63 manches en médiane ;
-- ou « 30 découvertes » : 86 manches, impossible avec un seul mode.
+### 7.5 PLAYTEST #2 : contenu figé (P05-C)
+**Freeze du contenu** : plus aucune animation, gadget, récompense, mécanique ni modification mathématique avant l'analyse du PLAYTEST #2. Les 8 questions sont conservées. Comparaisons visées : Q1 (P05-A : 2,5 / 5 ; objectif P05-C ≥ 4 / 5), Q7 et Q8.
 
-Le changement tient en une ligne (`MILESTONES` dans `src/collection/rewards.ts`).
+Mesures locales ajoutées pour la session (export, rapport `tools/playtest-report.mjs`) :
 
-### 7.5 Validation
-- Tests unitaires : 85, dont `collection.test.ts` (catalogue, indices, textes interdits, observation, jalons, stockage corrompu, outils DEV, frontière d'imports, déterminisme avec GameFlow, épisode).
-- e2e : 18, dont `collection.spec.ts` (découverte en jeu, doublon, replay sans effet, reprise, album, debug 49/51 → 51/51, épisode sans appel wallet, replay par URL sans collection), et PLAYTEST 50 avec Q8 et souhait.
+| Mesure | Champ |
+|---|---|
+| Découvertes totales, et par GRUMPY / FURIOUS / UNHINGED / BOSS FIGHT | `collection.discoveries`, `collection.discoveriesBySection` |
+| Ouvertures de COLLECTION ; manche de la 1re ouverture | `collection.opens`, `collection.firstOpenAfterRound` |
+| Changement de Rage Level après consultation | `collection.openLog` → `summaries[].levelChangesAfterOpen` |
+| Branches uniques à 10 / 25 / 50 manches | `summaries[].distinctBranchesAt` |
+| Manches volontaires après la 50e | `extraRounds` |
+| Progression OFFICE MELTDOWN au début et à la fin | `collection.meltdownAtStart`, `collection.meltdownAtEnd` |
+| Déblocage naturel pendant la session | `collection.meltdownUnlock` = { `roundUnlocked`, `rageCountsAtUnlock`, `collectionCountAtUnlock` } |
+| Épisode lancé par le joueur (choix libre) | `collection.episodePlays` |
+
+OFFICE MELTDOWN n'est jamais forcé ni ouvert automatiquement pendant le PLAYTEST. Les découvertes provoquées par les outils DEV ne sont pas comptées dans les mesures (et l'ouverture du DEV PANEL reste signalée).
+
+### 7.6 Validation
+- Tests unitaires : 89, dont `collection.test.ts` (catalogue, indices, textes interdits, observation, jalons, règle 8 / 8 / 8 sans BOSS FIGHT, jalon enregistré au chargement, stockage corrompu, outils DEV, frontière d'imports, déterminisme avec GameFlow, épisode) et `playtest.test.ts` (mesures de collection, déblocage naturel enregistré une seule fois).
+- e2e : 18, dont `collection.spec.ts` (découverte en jeu, doublon, replay sans effet, reprise, album, 7 / 8 / 8 → 8 / 8 / 8 → épisode sans appel wallet, 100 % → trophée, replay par URL sans collection), et PLAYTEST 50 avec Q8, souhait et nouvelles mesures.
 

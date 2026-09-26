@@ -23,10 +23,11 @@
   - [x] observateur branché sur GameFlow sans le modifier ; replays sans effet ; reprise idempotente ;
   - [x] album (onglets par Rage Level + BOSS FIGHT + REWARDS, vignettes générées, silhouettes), badge NEW neutre et non bloquant ;
   - [x] jalons + cosmétiques (rendu seul) ; SPECIAL EPISODE « OFFICE MELTDOWN » (sans mise, sans payout, sans chiffre) ;
+  - [x] **décision validée** : OFFICE MELTDOWN à ≥ 8 découvertes dans chaque Rage Level (BOSS FIGHT non requis, ≈ 63 manches) ; 100 % = trophée + thème d'album ; aucune fréquence modifiée ;
   - [x] `CollectionStore` / `LocalCollectionStore` ; désactivée en mode Stake ; COLLECTION DEBUG (Mock) ;
-  - [x] PLAYTEST : Q8, souhait de récompense, découvertes, ouvertures, progression, Rage Levels utilisés.
-- [ ] **Décision (vous)** : règle de déblocage d'OFFICE MELTDOWN — 100 % MVP (demandé, ≈ 9 800 manches en médiane) ou jalon d'exploration (≥ 8 par Rage Level ≈ 63 manches ; 30 cartes ≈ 86). Voir `PHASE_0_5.md` §7.4.
-- [ ] **PLAYTEST #2 humain** (vous, contenu P05-C) : 50 manches, 8 questions + 2 champs libres, export. Cible : Q1 ≥ 4 / 5 ; nouvelles animations encore remarquées après les manches 10, 25 et 50 ; premier avis sur la collection (Q8).
+  - [x] PLAYTEST : Q8, souhait de récompense, découvertes (total et par Rage Level), ouvertures (1re, changement de mode après consultation), progression et déblocage naturel d'OFFICE MELTDOWN, épisode lancé, Rage Levels utilisés.
+- [x] **FREEZE du contenu P05-C** : aucune animation, gadget, récompense, mécanique ni modification mathématique avant l'analyse du PLAYTEST #2.
+- [ ] **PLAYTEST #2 humain** (vous, contenu P05-C) : 50 manches, 8 questions + 2 champs libres, export. Comparer Q1 (P05-A 2,5 → objectif ≥ 4 / 5), Q7, Q8 ; mesures de collection (`PHASE_0_5.md` §7.5).
 - [ ] Sessions supplémentaires si d'autres testeurs sont disponibles.
 - [ ] Rapport de Phase 0.5 (`tools/playtest-report.mjs`, P05-A vs P05-C), puis arrêt.
 

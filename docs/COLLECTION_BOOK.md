@@ -162,7 +162,15 @@ Onglet REWARDS :
 │ · 100 % FURIOUS      8 / 14    TRAPDOOR: ARCTIC BLUE
 │ · 100 % UNHINGED     5 / 16    ROCKET: RETRO RED
 │ · 100 % BOSS FIGHT   1 / 6     ALBUM: ARCADE NIGHT
-│ · 100 % MVP         23 / 51    SPECIAL EPISODE: OFFICE MELTDOWN
+│ · OFFICE MELTDOWN   17 / 24    SPECIAL EPISODE: OFFICE MELTDOWN
+│ · 100 % MVP         23 / 51    COLLECTOR'S TROPHY + ALBUM: HALL OF SHAME
+│
+│ SPECIAL EPISODE · OFFICE MELTDOWN
+│   GRUMPY    6 / 8
+│   FURIOUS   8 / 8 ✓
+│   UNHINGED  3 / 8
+│   17 / 24 required discoveries
+│   (8 discoveries in each Rage Level · BOSS FIGHT cards not required)
 ```
 (des faits : un compteur, jamais « presque ».)
 
@@ -283,15 +291,16 @@ Service `Collection` : état en mémoire, persistance différée par le store, `
 
 | Jalon | Condition | Récompense (cosmétique uniquement) | Manches pour l'atteindre (médiane, jeu réparti) |
 |---|---|---|---:|
-| 5 DISCOVERED | 5 cartes | **MUG: WORLD'S OKAYEST BOSS** (mug de B.B. turquoise) | ≈ 5 |
+| 5 DISCOVERED | 5 cartes | **MUG: WORLD'S OKAYEST BOSS** (mug de B.B. blanc à bande rouge ; jamais doré ni turquoise) | ≈ 5 |
 | 10 DISCOVERED | 10 cartes | **TIE: POLKA PANIC** (cravate rose) | ≈ 12 |
 | 25 DISCOVERED | 25 cartes | **DESK: RUBBER DUCK** (canard sur le bureau du joueur) | ≈ 52 |
 | 50 % | 26 / 51 | **DING: DING-DONG DELUXE** (sonnerie à deux tons) | ≈ 57 |
+| **OFFICE MELTDOWN** | **≥ 8 dans GRUMPY ET ≥ 8 dans FURIOUS ET ≥ 8 dans UNHINGED** (cartes BOSS FIGHT non requises) | **SPECIAL EPISODE: OFFICE MELTDOWN** | **≈ 63** (90 % : 95) |
 | 100 % GRUMPY | 15 / 15 | **SLINGSHOT: CANDY ELASTIC** | ≈ 6 700 |
 | 100 % FURIOUS | 14 / 14 | **TRAPDOOR: ARCTIC BLUE** | ≈ 3 000 |
 | 100 % UNHINGED | 16 / 16 | **ROCKET: RETRO RED** | ≈ 4 500 |
 | 100 % BOSS FIGHT | 6 / 6 | **ALBUM: ARCADE NIGHT** (thème de l'album) | ≈ 2 600 |
-| 100 % MVP | 51 / 51 | **SPECIAL EPISODE: OFFICE MELTDOWN** + **ALBUM: HALL OF SHAME** | ≈ 9 800 |
+| 100 % MVP | 51 / 51 | **COLLECTOR'S TROPHY** (marque sur la couverture de l'album) + **ALBUM: HALL OF SHAME** (variante exclusive) | ≈ 9 800 |
 
 Règles des récompenses :
 - **cosmétiques uniquement** : pas de free spin, pas de crédit, pas de bonus de mise, pas de multiplicateur, pas de changement de RTP ;
@@ -312,15 +321,16 @@ Pourquoi : les dernières cartes sont des gags de **gros gain** présentés rare
 
 C'est cohérent avec la règle « la collection ne change jamais les probabilités » : on ne peut pas raccourcir la fin sans toucher à la fréquence des branches, ce qui est interdit.
 
-**Recommandation** (décision produit, à trancher avant tout test avec de vrais joueurs) : garder 100 % comme simple **badge de prestige**, et débloquer OFFICE MELTDOWN à un jalon d'**exploration** atteignable en jouant normalement.
+**Décision (2026-09-26, avant le PLAYTEST #2)** : OFFICE MELTDOWN récompense l'**exploration des trois Rage Levels**, pas des milliers de mises ni l'attente de branches liées à des résultats extrêmement rares. Le 100 % reste un **accomplissement de collectionneur**, purement cosmétique : trophée sur l'album et thème exclusif. Il n'a aucune valeur financière, aucun free spin, aucun multiplicateur, aucun changement de RTP ni aucun avantage sur les manches futures. Aucune fréquence de branche n'a été modifiée, ni pour faciliter l'un, ni pour faciliter l'autre.
 
-| Règle alternative | Médiane | 90e centile | Effet |
+| Règles étudiées | Médiane | 90e centile | Effet |
 |---|---:|---:|---|
 | ≥ 5 découvertes dans chaque Rage Level | 28 | 41 | pousse à essayer les 3 modes |
-| ≥ 8 découvertes dans chaque Rage Level | 63 | 95 | idem, un peu plus long |
+| **≥ 8 découvertes dans chaque Rage Level (RETENUE)** | **63** | **95** | idem, sur une session prolongée |
 | 30 découvertes au total | 86 | 119 | impossible avec un seul mode (18 cartes max) |
+| 100 % MVP (règle initiale, abandonnée) | 9 844 | 22 880 | surtout du volume de mises |
 
-Le prototype implémente la règle demandée (**100 % MVP**) ; changer de règle tient en une ligne (`MELTDOWN_RULE`). Le DEV PANEL (`SET 49/51`, `FORCE NEW DISCOVERY`, `UNLOCK ALL`) permet de tester le déblocage sans jouer 10 000 manches.
+Implémentation : `MELTDOWN_RULE` (règle `perSection`, `src/collection/rewards.ts`). Dans REWARDS, la progression est factuelle : `GRUMPY 6 / 8`, `FURIOUS 8 / 8 ✓`, `UNHINGED 3 / 8`, `17 / 24 required discoveries` (compteurs plafonnés à 8 par Rage Level). Le déblocage est annoncé dans le badge ; l'épisode n'est **jamais ouvert automatiquement**. Pour le tester : DEV PANEL `SET 7/8/8` puis `FORCE NEW DISCOVERY` (carte manquante du Rage Level courant en priorité).
 
 ---
 
@@ -329,6 +339,8 @@ Le prototype implémente la règle demandée (**100 % MVP**) ; changer de règle
 **Nom retenu** : « SPECIAL EPISODE: OFFICE MELTDOWN ».
 - Le mot **BONUS est évité dans l'interface** : dans un jeu d'argent, il évoque des gains, des free spins ou du crédit.
 - « REVENGE DAY » reste un nom possible pour la famille d'épisodes.
+
+**Déblocage** : ≥ 8 découvertes dans chacun des trois Rage Levels (cartes BOSS FIGHT non requises), ≈ 63 manches en médiane en jeu réparti. Jamais ouvert automatiquement : le joueur décide.
 
 **Nature** : SHOWCASE / ENTERTAINMENT ONLY.
 - Aucune mise, aucun appel au RGS ni au wallet, aucun payout.
