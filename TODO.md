@@ -17,9 +17,18 @@
   - [x] vitesse générale conservée : modules longs resserrés, durée moyenne ≤ P05-A × 1,15 en CI (SLINGSHOT +11 %, TRAPDOOR 0 %, ROCKET +6 %) ;
   - [x] bouton APERÇU BOSS FIGHT (PLAYTEST / DEV, sans mise, sans donnée de playtest) ;
   - [x] Q7 « nouveauté » + « pas rencontré » pour Q5 ; nouveauté mesurée par manche et dans le rapport.
-- [ ] **PLAYTEST #2 humain** (vous, contenu P05-B) : 50 manches, 7 questions, export. Cible : Q1 ≥ 4 / 5 ; nouvelles animations encore remarquées après les manches 10, 25 et 50.
+- [x] **Phase 0.5C — COLLECTION BOOK** (`docs/COLLECTION_BOOK.md`, `PHASE_0_5.md` §7) :
+  - [x] conception (étapes A-F) : système, UX mobile, modèle TS, impacts (GameFlow, replay, reprise, books, Stake, stockage, tests), jalons, épisode ;
+  - [x] 51 cartes (pertes comprises), noms, descriptions, indices par setup (sans information sur l'issue) ;
+  - [x] observateur branché sur GameFlow sans le modifier ; replays sans effet ; reprise idempotente ;
+  - [x] album (onglets par Rage Level + BOSS FIGHT + REWARDS, vignettes générées, silhouettes), badge NEW neutre et non bloquant ;
+  - [x] jalons + cosmétiques (rendu seul) ; SPECIAL EPISODE « OFFICE MELTDOWN » (sans mise, sans payout, sans chiffre) ;
+  - [x] `CollectionStore` / `LocalCollectionStore` ; désactivée en mode Stake ; COLLECTION DEBUG (Mock) ;
+  - [x] PLAYTEST : Q8, souhait de récompense, découvertes, ouvertures, progression, Rage Levels utilisés.
+- [ ] **Décision (vous)** : règle de déblocage d'OFFICE MELTDOWN — 100 % MVP (demandé, ≈ 9 800 manches en médiane) ou jalon d'exploration (≥ 8 par Rage Level ≈ 63 manches ; 30 cartes ≈ 86). Voir `PHASE_0_5.md` §7.4.
+- [ ] **PLAYTEST #2 humain** (vous, contenu P05-C) : 50 manches, 8 questions + 2 champs libres, export. Cible : Q1 ≥ 4 / 5 ; nouvelles animations encore remarquées après les manches 10, 25 et 50 ; premier avis sur la collection (Q8).
 - [ ] Sessions supplémentaires si d'autres testeurs sont disponibles.
-- [ ] Rapport de Phase 0.5 (`tools/playtest-report.mjs`, P05-A vs P05-B), puis arrêt.
+- [ ] Rapport de Phase 0.5 (`tools/playtest-report.mjs`, P05-A vs P05-C), puis arrêt.
 
 ## P0 : décisions et informations externes
 - [ ] Obtenir de Stake Engine (liste complète : `docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 et hypothèses H1-H13 du §12) :
@@ -30,7 +39,8 @@
   - [ ] `minimumRoundDuration` (unité, point de départ, portée) et `disabledSlamstop` (portée) — **bloquant avant production** ;
   - [ ] contrat de `/bet/event` (aucune dépendance BAD BOSS en attendant) et `meta` ;
   - [ ] plage de RTP, acceptation de 3 modes à coût 1,0, volume de books attendu ;
-  - [ ] limites d'upload front (taille, polices, CSP), guidelines de contenu.
+  - [ ] limites d'upload front (taille, polices, CSP), guidelines de contenu ;
+  - [ ] **méta-progression** (COLLECTION BOOK) : acceptée ? par juridiction ? stockage joueur persistant ? badge NEW après une perte ? récompenses monétaires un jour (non prévues) ? — §11, Q17-20.
 - [ ] Commercial : licence Spine Editor (seulement si Spine est retenu : `CharacterAnimator` laisse le choix). Juridique : **clearance du nom BAD BOSS**.
 - [ ] Décision **D-GADGET** (identité du gadget reconstructible depuis la manche) avant le 4e gadget. Recommandation : option A (tirage par la graine du book).
 

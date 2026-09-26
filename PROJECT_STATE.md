@@ -2,7 +2,7 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-_Dernière mise à jour : 2026-09-25, **Phase 0.5B terminée** (variété d'animations V2). PLAYTEST #1 fait. **En attente du PLAYTEST #2 humain.** La Phase 1 n'est PAS commencée. Aucun asset définitif._
+_Dernière mise à jour : 2026-09-26, **Phase 0.5C terminée** (COLLECTION BOOK, après la variété V2 de la 0.5B). PLAYTEST #1 fait. **En attente du PLAYTEST #2 humain.** La Phase 1 n'est PAS commencée. Aucun asset définitif._
 
 ## Phase 0.5 : état (`PHASE_0_5.md`)
 Question : **BAD BOSS est-il déjà satisfaisant à jouer avec des placeholders ?**
@@ -17,7 +17,14 @@ Question : **BAD BOSS est-il déjà satisfaisant à jouer avec des placeholders 
   - anti-répétition étudiée et **non implémentée** (elle casserait replay et reprise) ; variété sans état à la place ;
   - vitesse générale conservée : durée moyenne des manches 0 % à +11 % selon le gadget par rapport à P05-A (modules longs resserrés, garde-fou ≤ +15 % en CI) ;
   - bouton **APERÇU BOSS FIGHT** (sans mise, sans donnée de playtest) ; question Q7 sur la nouveauté ; option « pas rencontré » pour Q5.
-- ⏳ **PLAYTEST #2** (vous) : objectif Q1 ≥ 4 / 5 et nouvelles animations encore remarquées après les manches 10, 25 et 50.
+- ✅ **Phase 0.5C — COLLECTION BOOK** (`docs/COLLECTION_BOOK.md`, `PHASE_0_5.md` §7) :
+  - 51 cartes, une par animation, pertes comprises ; progression par Rage Level + BOSS FIGHT ; badge NEW discret et neutre ;
+  - la collection **observe** les manches jouées / reprises, n'influence jamais une branche ; **les replays ne débloquent rien** (tests d'architecture et e2e) ;
+  - jalons 5 / 10 / 25 / 50 % / 100 % avec récompenses **cosmétiques uniquement** ; SPECIAL EPISODE « OFFICE MELTDOWN » sans mise ni payout (100 % MVP) ;
+  - stockage local derrière `CollectionStore` (non sécurisé, aucune valeur n'en dépend) ; **désactivée en mode Stake** tant que non confirmée ;
+  - DEV PANEL : COLLECTION DEBUG ; PLAYTEST : Q8, souhait de récompense, découvertes, ouvertures ;
+  - **décision attendue** : règle de déblocage d'OFFICE MELTDOWN (100 % ≈ 9 800 manches en médiane, voir §7.4).
+- ⏳ **PLAYTEST #2** (vous, contenu P05-C) : objectif Q1 ≥ 4 / 5, nouvelles animations encore remarquées après les manches 10, 25 et 50, et premier retour sur la collection (Q8).
 - Autoplay : descendu dans les priorités (pas en Phase 0.5).
 
 ## Résumé
@@ -29,7 +36,7 @@ Jeu instantané pour **Stake Engine**. Le joueur se venge, façon cartoon slapst
 ## Phase 0 : état
 **Terminée.** Le prototype prouve l'architecture : boucle complète, coupures réseau et reprise, DEV PANEL, déterminisme.
 - Recette détaillée : **[PHASE_0_ACCEPTANCE.md](PHASE_0_ACCEPTANCE.md)** (PASS / FAIL / NOT TESTED). Aucun critère en FAIL. NOT TESTED : appareils réels, RGS Stake réel, jugement humain du « fun », vraie session PLAYTEST 50.
-- Tests (à la fin de la 0.5B) : **66 unitaires/intégration** (Vitest, dont l'audit de variété et le garde-fou de vitesse) + **14 e2e** (Playwright, Chromium, dont un PLAYTEST 50 complet et l'aperçu BOSS FIGHT) : tous verts.
+- Tests (à la fin de la 0.5C) : **85 unitaires/intégration** (Vitest, dont l'audit de variété, le garde-fou de vitesse et la collection) + **18 e2e** (Playwright, Chromium, dont un PLAYTEST 50 complet, l'aperçu BOSS FIGHT et la collection) : tous verts.
 - LOOP ×100 (sans mise) : 100/100, 0 erreur, 0 appel wallet (`docs/generated/LOOP_X100.md`).
 - Build : 719 Ko bruts au total, **≈ 196 Ko gzip** au chargement initial (`docs/generated/BUILD_SIZE.md`). Aucun asset binaire.
 - **Préversion jouable** (privée) : https://claude.ai/artifact/2oG78eNrGNuwiL9aL2SWkA (fichier unique `npm run build:single`, Mock RGS, aucun argent réel).
@@ -51,7 +58,8 @@ src/domain                  modèle pur (Rage Levels, classes, book, Outcome, gr
 src/platform/rgs            RgsPort · mock/ (RGS simulé persistant, pannes) · stake/ (adaptateur du SDK)
 src/flow                    GameFlow (machine à états), FeatureGate, délais
 src/presentation            moteur : compileSequence (pur), timeline, SequencePlayer, particules, CharacterAnimator
-src/content                 données : bureau, bibliothèques partagées, modules (dsl), 3 gadgets (51 branches)
+src/content                 données : bureau, bibliothèques partagées, modules (dsl), 3 gadgets (51 branches), cartes, épisode
+src/collection              COLLECTION BOOK : catalogue, jalons, stockage, service, observateur (n'est importé par aucun module du jeu)
 src/presenter · src/render  pont GameFlow ↔ séquenceur · scène Pixi et placeholders
 src/audio · src/dev · src/app   sons synthétisés · outils dev (boucle, perf, playtest) · UI Svelte + DEV PANEL
 tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports générés) · math/
@@ -75,7 +83,7 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 ## Systèmes terminés
 - Conception : étapes 1 à 12 (GDD, analyse Stake, architecture, roadmap). Calculateur mathématique v3. Contrôleur du catalogue (152 branches).
 - **Phase 0** : GameFlow complet ; Mock RGS persistant avec pannes ; adaptateur Stake ; séquenceur déterministe ; scène placeholder (bureau, B.B., mug, Wendell, COO, 3 cartes) ; 12 branches + BOSS FIGHT ; sons synthétisés ; HUD mobile ; DEV PANEL (forçages, simulations, debug, boucle ×20/×100, PLAYTEST 50) ; replay par URL ; CI.
-- **Phase 0.5** : PLAYTEST 50 v2 et rapport ; cadrage portrait ; LOOP x500 ; variété V2 (51 branches modulaires, rareté cosmétique, ascenseur, accessoires de bureau : écran, ventilateur, plante, extincteur, chaise volante, fumée) ; audit de prévisibilité ; APERÇU BOSS FIGHT.
+- **Phase 0.5** : PLAYTEST 50 v2 et rapport ; cadrage portrait ; LOOP x500 ; variété V2 (51 branches modulaires, rareté cosmétique, ascenseur, accessoires de bureau : écran, ventilateur, plante, extincteur, chaise volante, fumée) ; audit de prévisibilité ; APERÇU BOSS FIGHT ; COLLECTION BOOK (album, vignettes générées, jalons, cosmétiques, OFFICE MELTDOWN, debug).
 
 ## Systèmes non commencés
 - Phase 1 (voir `MVP_ROADMAP.md` §8) et suivantes : tests sur téléphones réels, passe de game feel, archétypes de perte supplémentaires, autoplay, écran de règles.
@@ -87,6 +95,7 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 - Portrait : corrigé en Phase 0.5 ; à valider sur de vrais téléphones (encoches, barres système, audio).
 - Variété P05-B non encore validée par un humain (PLAYTEST #2). Les gags de gros gain RARE ne se voient qu'après des centaines de manches : utiliser le DEV PANEL (branche forcée) pour les revoir.
 - SLINGSHOT : manches en moyenne +0,4 s (+11 %) par rapport à P05-A, tout avant la révélation ; à surveiller avec Q4 au PLAYTEST #2.
+- COLLECTION BOOK : stockage local modifiable par le joueur (sans conséquence : rien n'a de valeur) ; perdu si le navigateur efface ses données ; pas de synchronisation entre appareils. Fin de collection très longue (100 % ≈ 9 800 manches en médiane). Vignettes de quelques cartes « dans la fumée » peu lisibles (révélation dans le brouillard).
 - Répétition immédiate d'une même branche encore possible (≈ 17 % perte → perte, 20-26 % gain → gain) : pas d'anti-répétition, par choix (déterminisme du replay).
 - Chaque nouvelle branche est un placeholder : la lisibilité de certains gags (chaise qui revient, fumée, ascenseur) sera à revoir avec les vrais assets.
 - Sons placeholders synthétisés ; ambiance minimale ; déverrouillage audio non vérifié sur iOS.
@@ -95,10 +104,10 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 - Préversion claude.ai : pas de paramètres d'URL (utiliser le bouton **DEV**), pas de replay par URL ; l'enregistrement de fichier passe par la confirmation du viewer (capacité `downloads`) ; le solde fictif et les sessions de playtest sont propres à chaque navigateur.
 
 ## Questions ouvertes (INFORMATION STAKE ENGINE REQUISE)
-`docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 (16 questions) et §12 (13 hypothèses portées par le code, chacune isolée à un seul endroit).
+`docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 (20 questions, dont 4 sur la méta-progression) et §12 (13 hypothèses portées par le code, chacune isolée à un seul endroit).
 
 ## Prochaine tâche
-**Attendre le PLAYTEST #2** (vos résultats exportés, contenu P05-B). Ensuite : rapport de Phase 0.5 comparant P05-A et P05-B, puis arrêt. Pas de Phase 1 automatique.
+**Attendre le PLAYTEST #2** (vos résultats exportés, contenu P05-C) et votre décision sur la règle de déblocage d'OFFICE MELTDOWN. Ensuite : rapport de Phase 0.5 comparant P05-A et P05-C, puis arrêt. Pas de Phase 1 automatique.
 
 ## Commandes
 ```bash
@@ -106,14 +115,15 @@ npm install                     # une fois
 npm run dev                     # développement : http://localhost:5173  (?dev=1 ouvre le DEV PANEL)
 npm run build && npm run preview   # build statique : http://localhost:4173
 npm run build:single            # un seul fichier : dist-single/index.html (s'ouvre aussi en double-cliquant)
-npm test                        # Vitest : 66 tests
-npm run test:e2e                # Playwright : 14 tests (Chromium)
+npm test                        # Vitest : 85 tests
+npm run test:e2e                # Playwright : 18 tests (Chromium)
 npm run check                   # svelte-check
 npm run size                    # taille du build (après build)
 npm run loop:bench -- --count 100 --speed turbo --markdown docs/generated/LOOP_X100.md
 npm run loop:500                # LOOP x500 + mémoire tous les 50 rounds (≈ 20 min, pas en CI)
 node tools/playtest-report.mjs exports/*.json --markdown docs/generated/PLAYTEST_REPORT.md
 VARIETY_REPORT=docs/generated/VARIETY_REPORT.md npx vitest run tests/unit/variety.test.ts   # rapport de variété
+COLLECTION_REPORT=docs/generated/COLLECTION_REPORT.md npx vitest run tests/unit/collection.test.ts   # temps de découverte
 node tools/capture-portrait.mjs --dist dist --prefix after   # captures portrait
 node tools/capture-screens.mjs  # captures → docs/phase0/screens
 python3 math/model/bad_boss_math.py --quick

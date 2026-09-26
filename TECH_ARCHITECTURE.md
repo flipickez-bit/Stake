@@ -617,3 +617,21 @@ Rien de cette sélection ne lit l'historique, l'horloge ou le stockage : **même
 
 **Traçabilité.** `PresentationInfo.variant` = `branche[/réaction][/COO]` ; `RoundRecord.variant` et les champs `variant`, `newBranch`, `newVariant` du PLAYTEST permettent de mesurer la découverte réelle. `CONTENT_VERSION` (`gadgets/index.ts`) compte les branches (`P05-B · 51 branches`) et accompagne chaque export de playtest.
 
+
+## 3.7 COLLECTION BOOK (Phase 0.5C) : un observateur, jamais une entrée
+
+Conception complète : `docs/COLLECTION_BOOK.md`.
+
+**Sens des dépendances.** `collection` → `content`, `domain`, `flow` (types), `platform/storage` ; `app` et `render` consomment la collection. **Aucun** module de `domain`, `flow`, `presentation`, `content`, `presenter` ni `platform` n'importe `src/collection` (test en CI). `compileSequence` ne peut donc pas lire la collection : même book → même branche, même séquence.
+
+**Branchement.** `attachCollectionTracker(flow, collection)` s'abonne aux snapshots publics de GameFlow (aucune modification du flux). Il observe une manche seulement si `state === 'REVEAL'` et `round.source ∈ {play, resume}`. Un replay (URL, DEV, LOOP, aperçu BOSS FIGHT) reste en `REPLAYING` et n'est jamais observé. Le service dédoublonne par `roundId` (`recentRoundIds`, persistant) : une reprise après le reveal ne compte pas deux fois. En replay par URL, la collection n'est même pas créée.
+
+**Persistance.** `CollectionStore` (asynchrone) ← `LocalCollectionStore` (`localStorage`, clé `badboss.collection.v1`, repli mémoire) ; `sanitizeCollection` rend tout chargement tolérant. Un `ServerCollectionStore` enverrait des `roundId` : le serveur recalculerait la branche depuis le book, puisque la sélection est une fonction pure.
+
+**Activation.** `metaFeaturesFor(platform)` (`featureGate.ts`) : collection active en Mock, **désactivée en mode Stake** tant que non confirmée ; option `newBadgeOnLoss`.
+
+**Rendu.**
+- Vignettes : `ThumbnailRenderer`, une seconde scène Pixi hors écran (`PixiStage.init(host, { offscreen: true })`). On compile la branche avec une manche synthétique compatible, puis on évalue l'image clé (le reveal, ou l'entrée du BOSS FIGHT), cadrée sur l'action. Rien de ce rendu ne passe par GameFlow.
+- Cosmétiques : `CosmeticLook` → `PixiStage.setCosmetics` (mug, cravate, fusée via `BossAnimator.setLook` ; canard, élastique, teinte de la trappe) et `AudioDirector.setDingVariant`. Aucun cue ni aucune durée ; le mug doré du BOSS FIGHT n'est jamais modifié.
+
+**Épisode.** `compileShowcase(id, stage, segments)` réutilise le placement pur de `compileSequence`, sans book, sans sélection et sans signal de manche (seul `end`). `Presenter.playShowcase(stage, seq)` le joue depuis READY, hors GameFlow ; l'App masque HUD, résultat, échelle et badge, et revient au repos (`toIdle`).

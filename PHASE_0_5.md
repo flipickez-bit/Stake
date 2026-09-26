@@ -11,13 +11,14 @@ Architecture générale · Svelte 5 + PixiJS 8 + TypeScript · `RgsPort` · Mock
 
 | # | Critère | État |
 |---|---|---|
-| 1 | Au moins un PLAYTEST 50 humain terminé | ✅ **PLAYTEST #1** (1 session, contenu P05-A) · ⏳ **PLAYTEST #2** (contenu P05-B) |
+| 1 | Au moins un PLAYTEST 50 humain terminé | ✅ **PLAYTEST #1** (1 session, contenu P05-A) · ⏳ **PLAYTEST #2** (contenu P05-C = variété P05-B + COLLECTION BOOK) |
 | 2 | Plusieurs sessions si possible | ⏳ En attente (chaque testeur exporte sa session) |
 | 3 | Questionnaire final | ✅ 7 affirmations 1-5 (Q7 ajoutée en 0.5B) + champ libre, à la fin uniquement |
 | 4 | Deuxième branche LOSS par gadget | ✅ BACKFIRE, TEASE, WENDELL CEILING, **et bien au-delà** : variété V2 (§6) |
 | 5 | Cadrage portrait amélioré | ✅ `docs/phase05/portrait/compare-*.jpg` (avant / après) |
 | 6 | LOOP x500 analysé | ✅ `docs/generated/LOOP_X500.md` (voir §4) |
-| 7 | Aucun nouveau problème critique de GameFlow | ✅ GameFlow inchangé en 0.5B ; tests unitaires et e2e verts ; à reconfirmer au PLAYTEST #2 |
+| 7 | Aucun nouveau problème critique de GameFlow | ✅ GameFlow inchangé en 0.5B et 0.5C ; tests unitaires et e2e verts ; à reconfirmer au PLAYTEST #2 |
+| 8 | COLLECTION BOOK (0.5C, demandé après la 0.5B) | ✅ Conception (`docs/COLLECTION_BOOK.md`) + V1 dans le prototype (§7) ; mesurée au PLAYTEST #2 (Q8, souhait, ouvertures, découvertes) |
 
 ## 0. PLAYTEST #1 (contenu P05-A, 12 branches) : ce qu'on a appris
 
@@ -30,14 +31,15 @@ Architecture générale · Svelte 5 + PixiJS 8 + TypeScript · `RgsPort` · Mock
 | Q5 Les gros résultats semblent spéciaux | Non évaluable | Aucun gros gain vu pendant la session |
 | Q6 (commentaire) | « Après ~50 manches, j'ai envie de beaucoup plus d'animations NOUVELLES » | Besoin de découverte à long terme |
 
-Conclusion : le rythme et les Rage Levels fonctionnent ; **le suspense s'use parce que le contenu est trop petit et trop lisible**. Réponse de la Phase 0.5B : variété modulaire + imprévisibilité mesurée (§6). Objectif du PLAYTEST #2 : **Q1 ≥ 4 / 5**, et de nouvelles animations encore remarquées après les manches 10, 25 et 50 (Q7 + colonnes de nouveauté du rapport).
+Conclusion : le rythme et les Rage Levels fonctionnent ; **le suspense s'use parce que le contenu est trop petit et trop lisible**. Réponse de la Phase 0.5B : variété modulaire + imprévisibilité mesurée (§6). Objectif du PLAYTEST #2 : **Q1 ≥ 4 / 5**, et de nouvelles animations encore remarquées après les manches 10, 25 et 50 (Q7 + colonnes de nouveauté du rapport). Depuis la 0.5C, il mesure aussi le COLLECTION BOOK (Q8, souhait de récompense, découvertes, ouvertures de l'album).
 
 ## 1. Protocole PLAYTEST 50 (pour chaque testeur)
 
 1. Ouvrir la préversion (de préférence **sur téléphone**, son activé). Ne pas ouvrir le DEV PANEL.
 2. Toucher **PLAYTEST** en haut, puis **Commencer** (le solde fictif revient à $1,000.00, aucun résultat n'est forcé).
 3. Jouer **50 manches** librement : Rage Levels, mise, vitesse, skip. **Aucune question pendant la partie.**
-4. Après la 50e manche : **7 affirmations** notées de 1 à 5 et un champ facultatif, puis **Copier les résultats** (ou **Enregistrer le fichier**) et me transmettre le texte ou le fichier.
+4. Après la 50e manche : **8 affirmations** notées de 1 à 5 et **deux champs facultatifs**, puis **Copier les résultats** (ou **Enregistrer le fichier**) et me transmettre le texte ou le fichier.
+   - Pendant la session, le bouton **📖 COLLECTION** (barre du haut) peut être ouvert librement entre deux manches ; rien n'y oblige.
 5. Rien n'oblige à continuer ensuite. Si le testeur relance d'elle-même ou de lui-même des manches, elles sont comptées (« manches après la 50e »), sans aucune incitation à l'écran.
 
 Conception volontairement neutre : pas de récompense, pas de score du questionnaire, pas de message qui cherche une bonne note ; « Passer » est toujours possible.
@@ -57,6 +59,8 @@ Stockées **uniquement** dans le `localStorage` du navigateur du testeur (`badbo
 | `speed`, `skipped` | normal / turbo / super, et usage du skip |
 | `bossFight` | BOSS FIGHT déclenché ou non |
 | `variant`, `newBranch`, `newVariant` | variante cosmétique complète (branche / réaction / caméo de COO), et si la branche ou la variante apparaît pour la première fois dans la session |
+| `discovered` | COLLECTION BOOK : cette manche a ajouté une carte (badge NEW) |
+| (session) `collection` | progression au début et à la fin de la 50e manche, nouvelles animations découvertes, ouvertures de l'album |
 | (session) | version du contenu, taille d'écran, tactile, DEV PANEL ouvert pendant la session, réponses, manches après la 50e |
 
 Questionnaire (1 = pas du tout d'accord, 5 = tout à fait d'accord) :
@@ -67,12 +71,13 @@ Questionnaire (1 = pas du tout d'accord, 5 = tout à fait d'accord) :
 5. Les gros résultats semblaient réellement spéciaux.
 6. J'aurais volontairement lancé une 51e manche.
 7. À la fin de la session, j'avais encore l'impression de découvrir de nouvelles animations. *(ajoutée en 0.5B)*
+8. Voir les animations manquantes dans la collection me donne envie de continuer à jouer. *(ajoutée en 0.5C)*
 
-Q5 propose aussi « Pas rencontré pendant la session » (aucun gros résultat vu) : la réponse est alors enregistrée `null`, jamais remplacée par une note inventée.
+Q5 propose aussi « Pas rencontré pendant la session » (aucun gros résultat vu) et Q8 « Je n'ai pas ouvert la collection » : la réponse est alors enregistrée `null`, jamais remplacée par une note inventée.
 
-Champ facultatif : « Quel moment t'a le plus marqué ? »
+Champs facultatifs : « Quel moment t'a le plus marqué ? » et « Quel élément voudrais-tu débloquer en complétant une collection ? » *(0.5C)*
 
-Agrégation : `node tools/playtest-report.mjs exports/*.json --markdown docs/generated/PLAYTEST_REPORT.md` (moyennes des 7 questions en ignorant les « pas rencontré », commentaires, métriques par Rage Level, hésitation selon le résultat précédent, usage de turbo / skip, BOSS FIGHT, manches après la 50e, **tableau par version de contenu** pour comparer P05-A et P05-B, et **nouveauté** : branches distinctes vues à 10 / 25 / 50 manches, nouvelles branches entre la 41e et la 50e).
+Agrégation : `node tools/playtest-report.mjs exports/*.json --markdown docs/generated/PLAYTEST_REPORT.md` (moyennes des 8 questions en ignorant les « pas rencontré » / « collection non ouverte », commentaires, métriques par Rage Level, hésitation selon le résultat précédent, usage de turbo / skip, BOSS FIGHT, manches après la 50e, **tableau par version de contenu** pour comparer P05-A et P05-C, souhaits de récompense, tableau COLLECTION BOOK (progression, découvertes, ouvertures, Rage Levels utilisés), et **nouveauté** : branches distinctes vues à 10 / 25 / 50 manches, nouvelles branches entre la 41e et la 50e).
 
 Un **APERÇU BOSS FIGHT** (sans mise, §6.7) joué pendant une session n'est pas enregistré, et le délai READY → mise de la manche suivante est exclu (`null`) pour ne pas fausser l'hésitation.
 
@@ -177,3 +182,58 @@ Le supplément restant se place **avant** la révélation (le suspense), la part
 ### 6.10 Validation (P05-B)
 - Tests unitaires : 66 (dont `variety.test.ts` : audit de prévisibilité, qui échoue si un préfixe devient trop révélateur, et garde-fou de vitesse). e2e : 14 (PLAYTEST 50 avec Q7 et « pas rencontré », aperçu BOSS FIGHT sans appel wallet).
 - Chaque branche : un seul reveal, anims du manifeste, tronc neutre identique, d1 commun, sélection reproductible (même graine → même variante, y compris en replay).
+
+## 7. PHASE 0.5C — COLLECTION BOOK (contenu P05-C = branches P05-B + collection)
+
+Conception complète, wireframes, modèle de données, impacts et analyse réglementaire : **`docs/COLLECTION_BOOK.md`**. Temps de découverte calculés : `docs/generated/COLLECTION_REPORT.md`.
+
+### 7.1 Principe vérifié
+**La collection OBSERVE, elle n'influence jamais.** La branche reste choisie par le système déterministe (book, script, classe, rareté) ; ensuite seulement, au reveal d'une manche **jouée ou reprise**, la carte est marquée découverte.
+
+Garanties testées :
+- aucun module du jeu (domaine, flux, moteur, contenu, presenter, RGS) n'importe la collection ;
+- même book → même séquence, que la collection soit absente, vide ou pleine ;
+- un replay (URL, DEV, LOOP, aperçu) ne débloque jamais rien (**REPLAY DOES NOT UNLOCK COLLECTION**) ;
+- une reprise après rechargement débloque une seule fois ;
+- GameFlow n'est pas modifié : l'observateur lit ses snapshots publics.
+
+### 7.2 Ce qui est dans le prototype
+- **51 cartes** (une par branche) : GRUMPY 15, FURIOUS 14, UNHINGED 16, BOSS FIGHT 6.
+  - Noms BAD BOSS : WENDELL CEILING, THE SIP, EMPTY MUG, PIGEON EXPRESS, BACKFIRE, HANG IN THERE, DING!, ROCKET REBOUND…
+  - Vignettes générées depuis le contenu (image clé cadrée sur l'action).
+  - Cartes manquantes : silhouette du gadget, « ??? », indice lié au **setup visible** seulement. Chaque setup mène à des pertes et à des gains, donc l'indice ne révèle ni l'issue ni la rareté.
+- **Pertes comprises** : un x0 peut afficher « NEW ANIMATION ».
+  - Badge « sticker » neutre, en bas à gauche, 350 ms après le résultat, ≈ 900 ms, sans son ni couleur de gain.
+  - Identique après une perte ou un gain ; même taille pour toutes les raretés ; ne bloque jamais FIRE.
+- **Album** (bouton discret `📖 x/51`) : onglets par Rage Level + BOSS FIGHT + REWARDS, sections par gadget avec progression, filtres ALL / FOUND / MISSING, fiche de carte (rareté, gadget, Rage Level, description, « Seen N× »).
+  - Légende : la rareté est une rareté **d'animation** (à résultat égal), sans lien avec les résultats ni les chances.
+  - Textes : des faits uniquement ; liste de formulations interdites vérifiée en CI (ALMOST, ONE MORE, JACKPOT, SOON, DUE, LUCK, BONUS…).
+- **Jalons** 5 / 10 / 25 / 50 % / 100 % par Rage Level / 100 % BOSS FIGHT / 100 % MVP. Récompenses **cosmétiques** uniquement, portées automatiquement et désactivables : mug, cravate, canard sur le bureau, sonnerie deux tons, élastique, trappe, fusée, thèmes d'album. Rendu seul ; aucune n'imite un signal de résultat ; absentes des replays.
+- **SPECIAL EPISODE « OFFICE MELTDOWN »** (débloqué à 100 % MVP, comme demandé) : 5 tableaux rythmés par `NEXT GAG ▶`, tous les running gags.
+  - SHOWCASE · NO BET · NO PAYOUT : aucun appel wallet (vérifié en e2e), aucun chiffre ni HUD à l'écran.
+  - Le mot « bonus » n'apparaît pas dans l'interface.
+- **Stockage** : interface `CollectionStore`, `LocalCollectionStore` (`badboss.collection.v1`, chargement tolérant). Considéré comme **non sécurisé** : aucune valeur n'en dépend.
+- **Activation** : prototype / Mock uniquement. **Désactivée en mode Stake** tant que la méta-progression n'est pas confirmée (INFORMATION STAKE ENGINE REQUISE, `docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11, Q17-20).
+- **DEV PANEL — COLLECTION DEBUG** (Mock uniquement) : RESET COLLECTION, UNLOCK ALL, UNLOCK RANDOM 10, SET 49/51, FORCE NEW DISCOVERY, VIEW COLLECTION.
+
+### 7.3 Chiffres clés (jeu réparti sur les 3 modes)
+
+| Découvertes | 5 | 10 | 25 | 50 % | 100 % MVP |
+|---|---:|---:|---:|---:|---:|
+| Manches (médiane) | 5 | 12 | 52 | 57 | **≈ 9 800** |
+
+Un joueur d'un seul mode plafonne à 16-18 cartes sur 51 : l'album montre ce qui manque ailleurs, sans toucher aux probabilités.
+
+### 7.4 Décision à prendre (avant tout test avec de vrais joueurs)
+Le 100 % dépend de gags de gros gain présentés rarement (≈ 9 800 manches en médiane). Le compléter revient surtout à miser beaucoup.
+
+**Recommandation** : garder 100 % comme badge de prestige, et débloquer OFFICE MELTDOWN à un jalon d'exploration :
+- « ≥ 8 découvertes dans chaque Rage Level » : 63 manches en médiane ;
+- ou « 30 découvertes » : 86 manches, impossible avec un seul mode.
+
+Le changement tient en une ligne (`MILESTONES` dans `src/collection/rewards.ts`).
+
+### 7.5 Validation
+- Tests unitaires : 85, dont `collection.test.ts` (catalogue, indices, textes interdits, observation, jalons, stockage corrompu, outils DEV, frontière d'imports, déterminisme avec GameFlow, épisode).
+- e2e : 18, dont `collection.spec.ts` (découverte en jeu, doublon, replay sans effet, reprise, album, debug 49/51 → 51/51, épisode sans appel wallet, replay par URL sans collection), et PLAYTEST 50 avec Q8 et souhait.
+

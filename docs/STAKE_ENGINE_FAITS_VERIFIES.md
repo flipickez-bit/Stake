@@ -171,6 +171,10 @@ Une fermeture de page ou une perte réseau pendant ACTION, TWIST, IMPACT, RESULT
 14. Limites de taille des fichiers front, polices, requêtes externes, CSP.
 15. Guidelines de contenu (violence cartoon) et processus d'approbation.
 16. Unité monétaire : confirmation de 1e6.
+17. **Méta-progression persistante** (COLLECTION BOOK, `docs/COLLECTION_BOOK.md`) : une collection d'animations qui persiste entre les sessions, avec des récompenses **cosmétiques** et un épisode sans mise, est-elle acceptée ? Par juridiction ? En mode `socialCasino` ? En attendant : **désactivée en mode Stake** (`metaFeaturesFor`).
+18. Existe-t-il un **stockage persistant par joueur** (côté Stake) ou un appel réseau autorisé hors RGS ? Sinon, la collection reste locale au navigateur (`localStorage`, éventuellement partitionné ou effacé dans l'iframe).
+19. Un badge « NEW » après une manche perdante (x0) est-il assimilable à une **célébration de perte** dans certaines juridictions ? (Option prévue : `newBadgeOnLoss = false`.)
+20. Une récompense **monétaire ou des free spins persistants** liés à la collection seraient-ils autorisés et supportés (books, RGS) ? Rien de tel n'est prévu tant que ce n'est pas confirmé.
 
 ## 12. Phase 0 : hypothèses encore portées par le code (non confirmées)
 
