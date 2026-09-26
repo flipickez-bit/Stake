@@ -19,6 +19,7 @@ export class AudioDirector implements AudioSink {
   private noise: AudioBuffer | null = null;
   private mutedFlag = false;
   private duckUntil = 0;
+  private dingVariant: 'default' | 'deluxe' = 'default';
   /** Nombre de sons joués (debug). */
   played = 0;
 
@@ -65,6 +66,11 @@ export class AudioDirector implements AudioSink {
     this.ambience.gain.setTargetAtTime(0.05, this.duckUntil, 0.15);
   }
 
+  /** Cosmétique (COLLECTION BOOK) : timbre de la sonnerie. Aucun effet sur la séquence. */
+  setDingVariant(variant: 'default' | 'deluxe'): void {
+    this.dingVariant = variant;
+  }
+
   play(sound: SoundId, pitch = 1): void {
     const ctx = this.ctx;
     const out = this.sfx;
@@ -73,7 +79,16 @@ export class AudioDirector implements AudioSink {
     const t = ctx.currentTime + 0.005;
     const p = pitch;
     switch (sound) {
-      case 'ding': this.tone(t, 'sine', 1318 * p, 1318 * p, 0.9, 0.35); this.tone(t, 'sine', 2637 * p, 2637 * p, 0.6, 0.12); break;
+      case 'ding':
+        if (this.dingVariant === 'deluxe') {
+          // Cosmétique « DING-DONG DELUXE » (COLLECTION BOOK) : même instant, même durée, deux tons.
+          this.tone(t, 'sine', 1318 * p, 1318 * p, 0.45, 0.32);
+          this.tone(t + 0.22, 'sine', 1046 * p, 1046 * p, 0.7, 0.3);
+        } else {
+          this.tone(t, 'sine', 1318 * p, 1318 * p, 0.9, 0.35);
+          this.tone(t, 'sine', 2637 * p, 2637 * p, 0.6, 0.12);
+        }
+        break;
       case 'elevator': this.tone(t, 'sine', 880 * p, 880 * p, 0.35, 0.15); break;
       case 'twang': this.tone(t, 'sawtooth', 140 * p, 70 * p, 0.45, 0.25, 900); break;
       case 'whoosh': this.noiseBurst(t, 0.3, 0.25, 'bandpass', 500 * p, 2400 * p); break;

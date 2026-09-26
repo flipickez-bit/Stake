@@ -40,8 +40,13 @@
         <tr><td>BOSS FIGHT</td><td>{summary.bossFights}</td></tr>
         <tr><td>Branches distinctes à 10 / 25 / 50</td><td>{summary.distinctBranchesAt['10']} / {summary.distinctBranchesAt['25']} / {summary.distinctBranchesAt['50']}</td></tr>
         <tr><td>Nouvelles branches (manches 41–50)</td><td>{summary.newBranchesLast10}</td></tr>
+        {#if summary.collection}
+          <tr><td>Collection (début → fin)</td><td data-testid="pt-collection">{summary.collection.atStart.discovered} → {summary.collection.atEnd.discovered} / {summary.collection.atEnd.total}</td></tr>
+          <tr><td>Nouvelles animations découvertes</td><td>{summary.collection.discoveries}</td></tr>
+          <tr><td>Ouvertures de la collection</td><td>{summary.collection.opens}</td></tr>
+        {/if}
         {#if session.answers}
-          {#each PLAYTEST_QUESTIONS as q, i (i)}<tr><td>Q{i + 1}</td><td>{session.answers.scores[i] === null ? 'pas rencontré' : `${session.answers.scores[i]} / 5`}</td></tr>{/each}
+          {#each PLAYTEST_QUESTIONS as q, i (i)}<tr><td>Q{i + 1}</td><td>{session.answers.scores[i] === null ? (i === 7 ? 'collection non ouverte' : 'pas rencontré') : `${session.answers.scores[i]} / 5`}</td></tr>{/each}
         {:else}
           <tr><td>Questionnaire</td><td>passé</td></tr>
         {/if}

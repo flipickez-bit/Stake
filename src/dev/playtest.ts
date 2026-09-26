@@ -1,7 +1,7 @@
 /**
  * PLAYTEST 50 — LOCAL DEV ONLY.
  * Enregistre localement (localStorage de CE navigateur) des sessions de 50 manches jouées avec le Mock RGS,
- * puis un questionnaire de 6 questions À LA FIN uniquement. Rien n'est envoyé nulle part : l'export
+ * puis un questionnaire (8 affirmations + 2 champs libres) À LA FIN uniquement. Rien n'est envoyé nulle part : l'export
  * (copier / fichier) est un geste volontaire. Toute collecte future auprès de vrais joueurs devra être
  * traitée à part (information, consentement), hors périmètre de ce mode.
  */
@@ -21,10 +21,19 @@ export const PLAYTEST_QUESTIONS = [
   'Les gros résultats semblaient réellement spéciaux.',
   "J'aurais volontairement lancé une 51e manche.",
   "À la fin de la session, avais-tu encore l'impression de découvrir de nouvelles animations ?",
+  'Voir les animations manquantes dans la collection te donne-t-il envie de continuer à jouer ?',
 ] as const;
-/** Questions qui acceptent « pas rencontré » (Q5 : on ne peut pas juger un gros gain qu'on n'a pas vu). */
-export const PLAYTEST_NA_ALLOWED: readonly number[] = [4];
+/**
+ * Questions qui acceptent une absence de réponse, avec son libellé :
+ * Q5 (on ne juge pas un gros gain qu'on n'a pas vu), Q8 (on ne juge pas un album qu'on n'a pas ouvert).
+ */
+export const PLAYTEST_NA_LABEL: Readonly<Record<number, string>> = {
+  4: 'Pas rencontré pendant la session',
+  7: "Je n'ai pas ouvert la collection",
+};
+export const PLAYTEST_NA_ALLOWED: readonly number[] = Object.keys(PLAYTEST_NA_LABEL).map(Number);
 export const PLAYTEST_FREE_QUESTION = 'Quel moment t\'a le plus marqué ?';
+export const PLAYTEST_WISH_QUESTION = 'Quel élément voudrais-tu débloquer en complétant une collection ?';
 
 export type PlaytestOutcome = 'LOSS' | 'SCRAPE' | 'WIN' | 'BIG WIN' | 'BOSS FIGHT';
 
@@ -57,12 +66,27 @@ export interface PlaytestRound {
   newBranch?: boolean;
   /** Première fois que cette présentation exacte apparaît dans la session. */
   newVariant?: boolean;
+  /** COLLECTION BOOK : cette manche a ajouté une carte (badge NEW). Absent avant la Phase 0.5C. */
+  discovered?: boolean;
+}
+
+/** Mesures locales du COLLECTION BOOK pendant la session (absent si la collection est désactivée). */
+export interface PlaytestCollectionStats {
+  /** Progression au début de la session et à la fin de la 50e manche. */
+  atStart: { discovered: number; total: number };
+  atEnd: { discovered: number; total: number };
+  /** Nouvelles cartes découvertes pendant les 50 manches. */
+  discoveries: number;
+  /** Ouvertures de l'album pendant les 50 manches. */
+  opens: number;
 }
 
 export interface PlaytestAnswers {
   /** Notes 1 à 5, dans l'ordre de PLAYTEST_QUESTIONS ; null = « pas rencontré » (seulement si autorisé). */
   scores: (number | null)[];
   memorable: string;
+  /** « Quel élément voudrais-tu débloquer… » (facultatif). Absent avant la Phase 0.5C. */
+  wish?: string;
 }
 
 export interface PlaytestSession {
@@ -80,6 +104,7 @@ export interface PlaytestSession {
   questionnaireSkipped: boolean;
   /** Manches jouées volontairement après la 50e, sans aucune incitation (même navigateur). */
   extraRounds: number;
+  collection?: PlaytestCollectionStats;
 }
 
 export interface PlaytestState {
@@ -93,6 +118,8 @@ export interface PlaytestState {
   lastReadyAt: number | null;
   /** Un aperçu (BOSS FIGHT sans mise) a eu lieu : le prochain délai READY → mise n'est pas significatif. */
   skipNextDelay?: boolean;
+  /** Une carte a été découverte au reveal de la manche en cours (reportée sur la manche à sa fin). */
+  pendingDiscovery?: boolean;
 }
 
 export function outcomeOf(r: Pick<RoundRecord, 'bossFight' | 'multiplier100'>): PlaytestOutcome {
@@ -132,7 +159,7 @@ export class PlaytestRecorder {
     return () => this.listeners.delete(fn);
   }
 
-  start(device: PlaytestSession['device']): void {
+  start(device: PlaytestSession['device'], collection: { discovered: number; total: number } | null = null): void {
     const session: PlaytestSession = {
       id: `PT-${this.now().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}`,
       contentVersion: this.contentVersion,
@@ -145,8 +172,9 @@ export class PlaytestRecorder {
       answers: null,
       questionnaireSkipped: false,
       extraRounds: 0,
+      ...(collection ? { collection: { atStart: { ...collection }, atEnd: { ...collection }, discoveries: 0, opens: 0 } } : {}),
     };
-    this.state = { ...this.state, current: session, trackingExtraFor: null, lastReadyAt: null };
+    this.state = { ...this.state, current: session, trackingExtraFor: null, lastReadyAt: null, pendingDiscovery: false };
     this.save();
   }
 
@@ -175,6 +203,27 @@ export class PlaytestRecorder {
       this.state = { ...this.state, current: { ...s, devPanelOpened: true } };
       this.save();
     }
+  }
+
+  /** COLLECTION BOOK : ouverture de l'album pendant les 50 manches. */
+  markCollectionOpened(): void {
+    const s = this.state.current;
+    if (s?.status === 'playing' && s.collection) {
+      this.state = { ...this.state, current: { ...s, collection: { ...s.collection, opens: s.collection.opens + 1 } } };
+      this.save();
+    }
+  }
+
+  /** COLLECTION BOOK : une manche jouée a atteint son reveal (la collection ne compte jamais les replays). */
+  onDiscovery(isNew: boolean, progress: { discovered: number; total: number }): void {
+    const s = this.state.current;
+    if (s?.status !== 'playing' || !s.collection) return;
+    this.state = {
+      ...this.state,
+      pendingDiscovery: this.state.pendingDiscovery || isNew,
+      current: { ...s, collection: { ...s.collection, atEnd: { ...progress } } },
+    };
+    this.save();
   }
 
   /** Branché sur GameFlow.onRoundComplete. Ignore les replays et les aperçus (aucune mise). */
@@ -213,14 +262,17 @@ export class PlaytestRecorder {
       variant,
       newBranch: branch !== null && !s.rounds.some((x) => x.branch === branch),
       newVariant: variant !== null && !s.rounds.some((x) => (x.variant ?? x.branch) === variant),
+      ...(s.collection ? { discovered: this.state.pendingDiscovery === true } : {}),
     };
     const rounds = [...s.rounds, round];
     const full = rounds.length >= PLAYTEST_TARGET;
+    const collection = s.collection && round.discovered ? { ...s.collection, discoveries: s.collection.discoveries + 1 } : s.collection;
     this.state = {
       ...this.state,
-      current: { ...s, rounds, status: full ? 'questionnaire' : 'playing', finishedAt: full ? this.now().toISOString() : null },
+      current: { ...s, rounds, collection, status: full ? 'questionnaire' : 'playing', finishedAt: full ? this.now().toISOString() : null },
       lastReadyAt: r.readyAt,
       skipNextDelay: false,
+      pendingDiscovery: false,
     };
     this.save();
   }
@@ -240,6 +292,7 @@ export class PlaytestRecorder {
               return Math.min(5, Math.max(1, Math.round(x)));
             }),
             memorable: answers.memorable.trim().slice(0, 1000),
+            wish: (answers.wish ?? '').trim().slice(0, 1000),
           }
         : null,
       questionnaireSkipped: answers === null,
@@ -254,6 +307,7 @@ export class PlaytestRecorder {
         note: 'LOCAL DEV ONLY — BAD BOSS playtest (Mock RGS, fake money). Exported manually by the tester.',
         questions: PLAYTEST_QUESTIONS,
         freeQuestion: PLAYTEST_FREE_QUESTION,
+        wishQuestion: PLAYTEST_WISH_QUESTION,
         sessions,
         summaries: sessions.map((x) => ({ id: x.id, ...summarize(x) })),
       },
@@ -302,6 +356,11 @@ export interface PlaytestSummary {
   distinctBranchesAt: Record<'10' | '25' | '50', number>;
   newBranchesLast10: number;
   distinctVariants: number;
+  /** Rage Levels joués au moins une fois. */
+  levelsUsed: RageLevelId[];
+  /** COLLECTION BOOK (null si la collection était désactivée ou session antérieure). */
+  collection: PlaytestCollectionStats | null;
+  extraRounds: number;
 }
 
 const median = (xs: number[]): number | null => {
@@ -357,5 +416,8 @@ export function summarize(session: PlaytestSession): PlaytestSummary {
     },
     newBranchesLast10: rounds.slice(40, 50).filter((r, i) => !rounds.slice(0, 40 + i).some((x) => x.branch === r.branch)).length,
     distinctVariants: new Set(rounds.map((r) => r.variant ?? r.branch)).size,
+    levelsUsed: (Object.keys(byLevel) as RageLevelId[]).filter((lv) => byLevel[lv] > 0),
+    collection: session.collection ?? null,
+    extraRounds: session.extraRounds,
   };
 }

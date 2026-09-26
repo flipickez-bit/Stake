@@ -64,6 +64,17 @@ export function drawPlayerDesk(): Container {
   return c;
 }
 
+/** Canard en caoutchouc (cosmétique COLLECTION BOOK « DESK: RUBBER DUCK »), posé sur le bureau du joueur. */
+export function drawRubberDuck(): Graphics {
+  const g = new Graphics();
+  g.ellipse(520, 708, 26, 15).fill(0xffd84a).stroke({ width: 2, color: 0xc9a227 });
+  g.circle(540, 688, 13).fill(0xffd84a).stroke({ width: 2, color: 0xc9a227 });
+  g.poly([551, 688, 566, 692, 551, 696]).fill(0xff8a00);
+  g.circle(543, 684, 2.5).fill(0x1b1f3b);
+  g.poly([500, 700, 512, 694, 512, 706]).fill(0xf0c030);
+  return g;
+}
+
 /** Bande de sol au premier plan : masque le boss qui tombe dans la trappe. */
 export function drawFloorFront(): Graphics {
   const g = new Graphics().rect(-800, 578, 2600, 500).fill(C.floor);

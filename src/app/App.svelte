@@ -14,6 +14,13 @@
   import { PLAYTEST_TARGET, type PlaytestAnswers, type PlaytestState } from '../dev/playtest';
   import { makeBossFightPreview } from '../dev/devOutcomes';
   import { cryptoRandom } from '../platform/rgs/mock/mockMath';
+  import CollectionBook from './collection/CollectionBook.svelte';
+  import NewBadge from './collection/NewBadge.svelte';
+  import ShowcaseOverlay from './collection/ShowcaseOverlay.svelte';
+  import { lookFrom } from './collection/look';
+  import { progress as collectionProgress } from '../collection/rewards';
+  import type { CollectionState, DiscoveryEvent } from '../collection/types';
+  import { ThumbnailRenderer } from '../render/ThumbnailRenderer';
 
   let host: HTMLDivElement;
   let ctx = $state<GameContext | null>(null);
@@ -25,11 +32,18 @@
   let pt = $state<PlaytestState | null>(null);
   let ptIntro = $state(false);
   let ptResultsId = $state<string | null>(null);
+  // COLLECTION BOOK (absent si désactivé : mode Stake tant que non confirmé, replay par URL).
+  let coll = $state<CollectionState | null>(null);
+  let discovery = $state<DiscoveryEvent | null>(null);
+  let bookOpen = $state(false);
+  let showcaseOn = $state(false);
+  let thumbs = $state.raw<ThumbnailRenderer | null>(null);
 
   const ptCurrent = $derived(pt?.current ?? null);
   const showQuestionnaire = $derived(ptCurrent?.status === 'questionnaire' && snap?.state === 'READY');
   const ptResults = $derived(ptResultsId ? (pt?.sessions.find((x) => x.id === ptResultsId) ?? null) : null);
-  const overlayOpen = $derived(ptIntro || showQuestionnaire || ptResults !== null);
+  const overlayOpen = $derived(ptIntro || showQuestionnaire || ptResults !== null || bookOpen || showcaseOn);
+  const collProgress = $derived(ctx?.collection && coll ? collectionProgress(coll, ctx.collection.catalog) : null);
 
   onMount(() => {
     let off: (() => void)[] = [];
@@ -41,6 +55,18 @@
         off.push(c.presenter.onSignalEvent(() => (bf = c.presenter.status.bossFight)));
         off.push(c.flow.subscribe((s) => { if (s.state === 'READY' || s.state === 'BET_PENDING') bf = c.presenter.status.bossFight; }));
         off.push(c.playtest.subscribe((s) => (pt = s)));
+        if (c.collection) {
+          off.push(
+            c.collection.subscribe((s) => {
+              coll = s;
+              // Cosmétiques : rendu seulement (jamais un cue, une durée ni une branche).
+              const look = lookFrom(s);
+              c.stage.setCosmetics(look);
+              c.audio.setDingVariant(look.ding);
+            }),
+          );
+          off.push(c.collection.onDiscovery((e) => (discovery = e)));
+        }
       })
       .catch((e) => (bootError = e instanceof Error ? e.message : String(e)));
     const onKey = (e: KeyboardEvent) => {
@@ -84,12 +110,16 @@
       s.faults = { offline: false, playTimeoutAfterSend: false, endRoundTimeoutAfterSend: false, latencyMs: 120 };
       s.balance = 1000 * 1_000_000;
     });
-    ctx.playtest.start({
-      width: window.innerWidth,
-      height: window.innerHeight,
-      portrait: window.innerHeight > window.innerWidth,
-      touch: navigator.maxTouchPoints > 0,
-    });
+    const p = ctx.collection?.progress;
+    ctx.playtest.start(
+      {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        portrait: window.innerHeight > window.innerWidth,
+        touch: navigator.maxTouchPoints > 0,
+      },
+      p ? { discovered: p.discovered, total: p.total } : null,
+    );
     await ctx.flow.start();
   }
 
@@ -102,6 +132,31 @@
     gesture();
     if (ctx.playtest.current) ctx.playtest.excludeNextDelay();
     void ctx.flow.replayRound(makeBossFightPreview(snap.level, cryptoRandom));
+  }
+
+  function openCollection() {
+    if (!ctx?.collection || snap?.state !== 'READY') return;
+    gesture();
+    devOpen = false;
+    ptIntro = false;
+    bookOpen = true;
+    thumbs ??= new ThumbnailRenderer();
+    ctx.collection.markOpened();
+    ctx.playtest.markCollectionOpened();
+  }
+
+  /** SPECIAL EPISODE : aucune mise, aucun appel wallet ; exclu des données de playtest (comme l'aperçu BOSS FIGHT). */
+  function playEpisode() {
+    if (!ctx || snap?.state !== 'READY') return;
+    bookOpen = false;
+    gesture();
+    if (ctx.playtest.current) ctx.playtest.excludeNextDelay();
+    showcaseOn = true;
+  }
+
+  function exitEpisode() {
+    showcaseOn = false;
+    if (ctx && snap) ctx.presenter.toIdle(snap.level);
   }
 
   function submitAnswers(answers: PlaytestAnswers | null) {
@@ -128,6 +183,9 @@
     {:else if ctx?.mock}
       <button class="icon pt" onclick={() => (ptIntro = true)} disabled={snap?.state !== 'READY'} data-testid="playtest-open">PLAYTEST</button>
     {/if}
+    {#if ctx?.collection && collProgress && !ctx.flow.isReplayOnly}
+      <button class="icon coll" onclick={openCollection} disabled={snap?.state !== 'READY'} aria-label="Collection: {collProgress.discovered} of {collProgress.total} discovered" data-testid="collection-open">📖 {collProgress.discovered}/{collProgress.total}</button>
+    {/if}
     <button class="icon" onclick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>{muted ? '🔇' : '🔊'}</button>
     {#if ctx?.devEnabled}<button class="icon dev" onclick={toggleDev} data-testid="dev-toggle">DEV</button>{/if}
   </div>
@@ -143,20 +201,38 @@
     {#if snap?.state === 'RESUMING' || snap?.state === 'REPLAYING'}
       <div class="badge" data-testid="mode-badge">{snap.state === 'RESUMING' ? 'RESUMED ROUND' : 'REPLAY · NO BET'}</div>
     {/if}
-    <ResultPop revealed={snap?.revealed ?? null} currency={snap?.balance?.currency ?? 'USD'} />
-    <BfLadder {bf} />
+    {#if !showcaseOn}
+      <!-- SPECIAL EPISODE : aucun chiffre à l'écran (ni résultat précédent, ni échelle, ni badge). -->
+      <ResultPop revealed={snap?.revealed ?? null} currency={snap?.balance?.currency ?? 'USD'} />
+      <BfLadder {bf} />
+      {#if ctx?.collection}<NewBadge event={discovery} showOnLoss={ctx.meta.newBadgeOnLoss} />{/if}
+    {/if}
     {#if bootError}<div class="banner error">Boot failed: {bootError}</div>{/if}
     {#if snap?.capabilities.displayRtp}<div class="rtp">RTP 96.50% (provisional)</div>{/if}
     <div class="wt" aria-hidden="true">BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED</div>
   </div>
 
-  {#if ctx && snap}
+  {#if ctx && snap && !showcaseOn}
     <Hud flow={ctx.flow} {snap} onGesture={gesture} />
   {/if}
 </div>
 
 {#if ctx && snap && devOpen}
-  <DevPanel {ctx} {snap} onClose={() => (devOpen = false)} onShowSession={(id) => { devOpen = false; ptResultsId = id; }} onPreviewBossFight={previewBossFight} />
+  <DevPanel {ctx} {snap} onClose={() => (devOpen = false)} onShowSession={(id) => { devOpen = false; ptResultsId = id; }} onPreviewBossFight={previewBossFight} onOpenCollection={openCollection} />
+{/if}
+
+{#if ctx?.collection && thumbs && bookOpen}
+  <CollectionBook
+    collection={ctx.collection}
+    {thumbs}
+    initialTab={snap?.level ?? 'grumpy'}
+    canPlayEpisode={snap?.state === 'READY'}
+    onClose={() => (bookOpen = false)}
+    onPlayEpisode={playEpisode}
+  />
+{/if}
+{#if ctx && showcaseOn}
+  <ShowcaseOverlay presenter={ctx.presenter} onExit={exitEpisode} />
 {/if}
 
 {#if ptIntro}
@@ -179,6 +255,7 @@
   .icon { background: #1f2447; border: 1px solid #2b3160; color: #fff; border-radius: 8px; padding: 4px 8px; cursor: pointer; font-weight: 800; }
   .icon.dev { background: var(--bb-violet); }
   .icon.pt { font-size: 11px; letter-spacing: 1px; }
+  .icon.coll { font-size: 11px; letter-spacing: 0.5px; white-space: nowrap; background: #2a2f55; }
   .icon:disabled { opacity: 0.4; }
   .pt-chip { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: #ff8a00; white-space: nowrap; }
   .stage { position: relative; min-height: 0; overflow: hidden; }

@@ -67,6 +67,22 @@ export function capabilitiesFrom(j: JurisdictionConfig | null | undefined): Capa
   };
 }
 
+/**
+ * Méta-fonctionnalités cosmétiques (COLLECTION BOOK). Ce ne sont pas des clés de juridiction :
+ * c'est une politique produit par plateforme, décidée ici pour rester au même endroit que le reste du gating.
+ * Mode Stake : DÉSACTIVÉ tant que Stake Engine n'a pas confirmé qu'une méta-progression persistante est acceptée
+ * (INFORMATION STAKE ENGINE REQUISE). Désactivée, la collection disparaît complètement (ni bouton, ni badge, ni écriture).
+ */
+export interface MetaFeatures {
+  collection: boolean;
+  /** Badge « NEW » après une perte (x0). Désactivable si une juridiction l'assimile à une célébration de perte. */
+  newBadgeOnLoss: boolean;
+}
+
+export function metaFeaturesFor(platform: 'mock' | 'stake'): MetaFeatures {
+  return platform === 'mock' ? { collection: true, newBadgeOnLoss: true } : { collection: false, newBadgeOnLoss: false };
+}
+
 export function allowedSpeeds(c: Capabilities): Speed[] {
   const speeds: Speed[] = ['normal'];
   if (c.turbo) speeds.push('turbo');

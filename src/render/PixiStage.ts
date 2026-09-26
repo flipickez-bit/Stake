@@ -8,6 +8,7 @@ import type { CharacterAnimator } from '../presentation/characterAnimator';
 import type { ActorFrame, FrameState } from '../presentation/timeline';
 import type { ActorId, GadgetDef } from '../presentation/types';
 import type { SceneSink } from '../presenter/Presenter';
+import { DEFAULT_LOOK, type CosmeticLook } from './cosmeticLook';
 import * as office from './office';
 import { BossAnimator } from './placeholder/BossAnimator';
 import { CooAnimator, HandsAnimator, WendellAnimator } from './placeholder/minorCharacters';
@@ -62,23 +63,47 @@ export class PixiStage implements SceneSink {
   private gadgetProps = new Set<ActorId>();
   private width = 1;
   private height = 1;
+  private look: CosmeticLook = DEFAULT_LOOK;
+  private boss: BossAnimator | null = null;
+  private duck: Graphics | null = null;
+  private trapView: Container | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
-  async init(host: HTMLElement): Promise<void> {
+  /**
+   * `offscreen` : scène secondaire (vignettes du COLLECTION BOOK) — tampon conservé pour la lecture des pixels,
+   * résolution 1, pas d'identifiant de test.
+   */
+  async init(host: HTMLElement, options: { offscreen?: boolean } = {}): Promise<void> {
     await this.app.init({
       background: 0x1b1f3b,
       antialias: true,
       autoDensity: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
+      resolution: options.offscreen ? 1 : Math.min(window.devicePixelRatio || 1, 2),
       autoStart: false,
       resizeTo: host,
       preference: 'webgl',
+      preserveDrawingBuffer: options.offscreen === true,
     });
     this.app.ticker.stop();
     host.appendChild(this.app.canvas);
-    this.app.canvas.setAttribute('data-testid', 'stage');
+    if (!options.offscreen) this.app.canvas.setAttribute('data-testid', 'stage');
     this.build();
     this.resize();
-    new ResizeObserver(() => this.resize()).observe(host);
+    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(host);
+  }
+
+  /** Cosmétiques (COLLECTION BOOK) : rendu seulement, jamais un cue ni une durée. */
+  setCosmetics(look: CosmeticLook): void {
+    this.look = look;
+    this.boss?.setLook(look);
+    if (this.duck) this.duck.visible = look.duck;
+    if (this.trapView) this.trapView.tint = look.trapdoor === 'arctic' ? 0x9be7ff : 0xffffff;
+  }
+
+  destroy(): void {
+    this.resizeObserver?.disconnect();
+    this.app.destroy(true, { children: true });
   }
 
   private resize(): void {
@@ -147,6 +172,7 @@ export class PixiStage implements SceneSink {
     this.add('slingPost', office.drawSlingPost(), (f, all) => this.drawElastic(f, all));
     w.addChild(this.elastic);
     const trap = office.drawTrapdoor();
+    this.trapView = trap.view;
     this.add('trapdoor', trap.view, (f) => {
       trap.closed.visible = f.states.main !== 'open';
       trap.open.visible = f.states.main === 'open';
@@ -169,7 +195,8 @@ export class PixiStage implements SceneSink {
       chair.rocket.visible = f.states.kind === 'rocket';
     });
 
-    this.addCharacter(new BossAnimator());
+    this.boss = new BossAnimator();
+    this.addCharacter(this.boss);
     this.addCharacter(new WendellAnimator());
     this.addCharacter(new CooAnimator());
     // Portes de l'ascenseur devant les personnages : B.B. peut y attendre caché.
@@ -177,7 +204,11 @@ export class PixiStage implements SceneSink {
     this.add('elevR', office.drawElevatorDoor(-1));
 
     w.addChild(office.drawFloorFront());
-    w.addChild(office.drawPlayerDesk());
+    const desk = office.drawPlayerDesk();
+    this.duck = office.drawRubberDuck();
+    this.duck.visible = false;
+    desk.addChild(this.duck);
+    w.addChild(desk);
     const ceiling = new Container();
     const hole = office.drawCeilingHole();
     ceiling.addChild(office.drawCeilingStrip());
@@ -202,20 +233,24 @@ export class PixiStage implements SceneSink {
   private drawElastic(f: ActorFrame, all: FrameState): void {
     const g = this.elastic;
     g.clear();
-    if (!this.gadgetProps.has('slingPost')) return;
+    if (!this.gadgetProps.has('slingPost') || f.states.elastic === 'none') return;
     const px = f.transform.x;
     const py = f.transform.y - 122;
     if (f.states.elastic === 'snapped') {
       g.moveTo(px - 22, py).quadraticCurveTo(px - 30, py + 30, px - 16, py + 50);
       g.moveTo(px + 22, py).quadraticCurveTo(px + 30, py + 30, px + 20, py + 46);
-      g.stroke({ width: 5, color: C.red });
+      g.stroke({ width: 5, color: this.elasticColor() });
       return;
     }
     const boss = all.actors.boss?.transform;
     if (!boss) return;
     const bx = boss.x - 40;
     const by = boss.y - 70;
-    g.moveTo(px - 22, py).lineTo(bx, by).moveTo(px + 22, py).lineTo(bx, by).stroke({ width: 5, color: C.red });
+    g.moveTo(px - 22, py).lineTo(bx, by).moveTo(px + 22, py).lineTo(bx, by).stroke({ width: 5, color: this.elasticColor() });
+  }
+
+  private elasticColor(): number {
+    return this.look.elastic === 'candy' ? 0xff7eb6 : C.red;
   }
 
   private drawFuse(f: ActorFrame, all: FrameState): void {

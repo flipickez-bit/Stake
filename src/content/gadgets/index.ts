@@ -10,9 +10,9 @@ export const GADGETS: readonly GadgetDef[] = [swivelSlingshot, trapdoorExpress, 
 
 /**
  * Version du contenu joué, enregistrée dans chaque session de playtest pour comparer les sessions
- * (P05-A = 12 branches de la Phase 0 ; P05-B = variété V2).
+ * (P05-A = 12 branches de la Phase 0 ; P05-B = variété V2 ; P05-C = mêmes branches + COLLECTION BOOK).
  */
-export const CONTENT_VERSION = `P05-B · ${GADGETS.reduce((n, g) => n + g.branches.length, 0)} branches`;
+export const CONTENT_VERSION = `P05-C · ${GADGETS.reduce((n, g) => n + g.branches.length, 0)} branches + collection`;
 
 export function gadgetFor(level: RageLevelId): GadgetDef {
   const g = GADGETS.find((x) => x.rageLevel === level);

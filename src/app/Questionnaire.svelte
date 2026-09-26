@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { PLAYTEST_FREE_QUESTION, PLAYTEST_NA_ALLOWED, PLAYTEST_QUESTIONS, type PlaytestAnswers } from '../dev/playtest';
+  import { PLAYTEST_FREE_QUESTION, PLAYTEST_NA_LABEL, PLAYTEST_QUESTIONS, PLAYTEST_WISH_QUESTION, type PlaytestAnswers } from '../dev/playtest';
 
   let { onSubmit }: { onSubmit: (answers: PlaytestAnswers | null) => void } = $props();
 
   let scores = $state<(number | null)[]>(PLAYTEST_QUESTIONS.map(() => null));
   let notSeen = $state<boolean[]>(PLAYTEST_QUESTIONS.map(() => false));
   let memorable = $state('');
+  let wish = $state('');
   const complete = $derived(scores.every((s, i) => s !== null || notSeen[i]));
 </script>
 
@@ -14,7 +15,7 @@
     class="panel"
     onsubmit={(e) => {
       e.preventDefault();
-      if (complete) onSubmit({ scores: scores.map((x, i) => (notSeen[i] ? null : x)), memorable });
+      if (complete) onSubmit({ scores: scores.map((x, i) => (notSeen[i] ? null : x)), memorable, wish });
     }}
   >
     <h2 id="pt-q-title">Session terminée</h2>
@@ -31,13 +32,15 @@
             </label>
           {/each}
         </div>
-        {#if PLAYTEST_NA_ALLOWED.includes(i)}
-          <label class="na"><input type="checkbox" id="q{i}-na" checked={notSeen[i]} onchange={(e) => (notSeen[i] = (e.currentTarget as HTMLInputElement).checked)} data-testid="q{i + 1}-na" /> Pas rencontré pendant la session</label>
+        {#if PLAYTEST_NA_LABEL[i]}
+          <label class="na"><input type="checkbox" id="q{i}-na" checked={notSeen[i]} onchange={(e) => (notSeen[i] = (e.currentTarget as HTMLInputElement).checked)} data-testid="q{i + 1}-na" /> {PLAYTEST_NA_LABEL[i]}</label>
         {/if}
       </fieldset>
     {/each}
     <label class="free" for="pt-memorable">{PLAYTEST_FREE_QUESTION} <small>(facultatif)</small></label>
     <textarea id="pt-memorable" bind:value={memorable} maxlength="1000" rows="3" data-testid="q-memorable"></textarea>
+    <label class="free" for="pt-wish">{PLAYTEST_WISH_QUESTION} <small>(facultatif)</small></label>
+    <textarea id="pt-wish" bind:value={wish} maxlength="1000" rows="2" data-testid="q-wish"></textarea>
     <div class="buttons">
       <button type="submit" class="primary" disabled={!complete} data-testid="q-submit">Enregistrer les réponses</button>
       <button type="button" onclick={() => onSubmit(null)} data-testid="q-skip">Passer</button>

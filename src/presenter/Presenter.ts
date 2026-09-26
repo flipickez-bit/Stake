@@ -114,6 +114,8 @@ export class Presenter implements RoundPresenter {
   private readonly listeners = new Set<(signal: Signal, value: number | undefined) => void>();
   /** DEV : branche imposée pour la prochaine présentation compatible. */
   forceBranchId: string | null = null;
+  /** SPECIAL EPISODE en cours (COLLECTION BOOK) : résolu à la fin du tableau ou s'il est interrompu. */
+  private showcaseDone: (() => void) | null = null;
 
   constructor(
     private readonly scene: SceneSink,
@@ -231,12 +233,30 @@ export class Presenter implements RoundPresenter {
     };
   }
 
+  /**
+   * SPECIAL EPISODE (COLLECTION BOOK) : joue un tableau hors manche, depuis READY.
+   * GameFlow n'est pas impliqué : aucun book, aucune mise, aucun reveal. L'appelant revient ensuite au repos (toIdle).
+   */
+  playShowcase(stage: GadgetDef, seq: AnimationSequence): Promise<void> {
+    this.cancelPending();
+    this.useGadget(stage);
+    this.outcome = null;
+    this.bf = NO_BF;
+    this.speed = 'normal';
+    this.player.load(seq, restLayout(stage));
+    this.mode = 'playing';
+    return new Promise((resolve) => (this.showcaseDone = resolve));
+  }
+
   private useGadget(gadget: GadgetDef): void {
     if (gadget !== this.gadget) this.gadget = gadget;
     this.scene.setGadget(gadget);
   }
 
   private cancelPending(): void {
+    const done = this.showcaseDone;
+    this.showcaseDone = null;
+    done?.();
     const p = this.pending;
     this.pending = null;
     if (p) {
@@ -269,6 +289,11 @@ export class Presenter implements RoundPresenter {
         break;
       case 'end':
         this.mode = 'finished';
+        if (this.showcaseDone) {
+          const done = this.showcaseDone;
+          this.showcaseDone = null;
+          done();
+        }
         if (p) {
           if (!p.revealed) p.resolveReveal();
           p.resolveDone();

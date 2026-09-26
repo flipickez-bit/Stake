@@ -6,6 +6,7 @@ import { Container, Graphics } from 'pixi.js';
 import { CHARACTER_ANIMS } from '../../content/office';
 import type { CharacterAnimator } from '../../presentation/characterAnimator';
 import { C } from './palette';
+import type { CosmeticLook } from '../cosmeticLook';
 
 type Eyes = 'open' | 'closed' | 'x' | 'spiral' | 'wide' | 'half';
 type Mouth = 'flat' | 'grin' | 'o' | 'frown' | 'laugh' | 'teeth' | 'whistle';
@@ -155,6 +156,30 @@ export function bossPose(anim: string, e: number): Pose {
   return p;
 }
 
+function drawMug(g: Graphics, style: CosmeticLook['mug']): void {
+  if (style === 'okayest') {
+    // « WORLD'S OKAYEST BOSS » : blanc à bande rouge (jamais doré : l'or signale le BOSS FIGHT ;
+    // jamais turquoise : c'est la couleur du mug du joueur).
+    g.rect(-11, -13, 22, 26).fill(0xf4f1ea).stroke({ width: 2, color: 0x9aa3ad });
+    g.rect(-11, -3, 22, 6).fill(C.red);
+    g.roundRect(10, -7, 8, 12, 4).stroke({ width: 3, color: 0xf4f1ea });
+    return;
+  }
+  g.rect(-11, -13, 22, 26).fill(C.yellow).stroke({ width: 2, color: 0xb38600 });
+  g.roundRect(10, -7, 8, 12, 4).stroke({ width: 3, color: C.yellow });
+}
+
+function drawRocket(g: Graphics, style: CosmeticLook['rocket']): void {
+  const retro = style === 'retro';
+  g.roundRect(-80, -30, 150, 30, 12).fill(retro ? 0xe63946 : 0xb8c0c8).stroke({ width: 3, color: retro ? 0x8e1f2a : 0x6c757d });
+  if (retro) for (const x of [-50, -10, 30]) g.rect(x, -30, 10, 30).fill(C.white);
+  const fin = retro ? C.white : C.red;
+  g.poly([70, -30, 104, -15, 70, 0]).fill(fin);
+  g.poly([-80, -30, -100, -44, -66, -30]).fill(fin);
+  g.poly([-80, 0, -100, 12, -66, 0]).fill(fin);
+  if (!retro) g.rect(-40, -24, 40, 18).fill(C.yellow);
+}
+
 function part(draw: (g: Graphics) => void): Graphics {
   const g = new Graphics();
   draw(g);
@@ -178,6 +203,7 @@ export class BossAnimator implements CharacterAnimator<Container> {
   private readonly tieSnapped: Graphics;
   private readonly mecheCut: Graphics;
   private readonly mugGold: Graphics;
+  private lookKey = 'default|default|default';
   private readonly head = new Container();
   private readonly flush: Graphics;
   private readonly soot: Graphics;
@@ -197,13 +223,7 @@ export class BossAnimator implements CharacterAnimator<Container> {
       g.rect(-46, -9, 92, 7).fill(C.chairDark);
       for (const x of [-44, 0, 44]) g.circle(x, -2, 5).fill(C.shoe);
     });
-    this.rocket = part((g) => {
-      g.roundRect(-80, -30, 150, 30, 12).fill(0xb8c0c8).stroke({ width: 3, color: 0x6c757d });
-      g.poly([70, -30, 104, -15, 70, 0]).fill(C.red);
-      g.poly([-80, -30, -100, -44, -66, -30]).fill(C.red);
-      g.poly([-80, 0, -100, 12, -66, 0]).fill(C.red);
-      g.rect(-40, -24, 40, 18).fill(C.yellow);
-    });
+    this.rocket = part((g) => drawRocket(g, 'default'));
     this.rocket.visible = false;
 
     for (const [leg, x] of [[this.legL, -16], [this.legR, 16]] as const) {
@@ -217,10 +237,11 @@ export class BossAnimator implements CharacterAnimator<Container> {
       g.roundRect(-50, -132, 100, 104, 26).fill(C.violet).stroke({ width: 3, color: C.violetDark });
       g.poly([-14, -132, 0, -110, 14, -132]).fill(C.white);
     });
-    this.tie = part((g) => g.poly([-5, -122, 5, -122, 7, -84, 0, -76, -7, -84]).fill(C.yellow));
-    // Cravate coincée au bord de la trappe (tendue vers le haut) et cravate coupée.
-    this.tieStretched = part((g) => g.rect(-5, -300, 10, 180).fill(C.yellow).poly([-9, -304, 9, -304, 0, -290]).fill(0xb38600));
-    this.tieSnapped = part((g) => g.poly([-5, -122, 5, -122, 6, -104, 2, -108, 0, -100, -3, -107, -6, -103]).fill(C.yellow));
+    // Cravate normale, coincée au bord de la trappe (tendue vers le haut) et coupée.
+    this.tie = new Graphics();
+    this.tieStretched = new Graphics();
+    this.tieSnapped = new Graphics();
+    this.drawTies('default');
     for (const [arm, x] of [[this.armL, -46], [this.armR, 46]] as const) {
       arm.position.set(x, -120);
       arm.addChild(part((g) => {
@@ -228,10 +249,7 @@ export class BossAnimator implements CharacterAnimator<Container> {
         g.circle(0, 60, 9).fill(C.skin);
       }));
     }
-    this.mug = part((g) => {
-      g.rect(-11, -13, 22, 26).fill(C.yellow).stroke({ width: 2, color: 0xb38600 });
-      g.roundRect(10, -7, 8, 12, 4).stroke({ width: 3, color: C.yellow });
-    });
+    this.mug = part((g) => drawMug(g, 'default'));
     this.mugGold = part((g) => {
       g.circle(0, 0, 26).fill({ color: C.gold, alpha: 0.25 });
       g.rect(-12, -14, 24, 28).fill(C.gold).stroke({ width: 3, color: 0xfff3a0 });
@@ -325,6 +343,32 @@ export class BossAnimator implements CharacterAnimator<Container> {
 
     // Bras droit (mug) au premier plan : le mug passe devant la bouche quand il boit.
     this.inner.addChild(this.chair, this.legL, this.legR, this.rocket, body, this.tie, this.tieSnapped, this.tieStretched, this.armL, this.head, this.armR);
+  }
+
+  /**
+   * Cosmétiques du COLLECTION BOOK : redessine le mug NORMAL, la cravate et la fusée. Rendu seulement.
+   * Le mug doré du BOSS FIGHT (signal de résultat) n'est jamais modifié.
+   */
+  setLook(look: Pick<CosmeticLook, 'mug' | 'tie' | 'rocket'>): void {
+    const key = `${look.mug}|${look.tie}|${look.rocket}`;
+    if (key === this.lookKey) return;
+    this.lookKey = key;
+    drawMug(this.mug.clear(), look.mug);
+    drawRocket(this.rocket.clear(), look.rocket);
+    this.drawTies(look.tie);
+  }
+
+  private drawTies(style: CosmeticLook['tie']): void {
+    const color = style === 'polka' ? 0xff4fa3 : C.yellow;
+    const knot = style === 'polka' ? 0xb8236f : 0xb38600;
+    this.tie.clear().poly([-5, -122, 5, -122, 7, -84, 0, -76, -7, -84]).fill(color);
+    this.tieStretched.clear().rect(-5, -300, 10, 180).fill(color).poly([-9, -304, 9, -304, 0, -290]).fill(knot);
+    this.tieSnapped.clear().poly([-5, -122, 5, -122, 6, -104, 2, -108, 0, -100, -3, -107, -6, -103]).fill(color);
+    if (style === 'polka') {
+      for (const [x, y] of [[0, -112], [-3, -98], [3, -90]] as const) this.tie.circle(x, y, 1.8).fill(C.white);
+      for (let y = -290; y < -130; y += 22) this.tieStretched.circle(0, y, 2).fill(C.white);
+      this.tieSnapped.circle(0, -113, 1.8).fill(C.white);
+    }
   }
 
   pose(anim: string, elapsedMs: number, states: Readonly<Record<string, string>>): void {

@@ -249,6 +249,29 @@ export function compileTrunk(gadget: GadgetDef, speed: Speed, lib: ContentLibrar
   };
 }
 
+/**
+ * Tableau hors manche (SPECIAL EPISODE du COLLECTION BOOK) : mêmes segments et même placement pur, mais
+ * aucun book, aucune sélection de branche, aucun reveal (les signaux de manche des segments réutilisés sont
+ * retirés). Jamais utilisé par GameFlow : ce n'est pas une manche.
+ */
+export function compileShowcase(id: string, gadget: GadgetDef, segs: readonly SegmentDef[]): AnimationSequence {
+  const placed = segs.map((seg) => ({ seg: { ...seg, cues: seg.cues.filter((c) => c.kind !== 'signal') }, trunk: false }));
+  const { cues, segments, end } = place(placed, 'normal', 1, gadget.id);
+  const endCue: ScheduledCue = { kind: 'signal', at: end, signal: 'end', seg: -1 };
+  return {
+    key: sequenceKey({ show: id, cues }),
+    gadgetId: gadget.id,
+    branchId: `SHOW-${id}`,
+    speed: 'normal',
+    totalMs: end,
+    markers: { d1: 0, reveal: end, end },
+    cues: [...cues, endCue],
+    segments,
+    reaction: null,
+    cooCameo: false,
+  };
+}
+
 export interface CompileOptions {
   forceBranchId?: string;
 }

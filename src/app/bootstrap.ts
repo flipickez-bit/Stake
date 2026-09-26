@@ -3,6 +3,11 @@
  * GameFlow ne dépend que de RgsPort : Mock et Stake sont interchangeables sans le modifier.
  */
 import { AudioDirector } from '../audio/AudioDirector';
+import { buildCatalog } from '../collection/catalog';
+import { Collection } from '../collection/Collection';
+import { LocalCollectionStore } from '../collection/store';
+import { attachCollectionTracker } from '../collection/tracker';
+import { metaFeaturesFor, type MetaFeatures } from '../flow/featureGate';
 import { GameFlow } from '../flow/GameFlow';
 import { PerfMeter } from '../dev/perf';
 import { PlaytestRecorder } from '../dev/playtest';
@@ -26,6 +31,9 @@ export interface GameContext {
   audio: AudioDirector;
   perf: PerfMeter;
   playtest: PlaytestRecorder;
+  /** COLLECTION BOOK : null si désactivé (mode Stake tant que non confirmé, voir metaFeaturesFor). */
+  collection: Collection | null;
+  meta: MetaFeatures;
   mock: MockServer | null;
   devEnabled: boolean;
   contentErrors: string[];
@@ -65,6 +73,17 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
     onRoundComplete: (r) => playtest.onRoundComplete(r),
   });
 
+  // COLLECTION BOOK : observateur branché sur les snapshots publics de GameFlow (aucune modification du flux).
+  // Jamais en mode replay par URL : un replay peut être la manche d'un autre joueur.
+  const meta = metaFeaturesFor(params.rgs);
+  let collection: Collection | null = null;
+  if (meta.collection && !params.replay) {
+    collection = new Collection(new LocalCollectionStore(createBrowserStore()), buildCatalog());
+    await collection.init();
+    attachCollectionTracker(flow, collection);
+    collection.onDiscovery((e) => playtest.onDiscovery(e.isNew, e.progress));
+  }
+
   // Boucle de rendu unique : le temps réel avance la séquence, puis Pixi dessine.
   let last = performance.now();
   const loop = (now: number) => {
@@ -86,6 +105,8 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
     audio,
     perf,
     playtest,
+    collection,
+    meta,
     mock,
     devEnabled: mock !== null || params.devRequested,
     contentErrors,

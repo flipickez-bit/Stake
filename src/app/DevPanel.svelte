@@ -13,7 +13,21 @@
   import type { GameContext } from './bootstrap';
   import { formatBalance, formatX } from './format';
 
-  let { ctx, snap, onClose, onShowSession, onPreviewBossFight }: { ctx: GameContext; snap: FlowSnapshot; onClose: () => void; onShowSession: (id: string) => void; onPreviewBossFight: () => void } = $props();
+  let {
+    ctx,
+    snap,
+    onClose,
+    onShowSession,
+    onPreviewBossFight,
+    onOpenCollection,
+  }: {
+    ctx: GameContext;
+    snap: FlowSnapshot;
+    onClose: () => void;
+    onShowSession: (id: string) => void;
+    onPreviewBossFight: () => void;
+    onOpenCollection: () => void;
+  } = $props();
   const { flow, presenter, mock, perf, stage, playtest } = $derived(ctx);
 
   type Kind = ForcedOutcome['kind'] | 'RANDOM';
@@ -59,6 +73,17 @@
     presenter.forceBranchId = branchId === 'auto' ? null : branchId;
   });
   $effect(() => playtest.subscribe((s) => (pt = s)));
+  // COLLECTION DEBUG : seulement avec le Mock RGS (jamais en production).
+  const collection = $derived(mock ? ctx.collection : null);
+  let collCount = $state('');
+  $effect(() => {
+    const c = collection;
+    if (!c) return;
+    return c.subscribe(() => {
+      const p = c.progress;
+      collCount = `${p.discovered} / ${p.total} · milestones ${Object.keys(c.state.milestones).length} · opened ${c.state.opens}×`;
+    });
+  });
   $effect(() => {
     const id = setInterval(() => (tick = tick + 1), 250);
     return () => clearInterval(id);
@@ -364,6 +389,22 @@
     </div>
     {#if ptNote}<p class="small">{ptNote}</p>{/if}
   </section>
+
+  {#if collection}
+    <section>
+      <h3>COLLECTION DEBUG <span class="tag warn">MOCK ONLY</span></h3>
+      <p class="small">Local collection only (never affects rounds, branches or maths). Not available in production.</p>
+      <table class="kv"><tbody><tr><td>Progress</td><td data-testid="dev-coll-count">{collCount}</td></tr></tbody></table>
+      <div class="buttons">
+        <button onclick={() => void collection.reset()} data-testid="dev-coll-reset">RESET COLLECTION</button>
+        <button onclick={() => collection.unlockAll()} data-testid="dev-coll-all">UNLOCK ALL</button>
+        <button onclick={() => collection.unlockRandom(10, cryptoRandom)} data-testid="dev-coll-random10">UNLOCK RANDOM 10</button>
+        <button onclick={() => collection.setDiscoveredCount(collection.catalog.cards.length - 2, cryptoRandom)} data-testid="dev-coll-49">SET {collection.catalog.cards.length - 2}/{collection.catalog.cards.length}</button>
+        <button onclick={() => collection.forceNewDiscovery(cryptoRandom)} data-testid="dev-coll-new">FORCE NEW DISCOVERY</button>
+        <button onclick={onOpenCollection} disabled={!ready} data-testid="dev-coll-view">VIEW COLLECTION</button>
+      </div>
+    </section>
+  {/if}
 </aside>
 
 <style>
