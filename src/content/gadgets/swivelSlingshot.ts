@@ -9,7 +9,7 @@
  */
 import type { GadgetDef } from '../../presentation/types';
 import {
-  anim, BOSS_FIGHT, compose, fx, LOSS, mod, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_SMALL,
+  anim, BOSS_FIGHT, compose, fx, LOSS, mod, paced, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_SMALL,
 } from '../dsl';
 
 const D1 = 'released';
@@ -54,29 +54,29 @@ export const swivelSlingshot: GadgetDef = {
       anim(0, 'hands', 'open'), sound(0, 'twang'), tw(0, 'boss', { x: 470 }, 260, 'inQuad'), anim(0, 'boss', 'surprised'),
       tw(0, 'camera', { x: 500, sx: 1 }, 300, 'outQuad'), handsAway(40),
     ]),
-    seg('SLG_B_SPIN', 'action', 650, 'compress', [
+    paced(0.8, seg('SLG_B_SPIN', 'action', 650, 'compress', [
       anim(0, 'hands', 'open'), sound(0, 'twang', 0.7), anim(0, 'boss', 'spin'), sound(80, 'spin'),
       tw(0, 'boss', { x: 620 }, 600, 'outQuad'), tw(0, 'camera', { x: 600, sx: 1.1 }, 400, 'outQuad'), handsAway(40),
-    ]),
-    seg('SLG_C_BACKFIRE', 'action', 620, 'compress', [
+    ])),
+    paced(0.75, seg('SLG_C_BACKFIRE', 'action', 620, 'compress', [
       anim(0, 'hands', 'open'), sound(0, 'twang', 0.55), state(40, 'slingPost', 'elastic=snapped'),
       anim(30, 'boss', 'hop'), state(60, 'boss', 'seat=none'),
       state(58, 'chairProp', 'kind=chair'), tw(58, 'chairProp', { x: 770, y: 560, alpha: 1, rot: 0 }, 1, 'linear'),
       tw(70, 'chairProp', { x: 1560, rot: 4 }, 380, 'inQuad'), sound(100, 'whoosh'),
       tw(60, 'boss', { x: 700 }, 220, 'outQuad'), anim(280, 'boss', 'braced'),
       tw(200, 'camera', { x: 640, sx: 1.14 }, 400, 'inOutQuad'), handsAway(40),
-    ]),
-    seg('SLG_D_ELEVATOR', 'action', 720, 'compress', [
+    ])),
+    paced(0.75, seg('SLG_D_ELEVATOR', 'action', 720, 'compress', [
       anim(0, 'hands', 'open'), sound(0, 'twang'), state(30, 'slingPost', 'elastic=snapped'),
       tw(0, 'elevL', { sx: 0.08 }, 150, 'outQuad'), tw(0, 'elevR', { sx: 0.08 }, 150, 'outQuad'), sound(0, 'whoosh', 0.6),
       anim(60, 'boss', 'scared'), tw(60, 'boss', { x: 985 }, 400, 'inQuad'), tw(60, 'camera', { x: 800, sx: 1.08 }, 400, 'inOutQuad'),
       tw(480, 'elevL', { sx: 1 }, 150, 'inQuad'), tw(480, 'elevR', { sx: 1 }, 150, 'inQuad'), sound(620, 'clunk'), handsAway(40),
-    ]),
+    ])),
     // ---------------------------------------------------------------- TWISTS
     /** Offscreen, quelque chose se brise. Silence. B.B. entrouvre un œil… il est intact. */
-    seg('SLG_C_PHEW', 'twist', 900, 'compress', [
+    paced(0.67, seg('SLG_C_PHEW', 'twist', 900, 'compress', [
       silence(0, 700), sound(60, 'crash', 0.85), shake(60, 260, 4), anim(380, 'boss', 'peek'), anim(640, 'boss', 'phew'), sound(700, 'hmpf', 1.2),
-    ]),
+    ])),
 
     // ---------------------------------------------------------------- FINS (chacune contient la révélation)
     seg('SLG_E_YANK', 'action', 820, 'compress', [
@@ -117,11 +117,11 @@ export const swivelSlingshot: GadgetDef = {
       tw(0, 'boss', { x: 360 }, 320, 'outCubic'), sound(60, 'screech'), fx(80, 'smoke', 0, -10, 8, 'boss'),
       punch(320, 240, 6), anim(320, 'boss', 'furious'), shake(320, 200, 5), tw(320, 'dim', { alpha: 0.35 }, 380),
     ]),
-    seg('SLG_E_SPINOUT', 'action', 900, 'compress', [
+    paced(0.85, seg('SLG_E_SPINOUT', 'action', 900, 'compress', [
       anim(0, 'boss', 'spin'), sound(0, 'spin', 0.8), anim(320, 'boss', 'dizzy'),
       tw(300, 'boss', { x: 540, rot: 0.28 }, 360, 'outQuad'), tw(660, 'boss', { rot: 0 }, 220, 'outBounce'),
       { kind: 'signal', at: 700, signal: 'reveal' }, anim(700, 'boss', 'smug'), sound(720, 'hmpf'),
-    ]),
+    ])),
     seg('SLG_E_DRILL', 'action', 440, 'compress', [
       anim(0, 'boss', 'spin'), sound(0, 'spin', 1.6), fx(0, 'dust', 0, 0, 8, 'boss'), tw(40, 'boss', { y: 250 }, 400, 'inQuad'),
       state(400, 'fan', 'broken'), fx(400, 'sparks', 650, 96, 12), tw(100, 'camera', { y: 300 }, 300, 'outQuad'),
@@ -133,12 +133,12 @@ export const swivelSlingshot: GadgetDef = {
       tw(300, 'boss', { x: 236, y: 330, rot: -0.5 }, 360, 'inQuad'), tw(300, 'camera', { x: 420 }, 360, 'outQuad'),
     ]),
     /** La chaise revient… et passe derrière lui pour pulvériser son ordinateur. LE SIP. x0. */
-    seg('SLG_E_MONITOR', 'action', 900, 'compress', [
+    paced(0.8, seg('SLG_E_MONITOR', 'action', 900, 'compress', [
       state(0, 'chairProp', 'kind=chair'), tw(0, 'chairProp', { x: 1560, y: 520, alpha: 1, rot: 0 }, 1, 'linear'),
       tw(20, 'chairProp', { x: 790, y: 430, rot: 0.7 }, 280, 'inQuad'), sound(20, 'whoosh'), anim(40, 'boss', 'braced'),
       sound(300, 'crash'), state(300, 'monitor', 'broken'), fx(300, 'sparks', 770, 400, 16), fx(320, 'smoke', 770, 390, 8), shake(300, 250, 5),
       { kind: 'signal', at: 460, signal: 'reveal' }, anim(480, 'boss', 'lookback'), tw(320, 'camera', { x: 700, sx: 1.2 }, 300, 'outQuad'),
-    ]),
+    ])),
     /** Le mug est vide… la chaise revient du hors champ. BOOM. */
     seg('SLG_E_RETURN', 'action', 340, 'compress', [
       state(0, 'chairProp', 'kind=chair'), tw(0, 'chairProp', { x: 1560, y: 520, alpha: 1, rot: 0 }, 1, 'linear'),
@@ -146,13 +146,13 @@ export const swivelSlingshot: GadgetDef = {
       tw(330, 'chairProp', { alpha: 0 }, 100, 'linear'),
     ]),
     /** RARE : il se penche sur son mug vide pile au bon moment ; la chaise passe au-dessus et traverse la vitre. */
-    seg('SLG_E_OVER', 'action', 1000, 'compress', [
+    paced(0.8, seg('SLG_E_OVER', 'action', 1000, 'compress', [
       state(0, 'chairProp', 'kind=chair'), tw(0, 'chairProp', { x: 1560, y: 480, alpha: 1, rot: 0 }, 1, 'linear'),
       tw(20, 'chairProp', { x: 236, y: 250, rot: -3 }, 560, 'linear'), sound(20, 'whoosh'), anim(0, 'boss', 'mugcheck'),
       sound(580, 'glass'), state(580, 'window', 'broken'), fx(580, 'glass', 220, 230, 16), tw(600, 'chairProp', { alpha: 0 }, 100, 'linear'),
       tw(300, 'camera', { x: 520, sx: 1 }, 400, 'inOutQuad'), anim(700, 'boss', 'idle'), { kind: 'signal', at: 720, signal: 'reveal' },
       anim(760, 'boss', 'sip'), sound(900, 'sip'),
-    ]),
+    ])),
   ]),
   branches: [
     compose('SLG-A1', 'Rappel élastique', [A], [{ seg: 'SLG_E_YANK' }, { reaction: 'auto' }], { categories: ['CLEAN_MISS'], classes: LOSS, rarity: 'COMMON', d1: D1 }),

@@ -7,7 +7,7 @@
  */
 import type { GadgetDef } from '../../presentation/types';
 import {
-  anim, BOSS_FIGHT, compose, fx, LOSS, mod, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_MID, WIN_SMALL,
+  anim, BOSS_FIGHT, compose, fx, LOSS, mod, paced, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_MID, WIN_SMALL,
 } from '../dsl';
 
 const D1 = 'fuse-out';
@@ -52,11 +52,11 @@ export const officeRocket: GadgetDef = {
       tw(60, 'boss', { y: 460 }, 420, 'outQuad'), tw(0, 'camera', { x: 560, sx: 1 }, 400, 'inOutQuad'),
     ]),
     /** La fusée cale. B.B. nargue le joueur. */
-    seg('RKT_B_STALL', 'action', 1100, 'compress', [
+    paced(0.8, seg('RKT_B_STALL', 'action', 1100, 'compress', [
       ...fuseOut, fx(0, 'smoke', 60, -10, 10, 'boss'), sound(0, 'pfft'), anim(80, 'boss', 'lookdown'), punch(0, 180, 3),
       sound(520, 'pfft', 1.4), fx(520, 'smoke', 60, -10, 5, 'boss'), anim(700, 'boss', 'taunt'), sound(720, 'laugh'),
       tw(600, 'camera', { x: 580, sx: 1.12 }, 400, 'inOutQuad'),
-    ]),
+    ])),
     seg('RKT_C_UP', 'action', 480, 'compress', [
       ...fuseOut, sound(0, 'roar', 1.2), fx(0, 'flame', 60, 0, 22, 'boss'), shake(0, 400, 6), anim(0, 'boss', 'scared'),
       tw(40, 'boss', { x: 640, y: 270 }, 440, 'inQuad'), tw(60, 'camera', { x: 600, y: 300 }, 400, 'outQuad'),
@@ -67,27 +67,27 @@ export const officeRocket: GadgetDef = {
       fx(250, 'smoke', 0, -40, 6, 'boss'), sound(250, 'whoosh'), shake(0, 520, 7),
     ]),
     /** Silence… puis redémarrage brutal. */
-    seg('RKT_T_REIGNITE', 'twist', 560, 'compress', [
+    paced(0.85, seg('RKT_T_REIGNITE', 'twist', 560, 'compress', [
       silence(0, 300), sound(300, 'roar'), fx(300, 'flame', 60, 0, 22, 'boss'), shake(300, 250, 8), anim(300, 'boss', 'scared'),
-    ]),
+    ])),
     /** Énorme fumée : pendant un instant, impossible de savoir ce qui s'est passé. */
-    seg('RKT_T_SMOKE', 'twist', 800, 'compress', [
+    paced(0.7, seg('RKT_T_SMOKE', 'twist', 800, 'compress', [
       tw(0, 'fog', { alpha: 0.96 }, 160, 'outQuad'), fx(0, 'smoke', 650, 450, 30), sound(0, 'pfft', 0.6), sound(40, 'roar', 0.7),
       shake(0, 500, 6), silence(260, 540),
-    ]),
+    ])),
     /** Elle part… sans lui. B.B. rit. */
-    seg('RKT_T_MISS', 'twist', 1000, 'compress', [
+    paced(0.7, seg('RKT_T_MISS', 'twist', 1000, 'compress', [
       anim(0, 'boss', 'hop'), state(0, 'boss', 'seat=none'), tw(0, 'boss', { x: 720, y: 560 }, 200, 'outQuad'),
       state(0, 'chairProp', 'kind=rocket'), tw(0, 'chairProp', { x: 650, y: 560, alpha: 1, rot: 0 }, 1, 'linear'),
       tw(30, 'chairProp', { x: 420, y: 250, rot: -0.8 }, 380, 'inQuad'), tw(410, 'chairProp', { x: 900, y: 180, rot: 0.6 }, 380, 'inOutQuad'),
       sound(30, 'whoosh'), sound(410, 'whoosh', 1.2), anim(450, 'boss', 'laugh'), sound(480, 'laugh'),
       tw(0, 'camera', { x: 620, sx: 1 }, 300, 'inOutQuad'),
-    ]),
+    ])),
     /** À travers le toit. Silence. */
-    seg('RKT_T_THROUGH', 'twist', 800, 'compress', [
+    paced(0.7, seg('RKT_T_THROUGH', 'twist', 800, 'compress', [
       tw(0, 'boss', { x: 640, y: -360 }, 260, 'inQuad'), state(200, 'ceiling', 'hole'), sound(220, 'crash'), fx(220, 'dust', 650, 70, 18),
       shake(220, 300, 8), silence(400, 400),
-    ]),
+    ])),
 
     // ---------------------------------------------------------------- FINS
     seg('RKT_E_LAND', 'action', 700, 'compress', [
@@ -118,18 +118,18 @@ export const officeRocket: GadgetDef = {
       tw(0, 'camera', { x: 560, y: 330 }, 380, 'outQuad'),
     ]),
     /** WENDELL CEILING : la fumée se dissipe. B.B. est tranquillement à son bureau ; Wendell est collé au plafond. */
-    seg('RKT_E_WCEIL', 'action', 900, 'compress', [
+    paced(0.8, seg('RKT_E_WCEIL', 'action', 900, 'compress', [
       tw(0, 'boss', { x: 650, y: 560, rot: 0, alpha: 1 }, 1, 'linear'), state(0, 'boss', 'seat=chair'), anim(0, 'boss', 'idle'),
       tw(0, 'wendell', { x: 600, y: 250, rot: 0 }, 1, 'linear'), anim(0, 'wendell', 'stuck'),
       tw(0, 'fog', { alpha: 0 }, 450, 'inQuad'), { kind: 'signal', at: 350, signal: 'reveal' },
       anim(600, 'boss', 'lookup'), sound(650, 'hmpf', 0.9), fx(600, 'dust', 600, 70, 8), tw(0, 'camera', { x: 560, y: 330, sx: 1 }, 400, 'inOutQuad'),
-    ]),
+    ])),
     /** …ou B.B. a tranquillement éteint sa fusée à l'extincteur. Mousse partout. */
-    seg('RKT_E_FOAM', 'action', 800, 'compress', [
+    paced(0.8, seg('RKT_E_FOAM', 'action', 800, 'compress', [
       tw(0, 'boss', { x: 650, y: 560, rot: 0, alpha: 1 }, 1, 'linear'), state(0, 'boss', 'seat=chair'), anim(0, 'boss', 'smug'),
       state(0, 'extinguisher', 'fired'), tw(0, 'fog', { alpha: 0 }, 450, 'inQuad'), fx(80, 'foam', 650, 520, 26), sound(80, 'spray', 0.8),
       { kind: 'signal', at: 350, signal: 'reveal' }, tw(0, 'camera', { x: 580, y: 350, sx: 1.05 }, 400, 'inOutQuad'),
-    ]),
+    ])),
     /** …ou c'est B.B. qui est collé au plafond. */
     seg('RKT_E_BBCEIL', 'action', 300, 'compress', [
       tw(0, 'boss', { x: 640, y: 250, rot: 0, alpha: 1 }, 1, 'linear'), state(0, 'boss', 'face=soot'), anim(0, 'boss', 'splat'),

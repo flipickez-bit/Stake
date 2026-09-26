@@ -84,6 +84,39 @@ function likelihoodRatios(g: GadgetDef) {
   });
 }
 
+/**
+ * Durées moyennes du contenu P05-A (12 branches, avant la variété V2), mesurées de la même façon
+ * (mulberry32(12345), 20 000 manches hors BOSS FIGHT). Référence de la « vitesse générale » à conserver.
+ */
+const P05A_MEAN_END: Record<string, Record<'normal' | 'turbo', number>> = {
+  'swivel-slingshot': { normal: 3527, turbo: 2130 },
+  'trapdoor-express': { normal: 4096, turbo: 2369 },
+  'office-rocket': { normal: 4256, turbo: 2386 },
+};
+const SPEED_BUDGET = 1.15;
+
+const signedPct = (x: number) => {
+  const r = Math.round(x * 100);
+  return `${r > 0 ? '+' : ''}${r === 0 ? 0 : r} %`;
+};
+
+/** Durée moyenne (reveal et fin) sur des manches tirées par le mock mathématique, graine fixe. */
+function meanDurations(g: GadgetDef, speed: Speed, rounds = 6000) {
+  const rnd = mulberry32(12345);
+  let n = 0;
+  let reveal = 0;
+  let end = 0;
+  while (n < rounds) {
+    const o = makeDevOutcome(g.rageLevel, null, rnd);
+    if (o.bossFight) continue;
+    const seq = compileSequence(o, g, speed, LIBRARY);
+    reveal += seq.markers.reveal;
+    end += seq.markers.end;
+    n++;
+  }
+  return { reveal: reveal / n, end: end / n };
+}
+
 describe('variété V2 : contenu', () => {
   it('8 à 18 branches visuellement distinctes par gadget, dont 2 entrées de BOSS FIGHT, toutes les raretés présentes', () => {
     for (const g of GADGETS) {
@@ -126,6 +159,16 @@ describe('variété V2 : contenu', () => {
         const endingStart = seq.segments[trunkSegs + b.path.length]!.start;
         const limit = b.rarity === 'RARE' || b.rarity === 'VERY_RARE' ? 1300 : 800;
         expect(seq.markers.reveal - endingStart, b.id).toBeLessThanOrEqual(limit);
+      }
+    }
+  });
+});
+
+describe('vitesse générale', () => {
+  it(`durée moyenne d'une manche ≤ P05-A × ${SPEED_BUDGET} (normal et turbo) : la variété ne ralentit pas le jeu`, () => {
+    for (const g of GADGETS) {
+      for (const speed of ['normal', 'turbo'] as const) {
+        expect(meanDurations(g, speed).end, `${g.id} ${speed}`).toBeLessThanOrEqual(P05A_MEAN_END[g.id]![speed] * SPEED_BUDGET);
       }
     }
   });
@@ -177,7 +220,18 @@ if (reportPath) {
       '> Calcul exact depuis le contenu, les poids de rareté cosmétique, la distribution des scripts du book (config/presentation_policy.json)',
       '> et la distribution mathématique du Rage Level (hors BOSS FIGHT). La rareté ne modifie jamais les maths : elle choisit parmi des branches compatibles.', '',
       `Poids de rareté : ${Object.entries(RARITY_WEIGHT).map(([k, v]) => `${k} ${v}`).join(' · ')}.`, '',
+      '## Durée moyenne d\'une manche (hors BOSS FIGHT)', '',
+      `Manches tirées par le mock mathématique (graine fixe). Référence : contenu P05-A (12 branches). Limite testée : P05-A × ${SPEED_BUDGET}.`, '',
+      '| Gadget | Vitesse | Reveal moyen | Fin moyenne | P05-A (fin) | Écart |', '|---|---|---:|---:|---:|---:|',
     ];
+    for (const g of GADGETS) {
+      for (const speed of ['normal', 'turbo'] as const) {
+        const m = meanDurations(g, speed);
+        const ref = P05A_MEAN_END[g.id]![speed];
+        lines.push(`| ${g.label} | ${speed} | ${(m.reveal / 1000).toFixed(2)} s | ${(m.end / 1000).toFixed(2)} s | ${(ref / 1000).toFixed(2)} s | ${signedPct(m.end / ref - 1)} |`);
+      }
+    }
+    lines.push('');
     for (const g of GADGETS) {
       const d = branchDistribution(g);
       lines.push(`## ${g.label} (${g.rageLevel}) — ${g.branches.length} branches`, '');

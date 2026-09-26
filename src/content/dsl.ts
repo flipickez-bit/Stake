@@ -21,6 +21,22 @@ export function seg(id: string, phase: Phase, ms: number, turbo: SegmentDef['tur
   return { id, phase, ms, turbo, cues };
 }
 
+/**
+ * Resserre un segment d'un facteur k (durée, instants des cues, durées des tweens, secousses et silences ;
+ * les hit stops restent en temps réel). Sert à garder la durée moyenne des manches de P05-A
+ * malgré les twists ajoutés en 0.5B : le minutage d'origine reste lisible, le facteur est explicite.
+ */
+export function paced(k: number, s: SegmentDef): SegmentDef {
+  const t = (ms: number) => Math.round(ms * k);
+  const d = (ms: number) => (ms <= 1 ? ms : Math.max(1, t(ms)));
+  const cues = s.cues.map((c): Cue => {
+    if (c.kind === 'tween') return { ...c, at: t(c.at), ms: d(c.ms) };
+    if (c.kind === 'camera' || c.kind === 'silence') return { ...c, at: t(c.at), ms: d(c.ms) };
+    return { ...c, at: t(c.at) };
+  });
+  return { ...s, ms: t(s.ms), cues };
+}
+
 /** Indexe une liste de segments par identifiant. */
 export function segments(list: SegmentDef[]): Record<string, SegmentDef> {
   const out: Record<string, SegmentDef> = {};

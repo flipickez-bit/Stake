@@ -7,7 +7,7 @@
  */
 import type { GadgetDef } from '../../presentation/types';
 import {
-  anim, BOSS_FIGHT, compose, fx, LOSS, mod, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG,
+  anim, BOSS_FIGHT, compose, fx, LOSS, mod, paced, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG,
 } from '../dsl';
 
 const D1 = 'lever-pulled';
@@ -56,27 +56,27 @@ export const trapdoorExpress: GadgetDef = {
       ...leverSnap, state(100, 'trapdoor', 'open'), anim(100, 'boss', 'fall'), tw(110, 'boss', { y: 780 }, 240, 'inQuad'), sound(100, 'fall', 1.1),
       tw(0, 'camera', { x: 650, y: 420, sx: 1.15 }, 360, 'outQuad'),
     ]),
-    seg('TRP_C_JAM', 'action', 800, 'compress', [
+    paced(0.75, seg('TRP_C_JAM', 'action', 800, 'compress', [
       ...leverSnap, state(100, 'trapdoor', 'jammed'), sound(150, 'creak', 0.7), anim(150, 'boss', 'lookdown'),
       anim(400, 'boss', 'tapfoot'), sound(450, 'tink', 0.8), sound(600, 'tink', 0.8), anim(700, 'boss', 'smug'),
       tw(0, 'camera', { x: 620, sx: 1.08 }, 400, 'outQuad'),
-    ]),
+    ])),
     // ---------------------------------------------------------------- TWISTS
     seg('TRP_T_FALL', 'twist', 520, 'compress', [
       anim(0, 'boss', 'wave'), anim(250, 'boss', 'fall'), tw(250, 'boss', { y: 780 }, 240, 'inQuad'), sound(230, 'fall'),
       tw(250, 'camera', { x: 620, y: 410, sx: 1.1 }, 280, 'outQuad'),
     ]),
     /** La cravate se coince au bord : il reste suspendu. */
-    seg('TRP_T_CATCH', 'twist', 700, 'compress', [
+    paced(0.8, seg('TRP_T_CATCH', 'twist', 700, 'compress', [
       sound(0, 'boing', 0.7), tw(0, 'boss', { y: 700 }, 180, 'outBack'), state(0, 'boss', 'tie=stretched'), anim(0, 'boss', 'hang'),
       shake(0, 150, 3), silence(200, 400), sound(420, 'hmpf', 1.2),
-    ]),
+    ])),
     /** Wendell accourt et tire sur la cravate. Tension. */
-    seg('TRP_T_HELP', 'twist', 900, 'compress', [
+    paced(0.78, seg('TRP_T_HELP', 'twist', 900, 'compress', [
       anim(0, 'wendell', 'run'), tw(0, 'wendell', { x: 760 }, 380, 'outQuad'), anim(400, 'wendell', 'pull'), sound(450, 'creak', 1.3),
       silence(400, 480), tw(500, 'boss', { y: 690 }, 80, 'linear'), tw(580, 'boss', { y: 700 }, 80, 'linear'),
       tw(660, 'boss', { y: 688 }, 80, 'linear'), tw(740, 'boss', { y: 700 }, 80, 'linear'),
-    ]),
+    ])),
 
     // ---------------------------------------------------------------- FINS
     seg('TRP_E_TIPTOE', 'action', 900, 'compress', [
@@ -120,26 +120,26 @@ export const trapdoorExpress: GadgetDef = {
       anim(0, 'boss', 'fall'), tw(20, 'boss', { y: 900 }, 260, 'inQuad'), sound(40, 'fall'), silence(300, 260), sound(520, 'thud', 0.6),
     ]),
     /** Il remonte seul à la force des bras, puis sonne Wendell. DING. (ce DING-là ne paie rien) */
-    seg('TRP_E_CLIMB', 'action', 1300, 'compress', [
+    paced(0.85, seg('TRP_E_CLIMB', 'action', 1300, 'compress', [
       anim(0, 'boss', 'climb'), tw(0, 'boss', { y: 620 }, 300, 'outQuad'), tw(300, 'boss', { y: 560 }, 300, 'outQuad'),
       state(600, 'boss', 'tie=normal'), state(650, 'trapdoor', 'closed'), sound(650, 'clunk'), { kind: 'signal', at: 620, signal: 'reveal' },
       tw(650, 'boss', { x: 830 }, 300, 'inOutQuad'), anim(650, 'boss', 'tiptoe'), anim(960, 'boss', 'ring'),
       tw(1000, 'bell', { rot: 0.35 }, 60, 'linear'), tw(1060, 'bell', { rot: 0 }, 220, 'outElastic'), sound(1000, 'ding', 1.25),
       tw(600, 'camera', { x: 700, y: 350, sx: 1.05 }, 400, 'inOutQuad'),
-    ]),
+    ])),
     /** Le mug est vide… et la trappe s'ouvre enfin. */
     seg('TRP_E_LATEDROP', 'action', 320, 'compress', [
       state(0, 'trapdoor', 'open'), sound(0, 'clunk', 0.8), anim(0, 'boss', 'fall'), tw(30, 'boss', { y: 900 }, 250, 'inQuad'), sound(30, 'fall'),
     ]),
     /** Le mug est vide : il sonne pour un café. Wendell accourt… sur la trappe. B.B., lui, flotte. */
-    seg('TRP_E_WENDELLDROP', 'action', 1200, 'compress', [
+    paced(0.8, seg('TRP_E_WENDELLDROP', 'action', 1200, 'compress', [
       anim(0, 'boss', 'ring'), tw(60, 'bell', { rot: 0.35 }, 60, 'linear'), tw(120, 'bell', { rot: 0 }, 220, 'outElastic'), sound(60, 'ding', 1.25),
       anim(250, 'wendell', 'run'), tw(250, 'wendell', { x: 700 }, 350, 'outQuad'), state(620, 'trapdoor', 'open'), sound(620, 'clunk', 0.8),
       anim(620, 'boss', 'hover'), anim(640, 'wendell', 'fall'), tw(640, 'wendell', { y: 900 }, 250, 'inQuad'), sound(640, 'fall', 1.3),
       { kind: 'signal', at: 700, signal: 'reveal' }, anim(760, 'boss', 'tiptoe'), tw(760, 'boss', { x: 752 }, 360, 'inOutQuad'),
       anim(1120, 'boss', 'laugh'), sound(1120, 'laugh'), state(1150, 'trapdoor', 'closed'), sound(1150, 'clunk'),
       tw(400, 'camera', { x: 640, y: 380, sx: 1.1 }, 400, 'inOutQuad'),
-    ]),
+    ])),
     seg('TRP_CLOSE', 'reaction', 420, 'compress', [
       state(150, 'trapdoor', 'closed'), sound(150, 'clunk'), tw(0, 'camera', { x: 500, y: 350, sx: 1 }, 380, 'inOutQuad'),
     ]),

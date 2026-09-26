@@ -6,7 +6,7 @@ import type { Outcome } from '../domain/outcome';
 import type { ResultClass } from '../domain/types';
 import type { ContentLibrary, ImpactTier } from '../presentation/compileSequence';
 import type { BossReaction, Cue, ImpactDirection, SegmentDef } from '../presentation/types';
-import { anim, freeze, fx, punch, seg, segments, shake, signal, silence, sound, state, tw } from './dsl';
+import { anim, freeze, fx, paced, punch, seg, segments, shake, signal, silence, sound, state, tw } from './dsl';
 import { ELEVATOR, IMPACT_POINTS } from './office';
 
 // ------------------------------------------------------------------ IMPACT : le COMBIEN
@@ -176,7 +176,7 @@ const doorsOpen = (at: number): Cue[] => [
   tw(at, 'elevL', { sx: 0.08 }, 260, 'outQuad'), tw(at, 'elevR', { sx: 0.08 }, 260, 'outQuad'), sound(at, 'whoosh', 0.55),
 ];
 
-const ELEV_WAIT = seg('ELEV_WAIT', 'twist', 1000, 'compress', [
+const ELEV_WAIT = paced(0.75, seg('ELEV_WAIT', 'twist', 1000, 'compress', [
   // B.B. est placé dans la cabine pendant que les portes sont fermées (invisible).
   tw(0, 'boss', { x: ELEVATOR.x, y: ELEVATOR.y, rot: 0, z: 0, alpha: 1, sx: 1, sy: 1 }, 1, 'linear'),
   state(0, 'boss', 'seat=none'), anim(0, 'boss', 'idle'),
@@ -184,12 +184,12 @@ const ELEV_WAIT = seg('ELEV_WAIT', 'twist', 1000, 'compress', [
   silence(0, 800), state(100, 'elevator', 'moving'),
   sound(260, 'elevator', 1.3), sound(460, 'elevator', 1.15), sound(660, 'elevator', 1.0),
   state(860, 'elevator', 'arrived'), sound(880, 'ding', 0.8),
-]);
+]));
 
-const ELEV_SAFE = seg('ELEV_SAFE', 'action', 1100, 'compress', [
+const ELEV_SAFE = paced(0.82, seg('ELEV_SAFE', 'action', 1100, 'compress', [
   ...doorsOpen(0), anim(0, 'boss', 'sip'), signal(320, 'reveal'), sound(560, 'sip'), sound(700, 'hmpf'),
   anim(820, 'boss', 'smug'), tw(820, 'camera', { x: 500, y: 350, sx: 1 }, 280, 'inOutQuad'),
-]);
+]));
 
 const ELEV_WRECK = seg('ELEV_WRECK', 'action', 320, 'compress', [
   state(0, 'boss', 'face=soot'), anim(0, 'boss', 'dazed'), ...doorsOpen(0), fx(60, 'smoke', ELEVATOR.x, 470, 10),
@@ -208,11 +208,11 @@ const ELEV_GOLD = seg('ELEV_GOLD', 'twist', 700, 'compress', [
 
 // ------------------------------------------------------------------ RUNNING GAG : LE SIP (ne veut PAS dire « perdu »)
 
-const SIP_BEAT = seg('SIP_BEAT', 'twist', 900, 'compress', [anim(0, 'boss', 'sip'), sound(560, 'sip')]);
+const SIP_BEAT = paced(0.6, seg('SIP_BEAT', 'twist', 900, 'compress', [anim(0, 'boss', 'sip'), sound(560, 'sip')]));
 /** Le mug est vide. Il regarde dedans… (la suite peut être un gain comme une perte). */
-const SIP_EMPTY = seg('SIP_EMPTY', 'twist', 650, 'compress', [
+const SIP_EMPTY = paced(0.7, seg('SIP_EMPTY', 'twist', 650, 'compress', [
   state(0, 'boss', 'mug=empty'), anim(0, 'boss', 'mugcheck'), sound(180, 'hmpf', 1.35), silence(0, 500),
-]);
+]));
 const SIP_SMUG = seg('SIP_SMUG', 'action', 700, 'compress', [
   anim(0, 'boss', 'smug'), signal(80, 'reveal'), sound(120, 'laugh', 1.1),
 ]);
