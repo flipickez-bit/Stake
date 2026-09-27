@@ -34,6 +34,7 @@ function thumbOutcome(g: GadgetDef, b: BranchDef): Outcome {
     bossFight: bf
       ? { rungs100: [500, 1000, 2500], attacks: [{ result: 'HIT', variant: 0 }, { result: 'BLOCKED', variant: 1 }], finalRungIndex: 0, ko: false }
       : null,
+    plans: null,
   };
 }
 

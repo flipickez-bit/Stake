@@ -11,6 +11,7 @@
   import { cryptoRandom, forcibleMultipliers, type ForcedOutcome } from '../platform/rgs/mock/mockMath';
   import type { BranchDef } from '../presentation/types';
   import type { GameContext } from './bootstrap';
+  import PocDevSection from './poc/PocDevSection.svelte';
   import { formatBalance, formatX } from './format';
 
   let {
@@ -217,6 +218,7 @@
     <button class="x" onclick={onClose} aria-label="Close dev panel">✕</button>
   </header>
   {#if note}<p class="note">{note}</p>{/if}
+  {#if ctx.poc && mock}<PocDevSection {ctx} />{/if}
 
   <section>
     <h3>FORCE</h3>

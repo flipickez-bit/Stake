@@ -123,6 +123,17 @@ export function forcibleMultipliers(levelId: RageLevelId, kind: ForcedOutcome['k
   }
 }
 
+/** Script autorisé pour une classe par la politique de mise en scène (contrôle des scripts imposés en DEV). */
+export function scriptAllowed(resultClass: ResultClass, script: Script): boolean {
+  return ((policy.scripts_by_class[resultClass] as Partial<Record<Script, number>>)[script] ?? 0) > 0;
+}
+
+/** Réutilisés par les maths expérimentales A2 (tripleMath.ts) : mêmes tirages cosmétiques, même ordre. */
+export const pickScriptFor = pickScript;
+export const pickRarityFor = pickRarity;
+export const randomSeedFor = randomSeed;
+export const bossFightEventFor = bossFightEvents;
+
 let bookCounter = 1;
 
 export function generateBook(levelId: RageLevelId, rnd: RandomSource, forced?: ForcedOutcome | null): Book {

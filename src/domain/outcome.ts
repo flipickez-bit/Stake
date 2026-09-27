@@ -1,4 +1,5 @@
-import type { BookEvent, BossFightEvent, PresentationEvent } from './book';
+import type { BookEvent, BossFightEvent, PickEvent, PresentationEvent, TripleEvent } from './book';
+import { PLAN_SLOTS, isPlanSlot, type OutcomePlans } from './plans';
 import { classify } from './resultClass';
 import type { InternalRound } from './round';
 import type { RageLevelId, Rarity, ResultClass, Script } from './types';
@@ -21,6 +22,8 @@ export interface Outcome {
     readonly finalRungIndex: number;
     readonly ko: boolean;
   } | null;
+  /** POC « 3 PLANS » (A2, MOCK / DEV) : plan choisi et triple complet. null hors POC. */
+  readonly plans: OutcomePlans | null;
 }
 
 export class OutcomeError extends Error {}
@@ -87,6 +90,8 @@ export function parseRound(round: InternalRound, source: Outcome['source']): Out
     throw new OutcomeError(`Manche ${round.roundId} : déroulé de BOSS FIGHT hors script BF_ENTRY`);
   }
 
+  const plans = parsePlans(round, events, presentation, m100, bossFight !== null);
+
   return Object.freeze({
     source,
     roundId: round.roundId,
@@ -99,5 +104,47 @@ export function parseRound(round: InternalRound, source: Outcome['source']): Out
     rarity: presentation.rarity,
     seed: presentation.seed >>> 0,
     bossFight,
+    plans,
+  });
+}
+
+/**
+ * POC « 3 PLANS » : contrôle strict du triple. Le plan payé vient du SERVEUR (mode de la manche) et doit
+ * correspondre à l'événement `pick` ; le multiplicateur payé et la présentation jouée sont ceux du plan choisi.
+ */
+function parsePlans(round: InternalRound, events: BookEvent[], presentation: PresentationEvent, m100: number, isBossFight: boolean): OutcomePlans | null {
+  const triple = events.find((e): e is TripleEvent => e.type === 'triple') ?? null;
+  const pick = events.find((e): e is PickEvent => e.type === 'pick') ?? null;
+  const plan = round.plan ?? null;
+  if (!triple && !pick && plan === null) return null;
+  const id = round.roundId;
+  if (!triple || !pick || plan === null) throw new OutcomeError(`Manche ${id} : plan, triple et pick doivent être présents ensemble`);
+  if (!isPlanSlot(plan) || pick.slot !== plan) throw new OutcomeError(`Manche ${id} : plan du serveur (${String(plan)}) différent du pick (${String(pick.slot)})`);
+  if (triple.level !== round.mode) throw new OutcomeError(`Manche ${id} : triple d'un autre Rage Level`);
+  if (!Array.isArray(triple.results) || triple.results.length !== 3 || triple.results.some((r, i) => r.slot !== PLAN_SLOTS[i])) {
+    throw new OutcomeError(`Manche ${id} : triple incomplet (A, B, C attendus)`);
+  }
+  if (new Set(triple.results.map((r) => r.gadgetId)).size !== 3) throw new OutcomeError(`Manche ${id} : un gadget par plan`);
+  for (const r of triple.results) {
+    if (!Number.isInteger(r.multiplier100) || r.multiplier100 < 0) throw new OutcomeError(`Manche ${id} : multiplicateur invalide (plan ${r.slot})`);
+    if (!SCRIPTS_BY_CLASS[classify(r.multiplier100)].includes(r.script)) throw new OutcomeError(`Manche ${id} : script du plan ${r.slot} incompatible`);
+  }
+  const chosen = triple.results[PLAN_SLOTS.indexOf(plan)]!;
+  if (chosen.multiplier100 !== m100) throw new OutcomeError(`Manche ${id} : le gain payé n'est pas celui du plan ${plan}`);
+  if (chosen.script !== presentation.script || chosen.rarity !== presentation.rarity || (chosen.seed >>> 0) !== (presentation.seed >>> 0)) {
+    throw new OutcomeError(`Manche ${id} : la présentation jouée n'est pas celle du plan ${plan}`);
+  }
+  // BOSS FIGHT commun à la manche : les trois plans le portent, avec le même palier.
+  const bfSlots = triple.results.filter((r) => r.script === 'BF_ENTRY').length;
+  if (triple.bossFight !== isBossFight || (isBossFight && (bfSlots !== 3 || triple.results.some((r) => r.multiplier100 !== m100))) || (!isBossFight && bfSlots !== 0)) {
+    throw new OutcomeError(`Manche ${id} : BOSS FIGHT du triple incohérent`);
+  }
+  return Object.freeze({
+    selected: plan,
+    selectedGadget: chosen.gadgetId,
+    model: String(triple.model),
+    results: Object.freeze(
+      triple.results.map((r) => Object.freeze({ slot: r.slot, gadgetId: r.gadgetId, multiplier100: r.multiplier100, bossFight: r.script === 'BF_ENTRY' })),
+    ),
   });
 }

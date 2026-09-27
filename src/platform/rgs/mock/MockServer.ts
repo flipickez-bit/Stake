@@ -2,11 +2,14 @@
  * Serveur RGS simulé (phase 0). Logique synchrone, état persistant (survit au rechargement de page),
  * pour tester reprise, pannes et replay SANS vraie mise. Ne pas confondre avec le RGS Stake Engine.
  */
+import { POC_PLAN_SETS, type PlanSlot } from '../../../domain/plans';
+import type { Book } from '../../../domain/book';
 import type { InternalRound, Money } from '../../../domain/round';
 import type { RageLevelId } from '../../../domain/types';
 import type { KeyValueStore } from '../../storage';
 import { RgsError, type AuthResult, type BetConfig, type JurisdictionConfig, type RoundSnapshot } from '../RgsPort';
 import { cryptoRandom, generateBook, type ForcedOutcome, type RandomSource } from './mockMath';
+import { bookForPick, drawTriple, type ForcedTriple } from './tripleMath';
 
 export interface MockFaults {
   /** Toutes les requêtes échouent (réseau coupé). */
@@ -40,6 +43,8 @@ export interface MockState {
   /** Simule un RGS qui ferme lui-même les manches à gain nul (politique de repli). */
   autoCloseZeroPayout: boolean;
   nextForced: { mode: RageLevelId | null; forced: ForcedOutcome } | null;
+  /** POC « 3 PLANS » (DEV PANEL) : triple imposé pour la prochaine manche à plans. Absent des états antérieurs. */
+  nextForcedTriple?: ForcedTriple | null;
   faults: MockFaults;
 }
 
@@ -134,8 +139,13 @@ export class MockServer {
     return { ...this.roundSnapshot(), betConfig: structuredClone(MOCK_BET_CONFIG), jurisdiction: { ...this.state.jurisdiction } };
   }
 
-  play(amount: number, mode: RageLevelId): { balance: Money; round: InternalRound } {
+  play(amount: number, mode: RageLevelId, plan?: PlanSlot | null): { balance: Money; round: InternalRound } {
     this.state.calls.play++;
+    // POC « 3 PLANS » : seul un niveau doté d'un jeu de trois plans accepte un plan (mode A2 `grumpy_a/b/c`).
+    if (plan && !POC_PLAN_SETS[mode]) {
+      this.persist();
+      throw new RgsError('rgs', `Unknown mode ${mode}_${plan.toLowerCase()}`, 'ERR_VAL');
+    }
     if (this.state.activeRound) {
       this.persist();
       throw new RgsError('rgs', 'Player already has an active bet', 'ERR_BE');
@@ -148,7 +158,7 @@ export class MockServer {
       this.persist();
       throw new RgsError('rgs', 'Insufficient player balance', 'ERR_IPB');
     }
-    const round = this.createRound(amount, mode);
+    const round = this.createRound(amount, mode, plan ?? null);
     this.persist();
     return { balance: this.money(), round: structuredClone(round) };
   }
@@ -161,12 +171,21 @@ export class MockServer {
     return structuredClone(round);
   }
 
-  private createRound(amount: number, mode: RageLevelId): InternalRound {
-    const forced = this.state.nextForced && (this.state.nextForced.mode === null || this.state.nextForced.mode === mode)
-      ? this.state.nextForced.forced
-      : null;
-    if (forced) this.state.nextForced = null;
-    const book = generateBook(mode, this.random, forced);
+  private createRound(amount: number, mode: RageLevelId, plan: PlanSlot | null = null): InternalRound {
+    let book: Book;
+    const planSet = plan ? POC_PLAN_SETS[mode] : undefined;
+    if (plan && planSet) {
+      // A2 : le triple est tiré SANS connaître le plan ; le plan ne fait que choisir la composante payée.
+      const forcedTriple = this.state.nextForcedTriple ?? null;
+      this.state.nextForcedTriple = null;
+      book = bookForPick(drawTriple(mode, planSet, this.random, forcedTriple), plan, this.state.roundSeq);
+    } else {
+      const forced = this.state.nextForced && (this.state.nextForced.mode === null || this.state.nextForced.mode === mode)
+        ? this.state.nextForced.forced
+        : null;
+      if (forced) this.state.nextForced = null;
+      book = generateBook(mode, this.random, forced);
+    }
     this.state.balance -= amount;
     const payout = Math.round((amount * book.payoutMultiplier) / 100);
     const round: InternalRound = {
@@ -177,6 +196,7 @@ export class MockServer {
       payoutMultiplier100: book.payoutMultiplier,
       active: true,
       events: structuredClone(book.events),
+      ...(plan ? { plan } : {}),
     };
     if (this.state.autoCloseZeroPayout && payout === 0) {
       round.active = false;

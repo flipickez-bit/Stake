@@ -54,6 +54,12 @@ export function sanitizeCollection(raw: unknown): CollectionState {
   out.rewardsSeen = Array.isArray(raw.rewardsSeen)
     ? [...new Set(raw.rewardsSeen.filter((x): x is CosmeticId => typeof x === 'string' && COSMETIC_BY_ID.has(x as CosmeticId)))]
     : [];
+  // POC « 3 PLANS » : compteurs de choix par gadget (champ facultatif).
+  if (isObj(raw.gadgetPicks)) {
+    const picks: Record<string, number> = {};
+    for (const [id, n] of Object.entries(raw.gadgetPicks)) if (typeof n === 'number' && Number.isFinite(n) && n > 0) picks[id] = Math.floor(n);
+    if (Object.keys(picks).length > 0) out.gadgetPicks = picks;
+  }
   return out;
 }
 

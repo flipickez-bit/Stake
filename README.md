@@ -16,7 +16,9 @@ npm run dev              # http://localhost:5173  — ajoutez ?dev=1 pour ouvrir
 npm test                 # 58 tests unitaires et d'intégration
 npm run test:e2e         # 13 tests Playwright (Chromium)
 npm run build:single     # préversion en un seul fichier : dist-single/index.html
+npm run build:poc        # préversion « BAD BOSS — 3 GADGET POC » : dist-poc/index.html (Mock seulement)
 ```
+POC « 3 PLANS » en développement : `npm run dev` puis `http://localhost:5173/?poc=3gadget` (jamais avec le RGS Stake).
 Aucun argent réel : en l'absence de `sessionID`/`rgs_url` dans l'URL, le jeu utilise le **Mock RGS** (solde fictif, stocké dans le navigateur).
 
 ## Documents
@@ -34,6 +36,7 @@ Aucun argent réel : en l'absence de `sessionID`/`rgs_url` dans l'URL, le jeu ut
 | 12 | [MVP_ROADMAP](MVP_ROADMAP.md) | Phases, portes, budgets de performance, critères MVP, proposition de Phase 1 |
 | Phase 0.5 | [PHASE_0_5](PHASE_0_5.md) · [portrait avant/après](docs/phase05/portrait) · [LOOP x500](docs/generated/LOOP_X500.md) | Playtest et game feel (PLAYTEST #2 attendu) |
 | Phase 0.6 | [PHASE_0_6](PHASE_0_6.md) · [ART BIBLE](BAD_BOSS_ART_BIBLE.md) · [concepts](docs/phase06/concepts) · [avant/après](docs/phase06) | Visual upgrade : vertical slice GRUMPY + SWIVEL SLINGSHOT (en attente de validation) |
+| POC 3 PLANS | [POC_3_GADGETS](POC_3_GADGETS.md) · [étude](docs/ETUDE_CHOIX_3_GADGETS.md) · [résumé Stake](docs/STAKE_A2_TECH_SUMMARY.md) · [captures](docs/poc3) · [SOUND BIBLE](SOUND_BIBLE.md) | Choix entre 3 gadgets : preuve de concept (Mock/DEV), playtest A/B attendu |
 | Phase 0 | [PHASE_0_ACCEPTANCE](PHASE_0_ACCEPTANCE.md) · [captures](docs/phase0/screens) · [LOOP x100](docs/generated/LOOP_X100.md) · [taille du build](docs/generated/BUILD_SIZE.md) | Recette du prototype |
 
 ## Maths

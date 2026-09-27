@@ -5,8 +5,11 @@
  *  I3 tir désactivé tant qu'une manche est active ou inconnue ; I4 la présentation ne lit que l'Outcome ;
  *  I5 aucun chiffre avant le reveal ; I6 EndRound borné, jamais de Play en récupération ;
  *  I7 mise suivante seulement si manche réglée + durée minimale écoulée ; I8 replay sans wallet.
+ *  POC « 3 PLANS » (A2, MOCK / DEV) : I9 le plan est choisi en READY seulement et envoyé AVEC la mise ;
+ *  après Play, le plan de la manche est celui du SERVEUR (immuable : animation, reprise, replay, double tap).
  */
 import { parseRound, type Outcome } from '../domain/outcome';
+import type { OutcomePlans, PlanSlot } from '../domain/plans';
 import type { InternalRound, Money } from '../domain/round';
 import type { RageLevelId, ResultClass, Speed } from '../domain/types';
 import {
@@ -45,6 +48,8 @@ export interface Revealed {
   multiplier100: number;
   payout: number;
   resultClass: ResultClass;
+  /** POC « 3 PLANS » : plan payé et triple, disponibles À PARTIR du reveal seulement (I5). null hors POC. */
+  plans?: OutcomePlans | null;
 }
 
 export interface FlowSnapshot {
@@ -57,7 +62,12 @@ export interface FlowSnapshot {
   capabilities: Capabilities;
   /** Rempli UNIQUEMENT à partir du reveal (I5). */
   revealed: Revealed | null;
-  round: { roundId: string; mode: RageLevelId; source: Outcome['source'] } | null;
+  /** `plan` : plan de la manche selon le SERVEUR (null hors POC). */
+  round: { roundId: string; mode: RageLevelId; source: Outcome['source']; plan?: PlanSlot | null } | null;
+  /** POC « 3 PLANS » : le niveau courant se joue en choisissant un plan. */
+  plansEnabled: boolean;
+  /** Plan sélectionné. Modifiable en READY seulement ; pendant une manche, c'est celui de la manche (verrouillé). */
+  plan: PlanSlot | null;
   presentation: PresentationInfo | null;
   message: FlowMessage | null;
   resyncAttempts: number;
@@ -82,6 +92,8 @@ export interface RoundRecord {
   /** Présentation vue (branche + variations cosmétiques). */
   variant: string | null;
   gadgetId: string | null;
+  /** POC « 3 PLANS » : plan payé et triple (null ou absent hors POC). */
+  plans?: OutcomePlans | null;
   betAmount: number;
   payout: number;
   bossFight: boolean;
@@ -103,10 +115,22 @@ export interface GameFlowDeps {
   /** Nombre maximal de resynchronisations automatiques avant de proposer « Réessayer ». */
   maxAutoResync?: number;
   onRoundComplete?: (record: RoundRecord) => void;
+  /** POC « 3 PLANS » (MOCK / DEV) : Rage Levels joués avec un choix A/B/C. Absent = jeu normal. */
+  planLevels?: readonly RageLevelId[];
 }
 
 const DEFAULT_TIMEOUTS: FlowTimeouts = { authMs: 10_000, playMs: 15_000, endRoundMs: 10_000 };
 const MAX_END_ROUND_CALLS = 3;
+
+function revealedOf(outcome: Outcome): Revealed {
+  return {
+    roundId: outcome.roundId,
+    multiplier100: outcome.payoutMultiplier100,
+    payout: outcome.payout,
+    resultClass: outcome.resultClass,
+    plans: outcome.plans,
+  };
+}
 
 function errorText(e: unknown): string {
   if (e instanceof RgsError) {
@@ -168,6 +192,9 @@ export class GameFlow {
       capabilities: { ...RESTRICTIVE_CAPABILITIES },
       revealed: null,
       round: null,
+      // Niveau initial : GRUMPY (voir `level` ci-dessus).
+      plansEnabled: (deps.planLevels ?? []).includes('grumpy'),
+      plan: null,
       presentation: null,
       message: null,
       resyncAttempts: 0,
@@ -197,7 +224,9 @@ export class GameFlow {
       !this.walletCallInFlight &&
       next.balance !== null &&
       next.betAmount > 0 &&
-      next.balance.amount >= next.betAmount;
+      next.balance.amount >= next.betAmount &&
+      // I9 : en mode plans, pas de tir sans plan choisi.
+      (!next.plansEnabled || next.plan !== null);
     next.canSkip =
       next.capabilities.slamstop &&
       this.handle !== null &&
@@ -248,8 +277,19 @@ export class GameFlow {
 
   setLevel(level: RageLevelId): void {
     if (this.s.state !== 'READY') return;
-    this.set({ level });
+    const plansEnabled = (this.deps.planLevels ?? []).includes(level);
+    this.set({ level, plansEnabled, plan: plansEnabled ? this.s.plan : null });
     this.presenter.toIdle(level);
+  }
+
+  /**
+   * POC « 3 PLANS » : choix du plan, en READY SEULEMENT (I9). Pendant une manche (mise en cours, animation,
+   * reveal, reprise, replay), l'appel est ignoré : le plan de la manche est celui que le serveur a enregistré.
+   */
+  setPlan(plan: PlanSlot): boolean {
+    if (this.s.state !== 'READY' || !this.s.plansEnabled || this.replayOnly) return false;
+    if (this.s.plan !== plan) this.set({ plan });
+    return true;
   }
 
   setBet(amount: number): void {
@@ -273,9 +313,11 @@ export class GameFlow {
     if (!this.s.canFire) return false;
     const level = this.s.level;
     const amount = this.s.betAmount;
+    // I9 : le plan est lu ICI, de façon synchrone, en même temps que la mise. Il part avec Play.
+    const plan = this.s.plansEnabled ? this.s.plan : null;
     this.firedAt = this.clock.now();
     this.set({ state: 'BET_PENDING', revealed: null, round: null, presentation: null, message: null, resyncAttempts: 0 });
-    void this.runBet(level, amount);
+    void this.runBet(level, amount, plan);
     return true;
   }
 
@@ -304,12 +346,12 @@ export class GameFlow {
       this.set({ message: { kind: 'error', text: errorText(e) } });
       return;
     }
-    this.set({ state: 'REPLAYING', revealed: null, round: { roundId: outcome.roundId, mode: outcome.mode, source: 'replay' } });
+    this.set({ state: 'REPLAYING', revealed: null, round: { roundId: outcome.roundId, mode: outcome.mode, source: 'replay', plan: outcome.plans?.selected ?? null } });
     const handle = this.presenter.present(outcome, { speed: this.s.speed, mode: 'replay' });
     this.handle = handle;
     this.set({ presentation: handle.info });
     await waitPresentation(handle.reveal, handle.info.totalMs * 3 + 5000);
-    this.set({ revealed: { roundId: outcome.roundId, multiplier100: outcome.payoutMultiplier100, payout: outcome.payout, resultClass: outcome.resultClass } });
+    this.set({ revealed: revealedOf(outcome) });
     await waitPresentation(handle.done, handle.info.totalMs * 3 + 5000);
     this.handle = null;
     this.toReady(null);
@@ -344,12 +386,12 @@ export class GameFlow {
     }
   }
 
-  private async runBet(level: RageLevelId, amount: number): Promise<void> {
+  private async runBet(level: RageLevelId, amount: number, plan: PlanSlot | null): Promise<void> {
     this.roundStartedAt = this.firedAt;
-    this.presenter.beginNeutral(level, this.s.speed);
+    this.presenter.beginNeutral(level, this.s.speed, plan);
     let round: InternalRound;
     try {
-      const res = await this.walletCall(() => withTimeout(this.rgs.play(amount, level), this.timeouts.playMs, 'play'));
+      const res = await this.walletCall(() => withTimeout(this.rgs.play(amount, level, plan), this.timeouts.playMs, 'play'));
       this.set({ balance: res.balance });
       round = res.round;
     } catch (e) {
@@ -433,10 +475,13 @@ export class GameFlow {
     this.presentEndedAt = this.presentStartedAt;
     const handle = this.presenter.present(outcome, { speed, mode: source });
     this.handle = handle;
+    // I9 : le plan affiché devient celui de la manche selon le serveur (reprise après rechargement comprise).
+    const plan = outcome.plans?.selected ?? null;
     this.set({
       state: source === 'play' ? 'PRESENTING' : 'RESUMING',
-      round: { roundId: outcome.roundId, mode: outcome.mode, source: outcome.source },
+      round: { roundId: outcome.roundId, mode: outcome.mode, source: outcome.source, plan },
       presentation: handle.info,
+      ...(plan ? { level: outcome.mode, plansEnabled: (this.deps.planLevels ?? []).includes(outcome.mode), plan } : {}),
     });
     const guard = handle.info.totalMs * 3 + 5000;
     await waitPresentation(handle.reveal, guard);
@@ -444,7 +489,7 @@ export class GameFlow {
     this.set({
       state: 'REVEAL',
       message: source === 'recap' ? { kind: 'info', text: 'This round was already settled by the server.' } : this.s.message?.kind === 'info' ? null : this.s.message,
-      revealed: { roundId: outcome.roundId, multiplier100: outcome.payoutMultiplier100, payout: outcome.payout, resultClass: outcome.resultClass },
+      revealed: revealedOf(outcome),
     });
     const [settled] = await Promise.all([
       this.roundActiveOnServer ? this.finishSettlement() : Promise.resolve(true),
@@ -476,6 +521,7 @@ export class GameFlow {
       branchId,
       variant: this.s.presentation?.variant ?? branchId,
       gadgetId: this.s.presentation?.gadgetId ?? null,
+      plans: outcome.plans,
       betAmount: outcome.betAmount,
       payout: outcome.payout,
       bossFight: outcome.bossFight !== null,

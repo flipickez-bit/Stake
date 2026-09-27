@@ -2,16 +2,20 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-_Dernière mise à jour : 2026-09-27, **Phase 0.6 — VISUAL UPGRADE : vertical slice GRUMPY + SWIVEL SLINGSHOT livrée, en attente de validation** (`PHASE_0_6.md`, `BAD_BOSS_ART_BIBLE.md`). Les 48 autres branches et la Phase 1 ne sont PAS commencées. La préversion P05-C (PLAYTEST #2) reste publiée à part, inchangée. **PLAYTEST #2 humain toujours attendu** sur P05-C._
+_Dernière mise à jour : 2026-09-27, **POC « 3 PLANS » livré (`POC_3_GADGETS.md`), en attente du playtest A/B et de Stake** ; **Phase 0.6 — VISUAL UPGRADE : vertical slice GRUMPY + SWIVEL SLINGSHOT livrée, en attente de validation** (`PHASE_0_6.md`, `BAD_BOSS_ART_BIBLE.md`). Les 48 autres branches et la Phase 1 ne sont PAS commencées. La préversion P05-C (PLAYTEST #2) reste publiée à part, inchangée. **PLAYTEST #2 humain toujours attendu** sur P05-C._
 
-## Étude : choix entre 3 gadgets A/B/C (`docs/ETUDE_CHOIX_3_GADGETS.md`)
-- ✅ Étude de faisabilité livrée (aucun code, aucune donnée mathématique modifiée). La proposition « 9 profils mathématiques indépendants » est abandonnée.
-- Conclusion :
-  - seule architecture Stake vérifiée pour des alternatives réelles : choix = mode avant `Play` (9 modes) et books triples partagés (A2) ;
-  - RTP de 96,5 % pour toute stratégie ; volatilité inchangée ;
-  - modèle recommandé : indépendant, BOSS FIGHT commun ;
-  - UX recommandée : PRIVATE par défaut, révélation à la demande ; REVEAL ALL seulement après playtest et conformité.
-- ⏳ **Décision attendue** (vous) : la mécanique remplace-t-elle le modèle actuel ? 9 questions à poser à Stake (Q21–Q29).
+## POC « 3 PLANS » : BAD BOSS — 3 GADGET POC (`POC_3_GADGETS.md`)
+- ✅ Étude validée comme base de travail (`docs/ETUDE_CHOIX_3_GADGETS.md`). Principe adopté PROVISOIREMENT (3 gadgets par Rage Level, 9 au total) ; **production des 9 gadgets NON lancée**.
+- ✅ POC MOCK / DEV séparé (`?poc=3gadget`, `npm run build:poc`) : scène GRUMPY avec A · SWIVEL SLINGSHOT (réel), B · ESPRESSO BLASTER et C · COPIER CATAPULT (prototypes) posés dans le bureau.
+- ✅ Maths A2 expérimentales (Mock seulement) : triple tiré sans connaître le plan, BOSS FIGHT commun, RTP A = B = C ; **maths de production inchangées**.
+- ✅ Sécurité : plan choisi AVANT Play, verrouillé ensuite (animation, rechargement, reprise, double tap) — tests unitaires et e2e.
+- ✅ PRIVATE par défaut ; ON-DEMAND (« REVEAL OTHER PLANS » après toutes les manches, neutre, silencieux) ; REVEAL ALL en DEV seulement.
+- ✅ PLAYTEST A/B 2 × 30 manches (ordre aléatoire, Q1–Q7, mesures de changement de gadget, export local).
+- ✅ Tests : 126 unitaires + 25 e2e verts. Performances : `docs/generated/POC3_PERF.md`. Captures : `docs/poc3/`.
+- ✅ Résumé technique pour Stake : `docs/STAKE_A2_TECH_SUMMARY.md` ; A2 **non validée production** : INFORMATION STAKE ENGINE REQUISE (Q21–Q29).
+- ✅ `SOUND_BIBLE.md` v0 (OTHER PLANS : aucune célébration sonore).
+- **Préversion privée « BAD BOSS — 3 GADGET POC »** : https://claude.ai/artifact/Ntj63VPabWu2V1ZxxKXL3V (fichier unique `npm run build:poc`, Mock RGS, argent fictif ; ne remplace pas la préversion principale)
+- ⏳ **Playtest A/B** (vous), réponses de Stake, puis décision : la mécanique remplace-t-elle le modèle actuel ?
 
 ## Phase 0.6 : état (`PHASE_0_6.md`)
 - ✅ Skills PixiJS (15, MIT) installés et utilisés ; Game Assets Enhancer **non utilisé** (fal.ai payant : STOP, rien dépensé).

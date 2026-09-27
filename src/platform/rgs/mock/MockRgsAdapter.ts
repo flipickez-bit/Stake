@@ -3,6 +3,7 @@
  * Implémente la même interface RgsPort que StakeRgsAdapter.
  */
 import type { InternalRound } from '../../../domain/round';
+import type { PlanSlot } from '../../../domain/plans';
 import type { RageLevelId } from '../../../domain/types';
 import {
   RgsError,
@@ -35,10 +36,10 @@ export class MockRgsAdapter implements RgsPort {
     return this.transport(() => this.server.authenticate());
   }
 
-  async play(amount: number, mode: RageLevelId): Promise<PlayResult> {
+  async play(amount: number, mode: RageLevelId, plan?: PlanSlot | null): Promise<PlayResult> {
     const result = await this.transport(() => {
       const armed = this.server.snapshot().faults.playTimeoutAfterSend;
-      const res = this.server.play(amount, mode); // la mise EST exécutée côté serveur
+      const res = this.server.play(amount, mode, plan ?? null); // la mise EST exécutée côté serveur
       if (armed) this.server.update((s) => (s.faults.playTimeoutAfterSend = false));
       return { res, lost: armed };
     });

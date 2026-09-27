@@ -10,6 +10,7 @@
  * Les délais d'expiration sont appliqués par GameFlow, de la même façon pour tous les adapters.
  */
 import { RGSClient } from 'stake-engine';
+import { parsePlanMode, type PlanSlot } from '../../../domain/plans';
 import type { InternalRound, Money } from '../../../domain/round';
 import { isRageLevelId, type RageLevelId } from '../../../domain/types';
 import {
@@ -60,7 +61,10 @@ function finalWinOf(events: unknown[]): number | null {
 
 /** Stake → InternalRound. Le multiplicateur vient du serveur (payout / mise) et sera contrôlé contre le book. */
 export function toInternalRound(raw: RawRound, fallbackMode?: string, fallbackAmount?: number): InternalRound {
-  const modeText = String(raw.mode ?? fallbackMode ?? '').toLowerCase();
+  const rawMode = String(raw.mode ?? fallbackMode ?? '').toLowerCase();
+  // Mode A2 candidat (`grumpy_b`) : reconnu pour lire une manche, jamais envoyé (voir play). Q21 : INFORMATION STAKE ENGINE REQUISE.
+  const planMode = parsePlanMode(rawMode);
+  const modeText = planMode ? planMode.level : rawMode;
   if (!isRageLevelId(modeText)) throw new RgsError('protocol', `Mode inconnu renvoyé par le RGS : ${modeText}`);
   const events = extractEvents(raw.state);
   const betAmount = num(raw.amount, fallbackAmount ?? 0);
@@ -75,6 +79,7 @@ export function toInternalRound(raw: RawRound, fallbackMode?: string, fallbackAm
     payoutMultiplier100: fromServer ?? fromBook ?? 0,
     active: raw.active === true,
     events,
+    ...(planMode ? { plan: planMode.slot } : {}),
   };
 }
 
@@ -158,7 +163,10 @@ export class StakeRgsAdapter implements RgsPort {
     });
   }
 
-  async play(amount: number, mode: RageLevelId): Promise<PlayResult> {
+  async play(amount: number, mode: RageLevelId, plan?: PlanSlot | null): Promise<PlayResult> {
+    // POC « 3 PLANS » : architecture A2 NON validée par Stake (9 modes, books triples, alternatives affichées).
+    // Refus local, AVANT tout envoi : aucune mise n'est placée. INFORMATION STAKE ENGINE REQUISE (Q21–Q29).
+    if (plan) throw new RgsError('client', 'A/B/C plans are a MOCK / DEV prototype: Stake Engine validation required (Q21–Q29).');
     return this.call(async () => {
       const res = await this.client.Play({ amount, mode });
       return { balance: toMoney(res.balance), round: toInternalRound(res.round as RawRound, mode, amount) };

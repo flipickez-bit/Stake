@@ -6,6 +6,7 @@ import type { AtlasBook } from './atlas';
 import { BOSS_PARTS } from './parts/boss';
 import { CAST_PARTS } from './parts/cast';
 import { OFFICE_PARTS } from './parts/office';
+import { PLAN_PARTS } from './parts/plans';
 import { VFX_PARTS } from './parts/vfx';
 
 /** Art flou par nature (lointain, lumière, ombres) : 0,6 px par unité suffit. */
@@ -26,6 +27,12 @@ export const SOFT_BOOK: AtlasBook = { id: 'soft', scale: 0.6, parts: OFFICE_PART
 export const OFFICE_BOOK: AtlasBook = { id: 'office', scale: 2, parts: [...OFFICE_PARTS] };
 
 export const ART_BOOKS: readonly AtlasBook[] = [CHARACTER_BOOK, PROPS_BOOK, DECOR_BOOK, SOFT_BOOK];
+
+/**
+ * POC « 3 PLANS » : prototypes des plans B et C, dans leur propre petite page (1024 × 512, 1,5 px par unité),
+ * chargée SEULEMENT en mode POC. Le budget des livres de production (≤ 32 Mo) n'est pas touché.
+ */
+export const PLAN_BOOK: AtlasBook = { id: 'plans', scale: 1.5, maxPx: 1024, parts: PLAN_PARTS };
 
 /** Même art à une autre densité (vignettes du COLLECTION BOOK : leur propre contexte WebGL, peu de pixels). */
 export function scaledBooks(k: number): readonly AtlasBook[] {

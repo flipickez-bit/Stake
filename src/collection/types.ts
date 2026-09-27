@@ -113,6 +113,8 @@ export interface CollectionState {
   recentRoundIds: string[];
   /** Phase 0.6 : récompenses déjà vues (onglet REWARDS ouvert) — la notification « NEW REWARD » s'éteint. */
   rewardsSeen: CosmeticId[];
+  /** POC « 3 PLANS » : nombre de manches jouées par gadget choisi (absent hors POC). Aucun effet sur le jeu. */
+  gadgetPicks?: Record<string, number>;
 }
 
 /** Persistance interchangeable : LocalCollectionStore aujourd'hui, ServerCollectionStore peut-être demain. */

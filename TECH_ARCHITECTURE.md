@@ -226,6 +226,7 @@ BOOT ──url replay=true──► REPLAY_LOADING ──ok──► REPLAYING �
 | I6 | `end-round` au plus une fois par manche, après le reveal ; en cas d'échec : réconciliation, jamais `Play` | État SETTLING |
 | I7 | Mise suivante seulement si manche réglée **et** durée minimale écoulée **et** présentation terminée (ou skip autorisé) | État READY_GATE |
 | I8 | Replay et DEV PANEL ne touchent jamais le wallet réel | Le mode replay n'instancie pas le client wallet ; le DEV PANEL passe par MockRgs |
+| I9 | POC « 3 PLANS » (MOCK / DEV, `POC_3_GADGETS.md`) : le plan A/B/C est choisi en READY seulement et part AVEC la mise ; après Play, le plan de la manche est celui du serveur, immuable | `GameFlow.setPlan` refusé hors READY ; `fire()` lit le plan de façon synchrone ; `parseRound` exige plan serveur = `pick` = composante payée ; `Outcome` gelé ; client Stake : plan refusé avant envoi |
 
 ## 2.4 Cycle de vie d'une manche et politique de fin de manche
 

@@ -22,6 +22,8 @@ import type { RgsPort } from '../platform/rgs/RgsPort';
 import { createBrowserStore } from '../platform/storage';
 import { Presenter } from '../presenter/Presenter';
 import { PixiStage } from '../render/PixiStage';
+import { AltDisplaySetting, pocRequested } from './pocConfig';
+import { PocPlaytestRecorder } from '../dev/pocPlaytest';
 
 export interface GameContext {
   params: LaunchParams;
@@ -34,6 +36,8 @@ export interface GameContext {
   /** COLLECTION BOOK : null si désactivé (mode Stake tant que non confirmé, voir metaFeaturesFor). */
   collection: Collection | null;
   meta: MetaFeatures;
+  /** POC « 3 PLANS » (BAD BOSS — 3 GADGET POC) : null hors POC. MOCK / DEV uniquement. */
+  poc: { altDisplay: AltDisplaySetting; playtest: PocPlaytestRecorder } | null;
   mock: MockServer | null;
   devEnabled: boolean;
   contentErrors: string[];
@@ -55,25 +59,35 @@ async function createRgs(params: LaunchParams): Promise<{ rgs: RgsPort; mock: Mo
 
 export async function bootstrap(host: HTMLElement): Promise<GameContext> {
   const params = readLaunchParams(window.location.href);
+  // POC « 3 PLANS » : build de préversion dédié ou ?poc=3gadget ; jamais avec le RGS Stake (A2 non validée).
+  const poc = pocRequested(window.location.href, import.meta.env.VITE_BADBOSS_POC, params.rgs);
   const stage = new PixiStage();
   // Mesure (DEV) : initialisation de la scène, rastérisation des atlas d'art comprise (Phase 0.6).
   const stageT0 = performance.now();
-  await stage.init(host);
+  await stage.init(host, { plans: poc });
   const stageInitMs = performance.now() - stageT0;
   const audio = new AudioDirector();
   const contentErrors: string[] = [];
   const presenter = new Presenter(stage, audio, {
     onContentError: (e) => contentErrors.push(e instanceof Error ? e.message : String(e)),
+    plans: poc,
   });
   const perf = new PerfMeter();
   const playtest = new PlaytestRecorder(createBrowserStore(), CONTENT_VERSION);
   const { rgs, mock } = await createRgs(params);
+  // POC « 3 PLANS » : playtest A/B (PRIVATE / ON-DEMAND), LOCAL DEV ONLY.
+  const pocPlaytest = poc ? new PocPlaytestRecorder(createBrowserStore(), cryptoRandom) : null;
   const flow = new GameFlow({
     rgs,
     presenter,
     // Mock : délais courts pour que les simulations de panne se voient vite. Stake : valeurs par défaut.
     timeouts: mock ? { playMs: 6000, endRoundMs: 5000, authMs: 8000 } : undefined,
-    onRoundComplete: (r) => playtest.onRoundComplete(r),
+    onRoundComplete: (r) => {
+      playtest.onRoundComplete(r);
+      pocPlaytest?.onRoundComplete(r);
+    },
+    // POC « 3 PLANS » : GRUMPY se joue en choisissant A, B ou C avant le tir.
+    ...(poc ? { planLevels: ['grumpy'] as const } : {}),
   });
 
   // COLLECTION BOOK : observateur branché sur les snapshots publics de GameFlow (aucune modification du flux).
@@ -116,6 +130,7 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
     playtest,
     collection,
     meta,
+    poc: poc && pocPlaytest ? { altDisplay: new AltDisplaySetting(createBrowserStore()), playtest: pocPlaytest } : null,
     mock,
     devEnabled: mock !== null || params.devRequested,
     contentErrors,
@@ -140,6 +155,8 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
           ...options,
         }),
       perf: () => perf.snapshot(),
+      /** POC « 3 PLANS » : zones des plans à l'écran (tests e2e, captures). */
+      planRects: () => stage.planRects(),
       stats: () => stage.stats(),
       stageInitMs: () => stageInitMs,
       /** Captures d'écran reproductibles (avant / après) : pause de la boucle et positionnement de la séquence. */

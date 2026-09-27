@@ -9,10 +9,11 @@ import { PALETTE_VALUES, STROKES } from '../../src/render/art/palette';
 import { BOSS_PARTS } from '../../src/render/art/parts/boss';
 import { CAST_PARTS } from '../../src/render/art/parts/cast';
 import { OFFICE_PARTS } from '../../src/render/art/parts/office';
+import { PLAN_PARTS } from '../../src/render/art/parts/plans';
 import { VFX_PARTS } from '../../src/render/art/parts/vfx';
-import { ART_BOOKS } from '../../src/render/art/books';
+import { ART_BOOKS, PLAN_BOOK } from '../../src/render/art/books';
 
-const ALL = [...BOSS_PARTS, ...CAST_PARTS, ...OFFICE_PARTS, ...VFX_PARTS];
+const ALL = [...BOSS_PARTS, ...CAST_PARTS, ...OFFICE_PARTS, ...VFX_PARTS, ...PLAN_PARTS];
 
 /** Retire les masques de luminance (blanc/noir techniques) et les dégradés qu'ils utilisent. */
 function visible(body: string): string {
@@ -90,8 +91,16 @@ describe('ART BIBLE : cohérence automatique des assets', () => {
         }
       }
     }
-    expect(seen.size).toBe(ALL.length);
+    expect(seen.size).toBe(ALL.length - PLAN_BOOK.parts.length);
     // Mémoire GPU des atlas (mipmaps comprises) : ≤ 32 Mo, soit la moitié du budget mobile (MVP_ROADMAP §4 : 64 Mo).
     expect((bytes * 4) / 3 / 1048576).toBeLessThanOrEqual(32);
+    // POC « 3 PLANS » : une page de 1024 px au plus, chargée seulement en mode POC ; total POC compris ≤ 32 Mo.
+    const pocMax = (PLAN_BOOK.maxPx ?? 2048) / PLAN_BOOK.scale;
+    const poc = packShelves(PLAN_BOOK.parts, pocMax, 2048 / PLAN_BOOK.scale).pages;
+    expect(poc).toHaveLength(1);
+    const pow2 = (n: number) => { let v = 64; while (v < n) v *= 2; return v; };
+    const pocBytes = poc.reduce((a, pg) => a + pow2(pg.width * PLAN_BOOK.scale) * pow2(pg.height * PLAN_BOOK.scale) * 4, 0);
+    expect(pow2(poc[0]!.width * PLAN_BOOK.scale)).toBeLessThanOrEqual(1024);
+    expect(((bytes + pocBytes) * 4) / 3 / 1048576).toBeLessThanOrEqual(32);
   });
 });

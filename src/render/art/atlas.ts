@@ -18,6 +18,8 @@ export interface AtlasBook {
   id: string;
   scale: number;
   parts: readonly ArtPart[];
+  /** Largeur maximale de page (px). 2048 par défaut. */
+  maxPx?: number;
 }
 
 interface Placed {
@@ -97,12 +99,12 @@ async function decode(doc: string): Promise<HTMLImageElement> {
 }
 
 async function rasterize(book: AtlasBook): Promise<RasterPage[]> {
-  const maxU = MAX_PX / book.scale;
-  const { pages } = packShelves(book.parts, maxU, maxU);
+  const maxU = (book.maxPx ?? MAX_PX) / book.scale;
+  const { pages } = packShelves(book.parts, maxU, MAX_PX / book.scale);
   const out: RasterPage[] = [];
   for (const page of pages) {
     // Page à la taille de son contenu (puissances de 2 : mipmaps possibles partout).
-    const wPx = Math.min(MAX_PX, pow2(Math.ceil(page.width * book.scale)));
+    const wPx = Math.min(book.maxPx ?? MAX_PX, pow2(Math.ceil(page.width * book.scale)));
     const hPx = pow2(Math.ceil(page.height * book.scale));
     const img = await decode(atlasDocument(page.placed, wPx / book.scale, hPx / book.scale, book.scale));
     const canvas = document.createElement('canvas');

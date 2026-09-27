@@ -16,6 +16,8 @@ export function shouldObserve(s: FlowSnapshot): ObservedRound | null {
     branchId: s.presentation.branchId,
     source: s.round.source,
     loss: s.revealed.multiplier100 <= 0,
+    // POC « 3 PLANS » : le gadget RÉELLEMENT joué (celui de la présentation), jamais une alternative non jouée.
+    ...(s.round.plan ? { plan: s.round.plan, gadgetId: s.presentation.gadgetId } : {}),
   };
 }
 

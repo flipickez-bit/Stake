@@ -30,7 +30,9 @@ export type SoundId =
 
 export type VfxId =
   | 'dust' | 'sparks' | 'glass' | 'papers' | 'confetti' | 'smoke' | 'flame' | 'stars' | 'gold' | 'soot' | 'foam' | 'feathers' | 'hair'
-  | 'burst' | 'debris' | 'leaves';
+  | 'burst' | 'debris' | 'leaves'
+  // POC « 3 PLANS » : vapeur (ESPRESSO BLASTER) et éclaboussure de café.
+  | 'steam' | 'coffee';
 
 export type Signal = 'd1' | 'reveal' | 'bfStart' | 'bfRung' | 'bfBlocked' | 'bfKo' | 'end';
 
@@ -117,7 +119,10 @@ export interface BranchDef {
   steps: Step[];
 }
 
-export type GadgetId = 'swivel-slingshot' | 'trapdoor-express' | 'office-rocket';
+export type GadgetId =
+  | 'swivel-slingshot' | 'trapdoor-express' | 'office-rocket'
+  // POC « 3 PLANS » (MOCK / DEV) : prototypes des plans B et C de GRUMPY, et le décor du choix (les trois plans).
+  | 'espresso-blaster' | 'copier-catapult' | 'plan-picker';
 
 export interface GadgetDef {
   id: GadgetId;

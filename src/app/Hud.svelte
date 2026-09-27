@@ -5,8 +5,11 @@
   import type { FlowSnapshot, GameFlow } from '../flow/GameFlow';
   import { gadgetFor } from '../content/gadgets';
   import { formatMoney } from './format';
+  import { COPY, planLabel } from './poc/planLabels';
 
-  let { flow, snap, onGesture }: { flow: GameFlow; snap: FlowSnapshot; onGesture: () => void } = $props();
+  let { flow, snap, onGesture, poc = false }: { flow: GameFlow; snap: FlowSnapshot; onGesture: () => void; poc?: boolean } = $props();
+  /** POC « 3 PLANS » : le choix se fait dans le décor ; la barre rappelle seulement le niveau et le plan. */
+  const planMode = $derived(poc && snap.plansEnabled);
 
   const speeds = $derived(allowedSpeeds(snap.capabilities));
   const busy = $derived(snap.state !== 'READY');
@@ -24,7 +27,7 @@
 
   function fireLabel(s: FlowSnapshot): string {
     switch (s.state) {
-      case 'READY': return 'FIRE!';
+      case 'READY': return s.plansEnabled && !s.plan ? COPY.pick : 'FIRE!';
       case 'BET_PENDING': return '…';
       case 'ROUND_STATUS_UNKNOWN': return 'CHECKING…';
       case 'READY_GATE': return 'WAIT…';
@@ -39,6 +42,12 @@
 </script>
 
 <div class="hud">
+  {#if planMode}
+    <div class="poc-strip" data-testid="poc-strip">
+      <span class="lv">GRUMPY <span class="risk" aria-hidden="true"><i class="full"></i><i></i><i></i></span></span>
+      <span class="plan" data-testid="poc-plan">{snap.plan ? `${COPY.yourPlan}: ${snap.plan} · ${planLabel(snap.level, snap.plan)}` : `${COPY.pick} (A · B · C)`}</span>
+    </div>
+  {:else}
   <div class="cards" role="radiogroup" aria-label="Rage Level">
     {#each RAGE_LEVELS as lv (lv.id)}
       <button
@@ -56,6 +65,7 @@
       </button>
     {/each}
   </div>
+  {/if}
 
   <div class="controls">
     {#if speeds.length > 1}
@@ -91,6 +101,9 @@
   .risk { display: inline-flex; gap: 2px; margin-left: 4px; vertical-align: middle; }
   .risk i { display: block; width: 4px; height: 10px; border-radius: 1px; background: #3a4280; }
   .risk i.full { background: var(--c); }
+  .poc-strip { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 12px; background: #1f2447; border: 2px solid var(--grumpy); color: #fff; font-weight: 800; font-size: 12px; letter-spacing: 0.5px; min-width: 0; }
+  .poc-strip .lv { color: var(--grumpy); letter-spacing: 1px; white-space: nowrap; --c: var(--grumpy); }
+  .poc-strip .plan { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; opacity: 0.9; }
   .card.grumpy { --c: var(--grumpy); }
   .card.furious { --c: var(--furious); }
   .card.unhinged { --c: var(--unhinged); }

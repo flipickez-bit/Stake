@@ -27,6 +27,9 @@ export interface ObservedRound {
   branchId: string;
   source: 'play' | 'resume';
   loss: boolean;
+  /** POC « 3 PLANS » : plan choisi et gadget effectivement JOUÉ (absent hors POC). */
+  plan?: 'A' | 'B' | 'C';
+  gadgetId?: string;
 }
 
 export class Collection {
@@ -86,8 +89,21 @@ export class Collection {
    * Renvoie l'événement (null si la branche n'est pas une carte : repli de contenu, etc.).
    */
   observe(round: ObservedRound): DiscoveryEvent | null {
+    if (this.s.recentRoundIds.includes(round.roundId)) return null;
     const card = this.catalog.byId.get(round.branchId);
-    if (!card || this.s.recentRoundIds.includes(round.roundId)) return null;
+    // POC « 3 PLANS » : on enregistre simplement quel gadget a été choisi (une fois par manche). Seule l'animation
+    // réellement jouée peut être découverte : une alternative non jouée n'arrive jamais ici.
+    if (round.plan && round.gadgetId) {
+      const picks = { ...(this.s.gadgetPicks ?? {}) };
+      picks[round.gadgetId] = (picks[round.gadgetId] ?? 0) + 1;
+      this.s = { ...this.s, gadgetPicks: picks };
+      if (!card) {
+        this.s = { ...this.s, recentRoundIds: [...this.s.recentRoundIds, round.roundId].slice(-RECENT_ROUNDS) };
+        this.commit();
+        return null;
+      }
+    }
+    if (!card) return null;
     return this.record(card, round.roundId, round.source, round.loss);
   }
 

@@ -6,8 +6,10 @@
  * ombres de contact, vignettage), rigs illustrés, particules en sprites d'atlas, traînées de vitesse, image d'impact.
  * Tout reste une fonction du FrameState : replay, reprise et seek donnent la même image.
  */
-import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { Application, Container, Graphics, Point, Sprite, Texture } from 'pixi.js';
 import { ALL_GADGET_PROPS } from '../content/gadgets';
+import { ESP, STATION } from '../content/gadgets/poc/stations';
+import type { PlanSlot } from '../domain/plans';
 import type { RageLevelId } from '../domain/types';
 import type { CharacterAnimator, PoseContext } from '../presentation/characterAnimator';
 import type { VfxId } from '../presentation/types';
@@ -15,7 +17,7 @@ import type { ActorFrame, FrameState } from '../presentation/timeline';
 import type { ActorId, GadgetDef } from '../presentation/types';
 import type { SceneSink } from '../presenter/Presenter';
 import { loadTextures } from './art/atlas';
-import { scaledBooks } from './art/books';
+import { PLAN_BOOK, scaledBooks } from './art/books';
 import { BossRig, CHAIR_SCALE } from './art/BossRig';
 import { CooRig, HandsRig, WendellRig } from './art/castRigs';
 import { ArtKit } from './art/kit';
@@ -46,6 +48,37 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const INK = hex('ink');
 
 type Updater = (frame: ActorFrame, all: FrameState) => void;
+
+/** POC « 3 PLANS » : état du choix affiché dans le décor (READY seulement). Rendu seulement. */
+export interface PlanUi {
+  selected: PlanSlot | null;
+  hover: PlanSlot | null;
+}
+
+/** Zone cliquable d'un plan, en pixels CSS du canevas. */
+export interface PlanRect {
+  slot: PlanSlot;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Boîtes des trois plans (unités du monde) : gadget entier, un peu de marge pour le doigt. */
+const PLAN_BOXES: Record<PlanSlot, { x: number; y: number; w: number; h: number }> = {
+  A: { x: STATION.A.x - 55, y: STATION.A.y - 160, w: 110, h: 172 },
+  B: { x: STATION.B.x - 62, y: STATION.B.y - 166, w: 142, h: 172 },
+  C: { x: STATION.C.x - 76, y: STATION.C.y - 156, w: 156, h: 162 },
+};
+
+/**
+ * POC « 3 PLANS », paysage : cadrage un peu plus haut et plus large, pour que les plans B et C (au premier plan)
+ * restent entiers au-dessus du bureau du joueur. Rendu seulement, identique au repos et pendant la manche.
+ */
+const POC_LANDSCAPE = { width: 920, height: 700, dy: 36, fgY: -4 };
+
+/** Fondu des plans non choisis au tir (ms de temps de séquence). */
+const PLAN_FADE_MS = 260;
 
 export interface StageStats {
   textures: number;
@@ -82,6 +115,8 @@ const FX_ART: Record<VfxId, { tex: string; tint: boolean; grow?: number }> = {
   burst: { tex: 'fx_burst', tint: false, grow: 0.25 },
   debris: { tex: 'fx_debris', tint: false },
   leaves: { tex: 'fx_leaf', tint: false },
+  steam: { tex: 'fx_puff', tint: true, grow: 0.9 },
+  coffee: { tex: 'fx_puff', tint: true, grow: 0.2 },
 };
 
 /** Habillage des mondes RAGE (ART BIBLE §9) : teintes d'étalonnage et accessoires. Rendu seulement. */
@@ -117,6 +152,18 @@ export class PixiStage implements SceneSink {
   private readonly speed = new Container();
   private readonly cast = new Container();
   private readonly front = new Container();
+  /** POC « 3 PLANS » : plans B et C posés au premier plan (devant le sol avant qui masque la trappe). */
+  private readonly plansLayer = new Container();
+  private planSpot: Sprite | null = null;
+  private planSteam: Sprite | null = null;
+  private planUi: PlanUi = { selected: null, hover: null };
+  private pickerActive = false;
+  private readonly fading = new Map<ActorId, number | null>();
+  private copierScreen: Graphics | null = null;
+  /** Cadrage paysage du POC (actif si les plans sont chargés). */
+  private planFraming = false;
+  /** Fondu d'apparition de l'élastique quand le plan A est choisi (temps de séquence, null = à démarrer). */
+  private elasticFadeFrom: number | null | undefined = undefined;
   private readonly light = new Container();
   private readonly ceiling = new Container();
   private readonly fg = new Container();
@@ -168,7 +215,7 @@ export class PixiStage implements SceneSink {
    * `offscreen` : scène secondaire (vignettes du COLLECTION BOOK) — tampon conservé pour la lecture des pixels,
    * résolution 1, pas d'identifiant de test.
    */
-  async init(host: HTMLElement, options: { offscreen?: boolean } = {}): Promise<void> {
+  async init(host: HTMLElement, options: { offscreen?: boolean; plans?: boolean } = {}): Promise<void> {
     await this.app.init({
       background: hex('ink'),
       antialias: true,
@@ -183,7 +230,9 @@ export class PixiStage implements SceneSink {
     host.appendChild(this.app.canvas);
     if (!options.offscreen) this.app.canvas.setAttribute('data-testid', 'stage');
     // Vignettes (hors écran) : atlas à demi-densité, largement suffisants pour une carte de 320 px.
-    const { textures } = await loadTextures(scaledBooks(options.offscreen ? 0.5 : 1));
+    // POC « 3 PLANS » : petite page d'atlas des prototypes B et C, chargée seulement dans ce mode.
+    const books = scaledBooks(options.offscreen ? 0.5 : 1);
+    const { textures } = await loadTextures(options.plans ? [...books, PLAN_BOOK] : books);
     this.kit = new ArtKit(textures);
     this.build(this.kit);
     this.resize();
@@ -248,7 +297,7 @@ export class PixiStage implements SceneSink {
   private build(kit: ArtKit): void {
     const w = this.world;
     this.app.stage.addChild(w, this.screen);
-    this.action.addChild(this.room, this.overlays, this.gadget, this.shadows, this.impactPlane, this.speed, this.cast, this.front, this.light);
+    this.action.addChild(this.room, this.overlays, this.gadget, this.shadows, this.impactPlane, this.speed, this.cast, this.front, this.plansLayer, this.light);
     w.addChild(this.bg, this.action, this.ceiling, this.fg);
 
     // ---------------------------------------------------------------- fond (parallaxe lente)
@@ -358,6 +407,12 @@ export class PixiStage implements SceneSink {
     this.add('mugProp', mugProp, () => kit.swap(mugProp, this.look.mug === 'okayest' ? 'bb_mug_okayest' : 'bb_mug'), this.gadget);
     // Câble de l'écran (réaction en chaîne) : tendu ou détendu, de l'écran jusqu'au pot de la plante.
     this.gadget.addChild(this.cable);
+
+    // POC « 3 PLANS » : prototypes B (ESPRESSO BLASTER) et C (COPIER CATAPULT), seulement si leur atlas est chargé.
+    if (kit.has('esp_body')) {
+      this.buildPlans(kit);
+      this.planFraming = true;
+    }
 
     // Ombres de contact (personnages).
     for (const [id, sx] of [['boss', 1.25], ['wendell', 0.75], ['coo', 0.36], ['chairProp', 0.9]] as const) {
@@ -519,6 +574,96 @@ export class PixiStage implements SceneSink {
     }
   }
 
+  private buildPlans(kit: ArtKit): void {
+    const L = this.plansLayer;
+    const spot = kit.sprite('plan_spot');
+    spot.visible = false;
+    spot.blendMode = 'add';
+    this.planSpot = spot;
+    // Le halo du plan A est au sol du fond : il va dans la couche des gadgets ; ceux de B et C, devant.
+    L.addChild(spot);
+    const steam = kit.sprite('fx_puff');
+    steam.tint = hex('paper');
+    steam.visible = false;
+    this.planSteam = steam;
+    const esp = new Container();
+    esp.addChild(kit.sprite('esp_body'));
+    this.add('espresso', esp, undefined, L);
+    this.add('espNeedle', kit.sprite('esp_needle'), (f, all) => {
+      // Survol / sélection (READY) : l'aiguille frémit. Fonction de l'horloge de présentation.
+      if (this.planActive('B')) this.views.get('espNeedle')!.rotation = f.transform.rot + 0.12 * Math.sin(all.clock / 70);
+    }, L);
+    this.add('espBarrel', kit.sprite('esp_barrel'), undefined, L);
+    L.addChild(steam);
+    const copier = new Container();
+    const screen = new Graphics().roundRect(-2, -2, 22, 12, 2).fill(hex('screenGlow'));
+    screen.position.set(132 - 88, 38 - 164);
+    this.copierScreen = screen;
+    copier.addChild(kit.sprite('cop_body'), screen);
+    this.add('copier', copier, (f, all) => {
+      const st = f.states.main ?? 'idle';
+      screen.visible = st !== 'idle' || this.planActive('C');
+      screen.tint = st === 'jam' || st === 'berserk' ? hex('alarm') : 0xffffff;
+      screen.alpha = st === 'berserk' ? (Math.sin(all.clock / 60) > 0 ? 0.9 : 0.25) : st === 'scan' ? 0.55 + 0.4 * Math.sin(all.clock / 90) : 0.7;
+    }, L);
+    this.add('copSheet', kit.sprite('cop_sheet'), (f, all) => {
+      // Survol / sélection (READY) : une feuille sort légèrement du bac.
+      if (this.planActive('C')) this.views.get('copSheet')!.x = f.transform.x - 14 * (0.5 + 0.5 * Math.sin(all.clock / 260));
+    }, L);
+    this.add('copLid', kit.sprite('cop_lid'), undefined, L);
+    this.add('ream', kit.sprite('cop_ream'), undefined, L);
+    this.add('espCup', kit.sprite('esp_cup'), undefined, L);
+  }
+
+  /** POC : animation d'attente du plan survolé ou choisi, seulement pendant le choix (READY). */
+  private planActive(slot: PlanSlot): boolean {
+    return this.pickerActive && (this.planUi.hover === slot || this.planUi.selected === slot);
+  }
+
+  /** POC « 3 PLANS » : plan survolé / choisi (rendu seulement, jamais une entrée de la manche). */
+  setPlanUi(ui: PlanUi): void {
+    this.planUi = ui;
+  }
+
+  /** POC : zones des trois plans à l'écran (pixels CSS du canevas), pour les cibles tactiles HTML. */
+  planRects(): PlanRect[] {
+    const out: PlanRect[] = [];
+    for (const slot of ['A', 'B', 'C'] as const) {
+      const b = PLAN_BOXES[slot];
+      const p0 = this.world.toGlobal(new Point(b.x, b.y));
+      const p1 = this.world.toGlobal(new Point(b.x + b.w, b.y + b.h));
+      out.push({ slot, x: Math.min(p0.x, p1.x), y: Math.min(p0.y, p1.y), w: Math.abs(p1.x - p0.x), h: Math.abs(p1.y - p0.y) });
+    }
+    return out;
+  }
+
+  private drawPlanPicker(frame: FrameState): void {
+    const spot = this.planSpot;
+    const steam = this.planSteam;
+    if (!spot || !steam) return;
+    const sel = this.pickerActive ? this.planUi.selected : null;
+    spot.visible = sel !== null;
+    if (sel) {
+      const st = STATION[sel];
+      // Halo au sol, respiration lente (lumière douce, jamais l'or d'un gain).
+      spot.position.set(st.x, st.y - 4);
+      const k = 1 + 0.04 * Math.sin(frame.clock / 400);
+      spot.scale.set(sel === 'A' ? 0.8 * k : 1.05 * k, k);
+      spot.alpha = 0.75;
+      // Le halo de A est derrière le sol avant : on le dessine juste sous le lance-pierre.
+      const layer = sel === 'A' ? this.gadget : this.plansLayer;
+      if (spot.parent !== layer) layer.addChildAt(spot, 0);
+    }
+    const steamOn = this.planActive('B');
+    steam.visible = steamOn;
+    if (steamOn) {
+      const k = (frame.clock % 900) / 900;
+      steam.position.set(ESP.steam.x - 6 + 8 * Math.sin(frame.clock / 300), ESP.steam.y - 10 - 46 * k);
+      steam.scale.set(0.5 + 0.5 * k);
+      steam.alpha = 0.7 * Math.sin(Math.PI * k);
+    }
+  }
+
   private drawElastic(f: ActorFrame, all: FrameState): void {
     const g = this.elastic;
     g.clear();
@@ -532,7 +677,15 @@ export class PixiStage implements SceneSink {
       g.moveTo(a[0] ?? 0, a[1] ?? 0).quadraticCurveTo(b[0] ?? 0, b[1] ?? 0, c2[0] ?? 0, c2[1] ?? 0).stroke({ width: width + 3.5, color: INK, cap: 'round' });
       g.moveTo(a[0] ?? 0, a[1] ?? 0).quadraticCurveTo(b[0] ?? 0, b[1] ?? 0, c2[0] ?? 0, c2[1] ?? 0).stroke({ width, color, cap: 'round' });
     };
-    if (f.states.elastic === 'snapped') {
+    // POC : pendant le choix, l'élastique pend au poteau ; quand A est choisi, il réapparaît en fondu.
+    g.alpha = 1;
+    if (this.elasticFadeFrom !== undefined && f.states.elastic !== 'slack') {
+      if (this.elasticFadeFrom === null) this.elasticFadeFrom = all.clock;
+      const k = (all.clock - this.elasticFadeFrom) / PLAN_FADE_MS;
+      g.alpha = Math.min(1, Math.max(0, k));
+      if (k >= 1) this.elasticFadeFrom = undefined;
+    }
+    if (f.states.elastic === 'snapped' || f.states.elastic === 'slack') {
       const wob = Math.sin(all.clock / 45) * 6 * Math.exp(-((all.t % 100000) / 100000));
       band([[px - 22, py], [px - 34 + wob, py + 26], [px - 18, py + 52]], 5);
       band([[px + 22, py], [px + 34 - wob, py + 22], [px + 20, py + 48]], 5);
@@ -545,7 +698,8 @@ export class PixiStage implements SceneSink {
     // Tension : l'élastique tremble d'autant plus qu'il est étiré (fonction du temps : déterministe).
     const len = Math.hypot(bx - px, by - py);
     const tension = clamp01((len - 260) / 160);
-    const tremble = Math.sin(all.clock / 16) * 5 * tension;
+    // POC « 3 PLANS » : au survol / à la sélection du plan A (READY), l'élastique vibre.
+    const tremble = Math.sin(all.clock / 16) * 5 * tension + (this.planActive('A') ? Math.sin(all.clock / 34) * 5 : 0);
     const sag = 18 * (1 - tension);
     for (const dx of [-22, 22]) {
       const ax = px + dx;
@@ -571,6 +725,16 @@ export class PixiStage implements SceneSink {
   }
 
   setGadget(gadget: GadgetDef): void {
+    // POC « 3 PLANS » : au tir, les plans non choisis s'effacent en fondu (au lieu de disparaître d'un coup).
+    const wasPicker = this.pickerActive;
+    this.pickerActive = gadget.id === 'plan-picker';
+    this.fading.clear();
+    if (wasPicker && !this.pickerActive) {
+      for (const id of this.gadgetProps) if (!gadget.props.includes(id)) this.fading.set(id, null);
+      if (gadget.props.includes('slingPost')) this.elasticFadeFrom = null;
+    } else {
+      this.elasticFadeFrom = undefined;
+    }
     this.gadgetProps = new Set(gadget.props);
     for (const id of ALL_GADGET_PROPS) {
       const v = this.views.get(id);
@@ -591,6 +755,22 @@ export class PixiStage implements SceneSink {
       const f = frame.actors[id];
       const view = this.views.get(id);
       if (!view) continue;
+      const fade = this.fading.get(id);
+      if (fade !== undefined) {
+        // Plan non choisi : même pose qu'au dernier instant du choix, opacité qui décroît.
+        const start = fade ?? frame.clock;
+        if (fade === null) this.fading.set(id, start);
+        const k = 1 - (frame.clock - start) / PLAN_FADE_MS;
+        view.visible = k > 0;
+        view.alpha = Math.max(0, k);
+        if (k <= 0) this.fading.delete(id);
+        if (id === 'slingPost') {
+          // L'élastique n'appartient qu'au plan A : il disparaît tout de suite (il suivrait sinon un B.B. qui bouge).
+          this.elastic.clear();
+          if (this.pouch) this.pouch.visible = false;
+        }
+        continue;
+      }
       if (!f || (ALL_GADGET_PROPS.includes(id) && !this.gadgetProps.has(id))) {
         view.visible = false;
         if (id === 'slingPost') {
@@ -603,6 +783,7 @@ export class PixiStage implements SceneSink {
       update(f, frame);
     }
     this.drawCable(frame);
+    this.drawPlanPicker(frame);
     this.drawShadows(frame);
     this.drawSpeed(frame);
     this.drawParticles(frame);
@@ -623,6 +804,9 @@ export class PixiStage implements SceneSink {
         const w = clamp01((boss.alpha - 0.2) / 0.3) * clamp01((720 - boss.y) / 120) * clamp01(1 - boss.z / 400);
         camX = cam.x + PORTRAIT.follow * w * (boss.x - cam.x);
       }
+    } else if (this.planFraming) {
+      base = Math.min(this.width / POC_LANDSCAPE.width, this.height / POC_LANDSCAPE.height);
+      camY = cam.y + POC_LANDSCAPE.dy;
     } else {
       base = Math.min(this.width / SAFE_LANDSCAPE.width, this.height / SAFE_LANDSCAPE.height);
     }
@@ -631,7 +815,7 @@ export class PixiStage implements SceneSink {
     this.bg.x = (1 - PARALLAX.bg) * d;
     this.ceiling.x = (1 - PARALLAX.bg) * d;
     this.fg.x = (1 - PARALLAX.fg) * d;
-    this.fg.y = portrait ? 0 : -64;
+    this.fg.y = portrait ? 0 : this.planFraming ? POC_LANDSCAPE.fgY : -64;
     this.fgTall.forEach((item) => (item.visible = portrait));
     this.windowView?.setParallax((PARALLAX.bg - PARALLAX.sky) * d);
 

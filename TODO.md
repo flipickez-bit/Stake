@@ -44,6 +44,19 @@
 - [ ] Atlas pré-rendus au build (WebP @1x / @2x) ; vérifier la CSP de Stake (`blob:` / `data:`).
 - [ ] Tests sur téléphones réels (FPS, mémoire, résolution dynamique).
 
+## P0 : POC « 3 PLANS » (BAD BOSS — 3 GADGET POC) — `POC_3_GADGETS.md`
+- [x] Étude de faisabilité (`docs/ETUDE_CHOIX_3_GADGETS.md`) ; principe adopté PROVISOIREMENT (9 gadgets cibles, production NON lancée).
+- [x] Maths A2 expérimentales dans le Mock RGS (`IND_BFC_v1`, triple tiré sans le plan, RTP A = B = C) ; maths de production inchangées.
+- [x] Choix du plan AVANT Play, verrouillé ensuite (I9) : tests unitaires + e2e (animation, rechargement, reprise, double tap).
+- [x] Choix dans le décor (A SLINGSHOT réel, prototypes B ESPRESSO BLASTER et C COPIER CATAPULT) ; survol animé.
+- [x] PRIVATE (défaut) / ON-DEMAND (« REVEAL OTHER PLANS » après toutes les manches) / REVEAL ALL (DEV) ; aucun son, aucune célébration, aucun texte de regret.
+- [x] PLAYTEST A/B 2 × 30 manches, ordre aléatoire, Q1–Q7 + question libre, mesures de changement de gadget, export.
+- [x] Résumé technique pour Stake (`docs/STAKE_A2_TECH_SUMMARY.md`) ; SOUND BIBLE v0 (`SOUND_BIBLE.md`).
+- [ ] **Playtest A/B humain** (vous, préversion 3 GADGET POC) ; plusieurs testeurs si possible.
+- [ ] **Réponses de Stake à Q21–Q29** avant toute production A2.
+- [ ] Décision : la mécanique remplace-t-elle le modèle actuel ? (NE PAS produire avant : 6 gadgets complets, 144 branches, maths de production, nouvelle collection.)
+- [ ] Écart son relevé : un x0,5 (SCRAPE) joue 1 DING, contrairement au GDD (`SOUND_BIBLE.md` §4).
+
 ## P0 : décisions et informations externes
 - [ ] Obtenir de Stake Engine (liste complète : `docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 et hypothèses H1-H13 du §12) :
   - [ ] sémantique de `autoEndRoundDisabled` / `auto_close_disabled=True` sur des modes de base (manches à gain nul comprises) ;

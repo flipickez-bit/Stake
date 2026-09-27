@@ -22,6 +22,15 @@
   import { progress as collectionProgress } from '../collection/rewards';
   import type { CollectionState, DiscoveryEvent } from '../collection/types';
   import { ThumbnailRenderer } from '../render/ThumbnailRenderer';
+  import PlanPicker from './poc/PlanPicker.svelte';
+  import OtherPlans from './poc/OtherPlans.svelte';
+  import PocPlaytestIntro from './poc/PocPlaytestIntro.svelte';
+  import PocQuestionnaire from './poc/PocQuestionnaire.svelte';
+  import PocResults from './poc/PocResults.svelte';
+  import PocSessionCard from './poc/PocSessionCard.svelte';
+  import { POC_SESSION_ROUNDS, type PocAnswers, type PocPlaytestState, type PocStudy } from '../dev/pocPlaytest';
+  import type { AltDisplay } from './pocConfig';
+  import type { PlanSlot } from '../domain/plans';
 
   let host: HTMLDivElement;
   let ctx = $state<GameContext | null>(null);
@@ -46,11 +55,20 @@
   let lastUnseen = -1;
   let showcaseOn = $state(false);
   let thumbs = $state.raw<ThumbnailRenderer | null>(null);
+  // POC « 3 PLANS » (BAD BOSS — 3 GADGET POC) : réglage DEV ALTERNATIVE DISPLAY.
+  let altMode = $state<AltDisplay>('PRIVATE');
+  const poc = $derived(ctx?.poc ?? null);
+  let pocPt = $state<PocPlaytestState | null>(null);
+  let pocIntro = $state(false);
+  let pocResults = $state<PocStudy | null>(null);
+  const pocStudy = $derived(pocPt?.study ?? null);
+  const pocSession = $derived(pocStudy && pocStudy.status === 'running' ? (pocStudy.sessions[pocStudy.sessions.length - 1] ?? null) : null);
+  const showPocQuestionnaire = $derived(pocSession?.status === 'questionnaire' && snap?.state === 'READY');
 
   const ptCurrent = $derived(pt?.current ?? null);
   const showQuestionnaire = $derived(ptCurrent?.status === 'questionnaire' && snap?.state === 'READY');
   const ptResults = $derived(ptResultsId ? (pt?.sessions.find((x) => x.id === ptResultsId) ?? null) : null);
-  const overlayOpen = $derived(ptIntro || showQuestionnaire || ptResults !== null || bookOpen || showcaseOn);
+  const overlayOpen = $derived(ptIntro || showQuestionnaire || ptResults !== null || bookOpen || showcaseOn || pocIntro || showPocQuestionnaire || pocResults !== null);
   const collProgress = $derived(ctx?.collection && coll ? collectionProgress(coll, ctx.collection.catalog) : null);
   const shownCount = $derived(collProgress ? Math.max(0, collProgress.discovered - countHold) : 0);
   const unseenRewards = $derived(ctx?.collection && coll ? ctx.collection.unseenRewards.length : 0);
@@ -90,6 +108,11 @@
         off.push(c.presenter.onSignalEvent(() => (bf = c.presenter.status.bossFight)));
         off.push(c.flow.subscribe((s) => { if (s.state === 'READY' || s.state === 'BET_PENDING') bf = c.presenter.status.bossFight; }));
         off.push(c.playtest.subscribe((s) => (pt = s)));
+        if (c.poc) {
+          document.title = 'BAD BOSS — 3 GADGET POC (working title)';
+          off.push(c.poc.altDisplay.subscribe((v) => (altMode = v)));
+          off.push(c.poc.playtest.subscribe((v) => (pocPt = v)));
+        }
         if (c.collection) {
           off.push(
             c.collection.subscribe((s) => {
@@ -105,8 +128,14 @@
       })
       .catch((e) => (bootError = e instanceof Error ? e.message : String(e)));
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== 'Space' || !ctx || !snap?.capabilities.spacebar || overlayOpen) return;
-      if ((e.target as HTMLElement)?.closest('input, select, textarea, .dev')) return;
+      if (!ctx || overlayOpen || (e.target as HTMLElement)?.closest('input, select, textarea, .dev')) return;
+      // POC « 3 PLANS » : A / B / C au clavier (READY seulement ; GameFlow refuse sinon).
+      const slot = ({ KeyA: 'A', KeyB: 'B', KeyC: 'C' } as Record<string, PlanSlot | undefined>)[e.code];
+      if (slot && ctx.poc && snap?.plansEnabled) {
+        onPickPlan(slot, ctx.flow.snapshot.plan !== slot && ctx.flow.setPlan(slot));
+        return;
+      }
+      if (e.code !== 'Space' || !snap?.capabilities.spacebar) return;
       e.preventDefault();
       gesture();
       if (snap.canFire) ctx.flow.fire();
@@ -123,6 +152,56 @@
     ctx?.audio.unlock();
   }
 
+  /** POC : retour d'interface discret au choix d'un plan (jamais un son de gain). */
+  function onPickPlan(_slot: PlanSlot, changed: boolean) {
+    gesture();
+    if (changed) ctx?.audio.play('click', 0.8);
+  }
+
+  function onRevealOtherPlans(roundId: string) {
+    // Mesure du playtest POC : aucune autre conséquence (jamais de son, jamais d'effet sur le jeu).
+    ctx?.poc?.playtest.markRevealOpened(roundId, performance.now());
+  }
+
+  /** Session propre (solde fictif remis à $1,000, aucun forçage, aucune panne) avec l'affichage de la variante. */
+  async function resetForPocSession(variant: AltDisplay) {
+    if (!ctx?.poc) return;
+    ctx.presenter.forceBranchId = null;
+    ctx.mock?.update((s) => {
+      s.nextForced = null;
+      s.nextForcedTriple = null;
+      s.faults = { offline: false, playTimeoutAfterSend: false, endRoundTimeoutAfterSend: false, latencyMs: 120 };
+      s.balance = 1000 * 1_000_000;
+    });
+    ctx.poc.altDisplay.set(variant);
+    await ctx.flow.start();
+  }
+
+  async function startPocPlaytest() {
+    if (!ctx?.poc) return;
+    pocIntro = false;
+    devOpen = false;
+    const study = ctx.poc.playtest.start({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      portrait: window.innerHeight > window.innerWidth,
+      touch: navigator.maxTouchPoints > 0,
+    });
+    await resetForPocSession(study.order[0]);
+  }
+
+  async function submitPocAnswers(answers: PocAnswers | null) {
+    if (!ctx?.poc) return;
+    const id = pocStudy?.id ?? null;
+    const next = ctx.poc.playtest.submitAnswers(answers);
+    if (next) {
+      await resetForPocSession(next);
+      return;
+    }
+    ctx.poc.altDisplay.set('PRIVATE');
+    pocResults = ctx.poc.playtest.snapshot.history.find((x) => x.id === id) ?? null;
+  }
+
   function toggleMute() {
     gesture();
     muted = !muted;
@@ -131,7 +210,10 @@
 
   function toggleDev() {
     devOpen = !devOpen;
-    if (devOpen) ctx?.playtest.markDevPanelOpened();
+    if (devOpen) {
+      ctx?.playtest.markDevPanelOpened();
+      ctx?.poc?.playtest.markDevPanelOpened();
+    }
   }
 
   /** Session propre : aucun forçage, aucune panne simulée, solde fictif remis à $1,000. */
@@ -215,9 +297,13 @@
 
 <div class="game" onpointerdown={gesture} role="presentation">
   <div class="topbar">
-    <span class="title">BAD BOSS <small>WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED · PHASE 0.6 VISUAL SLICE</small></span>
+    <span class="title" data-testid="title">BAD BOSS{#if poc} — 3 GADGET POC{/if} <small>WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED · {poc ? 'EXPERIMENTAL · MOCK ONLY' : 'PHASE 0.6 VISUAL SLICE'}</small></span>
     <span class="balance" data-testid="balance">{formatBalance(snap?.balance ?? null)}</span>
-    {#if ptCurrent}
+    {#if poc && pocSession}
+      <span class="pt-chip" data-testid="poc-counter">PLAYTEST S{pocSession.index}/2 · {Math.min(pocSession.rounds.length + (pocSession.status === 'playing' ? 1 : 0), POC_SESSION_ROUNDS)}/{POC_SESSION_ROUNDS}</span>
+    {:else if poc}
+      <button class="icon pt" onclick={() => (pocIntro = true)} disabled={snap?.state !== 'READY'} data-testid="playtest-open">PLAYTEST</button>
+    {:else if ptCurrent}
       <span class="pt-chip" data-testid="playtest-counter">PLAYTEST {Math.min(ptCurrent.rounds.length + (ptCurrent.status === 'playing' ? 1 : 0), PLAYTEST_TARGET)}/{PLAYTEST_TARGET}</span>
     {:else if ctx?.mock}
       <button class="icon pt" onclick={() => (ptIntro = true)} disabled={snap?.state !== 'READY'} data-testid="playtest-open">PLAYTEST</button>
@@ -246,6 +332,15 @@
     {#if snap?.state === 'RESUMING' || snap?.state === 'REPLAYING'}
       <div class="badge" data-testid="mode-badge">{snap.state === 'RESUMING' ? 'RESUMED ROUND' : 'REPLAY · NO BET'}</div>
     {/if}
+    {#if ctx && snap && poc && snap.plansEnabled && !showcaseOn && !bootError}
+      <PlanPicker flow={ctx.flow} stage={ctx.stage} {snap} onPick={onPickPlan} />
+    {/if}
+    {#if ctx && snap && poc && snap.state === 'READY' && snap.revealed?.plans && !showcaseOn}
+      <OtherPlans revealed={snap.revealed} level={snap.level} mode={altMode} onOpen={onRevealOtherPlans} />
+    {/if}
+    {#if poc && pocSession?.status === 'extra' && snap?.state === 'READY'}
+      <PocSessionCard session={pocSession} onAnswer={() => ctx?.poc?.playtest.openQuestionnaire()} />
+    {/if}
     {#if !showcaseOn}
       <!-- SPECIAL EPISODE : aucun chiffre à l'écran (ni résultat précédent, ni échelle, ni badge). -->
       <ResultPop revealed={snap?.revealed ?? null} currency={snap?.balance?.currency ?? 'USD'} />
@@ -260,7 +355,7 @@
   </div>
 
   {#if ctx && snap && !showcaseOn}
-    <Hud flow={ctx.flow} {snap} onGesture={gesture} />
+    <Hud flow={ctx.flow} {snap} onGesture={gesture} poc={poc !== null} />
   {/if}
 </div>
 
@@ -282,6 +377,15 @@
   <ShowcaseOverlay presenter={ctx.presenter} onExit={exitEpisode} />
 {/if}
 
+{#if pocIntro}
+  <PocPlaytestIntro onStart={startPocPlaytest} onCancel={() => (pocIntro = false)} />
+{/if}
+{#if showPocQuestionnaire && pocSession}
+  {#key pocSession.index}<PocQuestionnaire session={pocSession} onSubmit={submitPocAnswers} />{/key}
+{/if}
+{#if ctx?.poc && pocResults}
+  <PocResults recorder={ctx.poc.playtest} study={pocResults} onClose={() => (pocResults = null)} />
+{/if}
 {#if ptIntro}
   <PlaytestIntro onStart={startPlaytest} onCancel={() => (ptIntro = false)} onPreviewBossFight={previewBossFight} />
 {/if}

@@ -1,4 +1,5 @@
 import type { Outcome } from '../domain/outcome';
+import type { PlanSlot } from '../domain/plans';
 import type { RageLevelId, Speed } from '../domain/types';
 
 /** Ce que GameFlow attend de la présentation. Implémenté par le moteur Pixi (et par un faux dans les tests). */
@@ -27,8 +28,11 @@ export interface PresentationHandle {
 }
 
 export interface RoundPresenter {
-  /** INTRO + SETUP neutres (identiques pour toutes les issues), avant de connaître le résultat. */
-  beginNeutral(level: RageLevelId, speed: Speed): void;
+  /**
+   * INTRO + SETUP neutres (identiques pour toutes les issues), avant de connaître le résultat.
+   * `plan` (POC « 3 PLANS ») : gadget du plan choisi avant le tir.
+   */
+  beginNeutral(level: RageLevelId, speed: Speed, plan?: PlanSlot | null): void;
   /** Mise refusée de façon CERTAINE : on range le gadget. */
   abortNeutral(): void;
   present(outcome: Outcome, options: PresentOptions): PresentationHandle;

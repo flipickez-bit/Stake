@@ -2,9 +2,10 @@
  * Presenter : implémente RoundPresenter (le port attendu par GameFlow) au-dessus du SequencePlayer.
  * Il ne connaît ni Pixi ni WebAudio : il parle à un SceneSink et à un AudioSink.
  */
-import { gadgetFor, restLayout } from '../content/gadgets';
+import { gadgetById, gadgetFor, gadgetForPlan, pickerGadget, restLayout } from '../content/gadgets';
 import { LIBRARY } from '../content/library';
 import type { Outcome } from '../domain/outcome';
+import type { PlanSlot } from '../domain/plans';
 import type { RageLevelId, Speed } from '../domain/types';
 import type { PresentationHandle, PresentationInfo, PresentOptions, RoundPresenter } from '../flow/presenterPort';
 import { compileSequence, compileTrunk, type ContentLibrary } from '../presentation/compileSequence';
@@ -97,6 +98,8 @@ interface Pending {
 
 export interface PresenterOptions {
   library?: ContentLibrary;
+  /** POC « 3 PLANS » : au repos, les trois plans du niveau sont présents dans le décor (choix). */
+  plans?: boolean;
   /** Signalé en cas de repli de contenu (DEV PANEL). */
   onContentError?: (error: unknown) => void;
 }
@@ -175,9 +178,10 @@ export class Presenter implements RoundPresenter {
     if (this.mode === 'neutral' && this.player.isOpen && this.player.waitingMs > 0) this.mode = 'waiting';
   }
 
-  beginNeutral(level: RageLevelId, speed: Speed): void {
+  beginNeutral(level: RageLevelId, speed: Speed, plan?: PlanSlot | null): void {
     this.cancelPending();
-    this.useGadget(gadgetFor(level));
+    // POC « 3 PLANS » : le tronc neutre est celui du gadget CHOISI (le choix précède toujours le tir).
+    this.useGadget(gadgetForPlan(level, plan));
     this.speed = speed;
     this.outcome = null;
     this.bf = NO_BF;
@@ -191,7 +195,7 @@ export class Presenter implements RoundPresenter {
 
   toIdle(level: RageLevelId): void {
     this.cancelPending();
-    this.useGadget(gadgetFor(level));
+    this.useGadget((this.options.plans ? pickerGadget(level) : null) ?? gadgetFor(level));
     this.outcome = null;
     this.bf = NO_BF;
     this.player.load(idleSequence(this.gadget), restLayout(this.gadget), { open: true });
@@ -200,7 +204,8 @@ export class Presenter implements RoundPresenter {
 
   present(outcome: Outcome, options: PresentOptions): PresentationHandle {
     this.cancelPending();
-    const gadget = gadgetFor(outcome.mode);
+    // POC « 3 PLANS » : SEUL le gadget du plan payé est joué (jamais une alternative).
+    const gadget = outcome.plans ? (gadgetById(outcome.plans.selectedGadget) ?? gadgetForPlan(outcome.mode, outcome.plans.selected)) : gadgetFor(outcome.mode);
     let seq: AnimationSequence;
     try {
       const force = this.forceBranchId ?? undefined;

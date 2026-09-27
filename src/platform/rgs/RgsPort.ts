@@ -1,3 +1,4 @@
+import type { PlanSlot } from '../../domain/plans';
 import type { InternalRound, Money } from '../../domain/round';
 import type { RageLevelId } from '../../domain/types';
 
@@ -93,8 +94,12 @@ export class RgsError extends Error {
 export interface RgsPort {
   readonly name: 'mock' | 'stake';
   authenticate(): Promise<AuthResult>;
-  /** Place une mise. Ne doit JAMAIS être relancée automatiquement par l'appelant. */
-  play(amount: number, mode: RageLevelId): Promise<PlayResult>;
+  /**
+   * Place une mise. Ne doit JAMAIS être relancée automatiquement par l'appelant.
+   * `plan` (POC « 3 PLANS », A2) : choisi AVANT la mise, il fait partie du mode (`grumpy_b`). MOCK / DEV seulement :
+   * INFORMATION STAKE ENGINE REQUISE (Q21–Q29).
+   */
+  play(amount: number, mode: RageLevelId, plan?: PlanSlot | null): Promise<PlayResult>;
   endRound(): Promise<EndRoundResult>;
   /** Resynchronisation : nouvelle authentification, renvoie la manche active et la dernière manche. */
   getActiveRound(): Promise<RoundSnapshot>;

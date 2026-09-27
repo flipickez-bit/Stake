@@ -24,6 +24,8 @@ function inlineEverything(): Plugin {
         }
       }
       html = html.replace(/<link rel="modulepreload"[^>]*>\s*/g, '');
+      // Préversion du POC « 3 PLANS » (VITE_BADBOSS_POC=1) : titre propre, distinct du prototype principal.
+      if (process.env.VITE_BADBOSS_POC === '1') html = html.replace(/<title>[^<]*<\/title>/, '<title>BAD BOSS — 3 GADGET POC</title>');
       writeFileSync(htmlPath, html);
     },
   };
