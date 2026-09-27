@@ -31,6 +31,19 @@
 - [ ] Sessions supplémentaires si d'autres testeurs sont disponibles.
 - [ ] Rapport de Phase 0.5 (`tools/playtest-report.mjs`, P05-A vs P05-C), puis arrêt.
 
+## P0 : Phase 0.6 — VISUAL UPGRADE (vertical slice) — `PHASE_0_6.md`
+- [x] Skills PixiJS installés ; Game Assets Enhancer inspecté (fal.ai payant : non utilisé).
+- [x] Inspection du renderer (gardé / remplacé).
+- [x] `BAD_BOSS_ART_BIBLE.md` + validation automatique de cohérence.
+- [x] Concept frames GRUMPY / FURIOUS / UNHINGED.
+- [x] Pipeline d'art (SVG → atlas), rigs illustrés (B.B., Wendell, COO, mains), bureau 2.5D, lumière, VFX.
+- [x] Slice GRUMPY + SWIVEL SLINGSHOT : PERTE `SLG-C1`, GAIN `SLG-A4`, GROS GAIN `SLG-A5`, NEW DISCOVERY, NEW REWARD.
+- [x] Tests, captures avant / après, mesures (appels de dessin, LOOP, tailles), rapport.
+- [ ] **Validation de la slice (vous).**
+- [ ] Ensuite seulement : fin de SLINGSHOT → TRAPDOOR → ROCKET → BOSS FIGHT (un lot validé à la fois).
+- [ ] Atlas pré-rendus au build (WebP @1x / @2x) ; vérifier la CSP de Stake (`blob:` / `data:`).
+- [ ] Tests sur téléphones réels (FPS, mémoire, résolution dynamique).
+
 ## P0 : décisions et informations externes
 - [ ] Obtenir de Stake Engine (liste complète : `docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 et hypothèses H1-H13 du §12) :
   - [ ] sémantique de `autoEndRoundDisabled` / `auto_close_disabled=True` sur des modes de base (manches à gain nul comprises) ;

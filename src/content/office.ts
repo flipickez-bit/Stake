@@ -37,6 +37,8 @@ export const OFFICE_LAYOUT: Record<ActorId, ActorRest> = {
   chairProp: { transform: { x: 770, y: 560, alpha: 0 }, states: { kind: 'chair' } },
   /** Fumée plein écran : cache la scène pendant qu'on replace les acteurs. */
   fog: { transform: { x: 500, y: 350, alpha: 0 } },
+  /** Phase 0.6 : le mug de B.B. quand il lui échappe (reste suspendu, tombe). */
+  mugProp: { transform: { x: 0, y: 0, alpha: 0 } },
 };
 
 /** Position de B.B. dans la cabine d'ascenseur. */

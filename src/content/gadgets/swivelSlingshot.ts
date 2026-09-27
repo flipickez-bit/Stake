@@ -9,7 +9,7 @@
  */
 import type { GadgetDef } from '../../presentation/types';
 import {
-  anim, BOSS_FIGHT, compose, fx, LOSS, mod, paced, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_SMALL,
+  anim, BOSS_FIGHT, compose, freeze, fx, impactFrame, LOSS, mod, paced, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_SMALL,
 } from '../dsl';
 
 const D1 = 'released';
@@ -39,19 +39,27 @@ export const swivelSlingshot: GadgetDef = {
   hold: { sound: 'creak', everyMs: 700 },
   segments: segments([
     // ---------------------------------------------------------------- tronc (neutre, avant le résultat)
+    // Phase 0.6 (VERTICAL SLICE) : mêmes durées ; anticipation lisible (les mains saisissent, l'élastique se tend et
+    // tremble, B.B. sirote sans rien voir), repères STRETCH pour le son définitif.
     seg('SLG_IN', 'intro', 450, 'compress', [
       anim(0, 'hands', 'open'), tw(0, 'hands', { x: 770, y: 470 }, 360, 'outBack'),
       anim(0, 'boss', 'sip'), anim(380, 'hands', 'grab'), sound(380, 'click'),
     ]),
     seg('SLG_PULL', 'setup', 700, 'compress', [
       anim(0, 'hands', 'strain'), tw(0, 'hands', { x: 850 }, 650, 'inOutQuad'), tw(0, 'boss', { x: 770 }, 650, 'inOutQuad'),
-      sound(0, 'creak'), sound(350, 'creak', 1.2), anim(200, 'boss', 'oblivious'),
+      sound(0, 'creak'), sound(60, 'stretch'), sound(350, 'creak', 1.2), sound(420, 'stretch', 1.25), anim(200, 'boss', 'oblivious'),
       tw(0, 'camera', { x: 560, sx: 1.06 }, 600, 'inOutQuad'),
     ]),
 
     // ---------------------------------------------------------------- SETUPS
+    /**
+     * Commun aux 6 fins A (neutre) : B.B. REMARQUE (la « prise », 70 ms), image d'impact + HIT STOP (l'élastique part),
+     * WHOOSH, il est projeté (vitesse constante : les fins enchaînent sans à-coup).
+     */
     seg('SLG_A_LAUNCH', 'action', 300, 'compress', [
-      anim(0, 'hands', 'open'), sound(0, 'twang'), tw(0, 'boss', { x: 470 }, 260, 'inQuad'), anim(0, 'boss', 'surprised'),
+      anim(0, 'hands', 'open'), sound(0, 'snap'), anim(0, 'boss', 'surprised'),
+      ...impactFrame(70, 40, 45), sound(72, 'twang'), sound(72, 'whoosh'),
+      tw(72, 'boss', { x: 520 }, 228, 'linear'), fx(72, 'dust', 30, -10, 4, 'boss'),
       tw(0, 'camera', { x: 500, sx: 1 }, 300, 'outQuad'), handsAway(40),
     ]),
     paced(0.8, seg('SLG_B_SPIN', 'action', 650, 'compress', [
@@ -99,18 +107,39 @@ export const swivelSlingshot: GadgetDef = {
       anim(1220, 'boss', 'smug'), { kind: 'signal', at: 1240, signal: 'reveal' },
       anim(1000, 'coo', 'fly'), tw(1000, 'coo', { x: 560, y: 300 }, 380, 'outQuad'), anim(1380, 'coo', 'applaud'), sound(1400, 'coo'),
     ]),
-    seg('SLG_E_CABINET', 'action', 420, 'compress', [
-      state(20, 'slingPost', 'elastic=snapped'), sound(20, 'twang', 1.6), anim(60, 'boss', 'scared'),
-      tw(0, 'boss', { x: 176 }, 420, 'inQuad'), fx(40, 'dust', 0, -8, 5, 'boss'), tw(60, 'camera', { x: 390 }, 360, 'outQuad'),
+    /**
+     * SLICE — GAIN : le mug reste suspendu en l'air (physique cartoon), tombe, CLINK ; B.B. file vers le classeur ;
+     * Wendell accourt et regarde ; poussée de caméra juste avant le choc (le reveal est au contact, bibliothèque IMPACT).
+     */
+    seg('SLG_E_CABINET', 'action', 380, 'compress', [
+      state(0, 'boss', 'mug=none'), tw(0, 'mugProp', { x: 555, y: 470, alpha: 1, rot: 0 }, 1, 'linear'),
+      tw(2, 'mugProp', { y: 460, rot: 0.25 }, 140, 'outQuad'), tw(150, 'mugProp', { y: 546, rot: 1.3 }, 170, 'inQuad'),
+      sound(320, 'clink'), tw(320, 'mugProp', { y: 532, rot: 1.5 }, 55, 'outQuad'), tw(378, 'mugProp', { y: 546, rot: 1.57 }, 55, 'inQuad'),
+      state(20, 'slingPost', 'elastic=snapped'), sound(20, 'snap', 1.3), anim(40, 'boss', 'scared'),
+      tw(0, 'boss', { x: 176 }, 380, 'linear'), fx(40, 'dust', 0, -8, 5, 'boss'),
+      tw(0, 'camera', { x: 390 }, 300, 'outQuad'), tw(200, 'camera', { sx: 1.08 }, 180, 'inQuad'),
+      anim(120, 'wendell', 'run'), tw(120, 'wendell', { x: 580 }, 220, 'outQuad'), sound(130, 'whoosh', 1.4), anim(340, 'wendell', 'peek'),
     ]),
+    /**
+     * SLICE — GROS GAIN : mise en scène supérieure (pas seulement plus de particules). Le COO voit arriver B.B. et
+     * s'enfuit ; la caméra pousse vers la fenêtre ; B.B. regarde l'objectif une fraction de seconde (gel) ; puis le choc.
+     */
     seg('SLG_E_WINDOW', 'action', 560, 'compress', [
-      state(20, 'slingPost', 'elastic=snapped'), sound(20, 'twang', 1.6), anim(60, 'boss', 'scared'),
-      tw(0, 'boss', { x: 330, y: 400, rot: -0.5 }, 400, 'outQuad'), tw(400, 'boss', { x: 236, y: 330 }, 160, 'inQuad'),
-      sound(120, 'whoosh'), tw(60, 'camera', { x: 420 }, 420, 'outQuad'),
+      state(20, 'slingPost', 'elastic=snapped'), sound(20, 'snap', 1.3), anim(60, 'boss', 'scared'),
+      tw(0, 'boss', { x: 330, y: 400, rot: -0.5 }, 380, 'outQuad'), tw(410, 'boss', { x: 236, y: 330 }, 150, 'inQuad'),
+      sound(90, 'whoosh'), tw(60, 'camera', { x: 420 }, 420, 'outQuad'), tw(300, 'camera', { sx: 1.12 }, 260, 'inQuad'),
+      anim(230, 'coo', 'fly'), sound(230, 'coo', 1.3), fx(230, 'feathers', 262, 330, 8), tw(230, 'coo', { x: 90, y: 180, rot: -0.3 }, 280, 'outQuad'),
+      anim(380, 'boss', 'lookcam'), freeze(395, 120), sound(410, 'whoosh', 1.5),
+      // Après le choc, la caméra continue de pousser lentement pendant les DING (le moment dure).
+      tw(545, 'camera', { sx: 1.2 }, 900, 'outQuad'),
     ]),
+    /** Commun aux sorties par la fenêtre (A5, B3) : le décor réagit, B.B. devient une étoile qui scintille au loin. */
     seg('SLG_AWAY', 'impact', 700, 'compress', [
       anim(0, 'boss', 'away'), tw(0, 'boss', { x: 150, y: 240, z: 1600, alpha: 0, rot: -4 }, 650, 'outQuad'), sound(60, 'fall', 1.1),
-      tw(300, 'camera', { x: 500 }, 400, 'inOutQuad'),
+      tw(0, 'portrait', { rot: 0.22 }, 110, 'outQuad'), tw(110, 'portrait', { rot: 0 }, 520, 'outElastic'),
+      tw(0, 'plant', { rot: -0.12 }, 90, 'outQuad'), tw(90, 'plant', { rot: 0 }, 420, 'outElastic'),
+      fx(40, 'papers', 440, 150, 8), sound(60, 'paper'),
+      tw(300, 'camera', { x: 500, sx: 1 }, 400, 'inOutQuad'), fx(640, 'sparks', 150, 240, 3), sound(650, 'tink', 1.9),
     ]),
     seg('SLG_E_BFSKID', 'action', 700, 'compress', [
       state(20, 'slingPost', 'elastic=snapped'), sound(20, 'twang', 1.6),
@@ -132,13 +161,29 @@ export const swivelSlingshot: GadgetDef = {
       state(250, 'extinguisher', 'fired'), fx(260, 'foam', 530, 470, 30), anim(260, 'boss', 'scared'),
       tw(300, 'boss', { x: 236, y: 330, rot: -0.5 }, 360, 'inQuad'), tw(300, 'camera', { x: 420 }, 360, 'outQuad'),
     ]),
-    /** La chaise revient… et passe derrière lui pour pulvériser son ordinateur. LE SIP. x0. */
-    paced(0.8, seg('SLG_E_MONITOR', 'action', 900, 'compress', [
+    /**
+     * SLICE — PERTE (réaction en chaîne) : la chaise revient et pulvérise l'écran, qui pivote ; son câble arrache la
+     * plante ; Wendell plonge pour la rattraper… elle atterrit ailleurs (sur le bureau). B.B. a tout regardé. LE SIP. x0.
+     */
+    seg('SLG_E_MONITOR', 'action', 720, 'compress', [
       state(0, 'chairProp', 'kind=chair'), tw(0, 'chairProp', { x: 1560, y: 520, alpha: 1, rot: 0 }, 1, 'linear'),
-      tw(20, 'chairProp', { x: 790, y: 430, rot: 0.7 }, 280, 'inQuad'), sound(20, 'whoosh'), anim(40, 'boss', 'braced'),
-      sound(300, 'crash'), state(300, 'monitor', 'broken'), fx(300, 'sparks', 770, 400, 16), fx(320, 'smoke', 770, 390, 8), shake(300, 250, 5),
-      { kind: 'signal', at: 460, signal: 'reveal' }, anim(480, 'boss', 'lookback'), tw(320, 'camera', { x: 700, sx: 1.2 }, 300, 'outQuad'),
-    ])),
+      tw(10, 'chairProp', { x: 790, y: 430, rot: 0.7 }, 190, 'inQuad'), sound(10, 'whoosh'), anim(20, 'boss', 'braced'),
+      tw(0, 'camera', { x: 700, sx: 1.14 }, 160, 'outQuad'),
+      sound(200, 'crash'), state(200, 'monitor', 'broken'), fx(200, 'burst', 770, 390, 1), fx(200, 'sparks', 770, 400, 16), fx(215, 'smoke', 770, 390, 6),
+      fx(200, 'debris', 770, 410, 8), sound(210, 'debris'), shake(200, 250, 5),
+      tw(200, 'monitor', { rot: 0.55 }, 110, 'outBack'), tw(205, 'chairProp', { x: 860, y: 600, rot: 1.6, alpha: 0 }, 160, 'inQuad'),
+      anim(240, 'boss', 'lookback'), { kind: 'signal', at: 270, signal: 'reveal' },
+      // Le câble de l'écran se tend… et arrache la plante.
+      state(280, 'monitor', 'cable=taut'), sound(285, 'snap', 0.8), fx(290, 'leaves', 322, 470, 6),
+      tw(290, 'plant', { x: 620 }, 400, 'inOutQuad'), tw(290, 'plant', { y: 300 }, 200, 'outQuad'), tw(490, 'plant', { y: 436 }, 200, 'inQuad'),
+      tw(290, 'plant', { rot: -6.2832 }, 400, 'linear'), sound(300, 'whoosh', 0.8),
+      tw(280, 'camera', { x: 480, sx: 1 }, 320, 'inOutQuad'),
+      // Wendell accourt et plonge… trop tard.
+      anim(300, 'wendell', 'run'), tw(300, 'wendell', { x: 560 }, 240, 'outQuad'), sound(310, 'whoosh', 1.5),
+      anim(540, 'wendell', 'fall'), tw(540, 'wendell', { x: 470, rot: -1.35 }, 150, 'outQuad'),
+      sound(650, 'thud', 1.4), fx(650, 'dust', 450, 556, 6),
+      state(690, 'monitor', 'cable=slack'), sound(690, 'plop', 0.9), fx(690, 'leaves', 620, 420, 5), anim(700, 'boss', 'idle'),
+    ]),
     /** Le mug est vide… la chaise revient du hors champ. BOOM. */
     seg('SLG_E_RETURN', 'action', 340, 'compress', [
       state(0, 'chairProp', 'kind=chair'), tw(0, 'chairProp', { x: 1560, y: 520, alpha: 1, rot: 0 }, 1, 'linear'),

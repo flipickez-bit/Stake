@@ -17,6 +17,20 @@ export interface CharacterAnimator<View = unknown> {
   /** Objet d'affichage (conteneur Pixi pour les implémentations actuelles). */
   readonly view: View;
   readonly animations: readonly string[];
-  pose(anim: string, elapsedMs: number, states: Readonly<Record<string, string>>): void;
+  pose(anim: string, elapsedMs: number, states: Readonly<Record<string, string>>, context?: PoseContext): void;
   destroy(): void;
+}
+
+/**
+ * Contexte facultatif d'une pose (Phase 0.6), lui aussi fonction pure du temps de séquence :
+ * - fondu court depuis l'animation précédente ;
+ * - mouvement secondaire (cravate, touffe) et traînée à grande vitesse.
+ */
+export interface PoseContext {
+  prevAnim: string | null;
+  prevElapsed: number;
+  vx: number;
+  vy: number;
+  lagX: number;
+  lagY: number;
 }

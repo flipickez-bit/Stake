@@ -77,3 +77,13 @@ export function compose(
 ): BranchDef {
   return { id, label, ...meta, path: modules.map((m) => m.name), steps: [...modules.flatMap((m) => m.steps), ...ending] };
 }
+
+/**
+ * Phase 0.6 : IMAGE D'IMPACT (silhouettes encre sur papier) pendant `frameMs` de temps réel, puis HIT STOP
+ * (image normale figée) pendant `stopMs`. Deux gels successifs : le temps de séquence ne bouge que d'1 ms.
+ */
+export function impactFrame(at: number, frameMs: number, stopMs: number): Cue[] {
+  const out: Cue[] = [state(at, 'flash', 'frame=impact'), freeze(at, frameMs), state(at + 1, 'flash', 'frame=none')];
+  if (stopMs > 0) out.push(freeze(at + 1, stopMs));
+  return out;
+}

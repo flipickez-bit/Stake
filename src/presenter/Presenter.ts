@@ -164,6 +164,11 @@ export class Presenter implements RoundPresenter {
     return () => this.listeners.delete(fn);
   }
 
+  /** Outils de capture (DEV) : place la séquence courante à l'instant t (même image qu'en lecture normale). */
+  debugSeek(t: number): void {
+    this.player.seek(t);
+  }
+
   /** Appelé par la boucle de rendu (ou par les tests) avec le temps réel écoulé. */
   tick(wallMs: number): void {
     this.player.tick(Math.min(Math.max(0, wallMs), 250));

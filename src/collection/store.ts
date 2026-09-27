@@ -13,7 +13,7 @@ export const COLLECTION_KEY = 'badboss.collection.v1';
 export const RECENT_ROUNDS = 20;
 
 export function emptyCollection(): CollectionState {
-  return { version: 1, entries: {}, milestones: {}, equipped: {}, opens: 0, recentRoundIds: [] };
+  return { version: 1, entries: {}, milestones: {}, equipped: {}, opens: 0, recentRoundIds: [], rewardsSeen: [] };
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -50,6 +50,10 @@ export function sanitizeCollection(raw: unknown): CollectionState {
   }
   out.opens = typeof raw.opens === 'number' && Number.isFinite(raw.opens) ? Math.max(0, Math.floor(raw.opens)) : 0;
   out.recentRoundIds = Array.isArray(raw.recentRoundIds) ? raw.recentRoundIds.filter((x): x is string => typeof x === 'string').slice(-RECENT_ROUNDS) : [];
+  // Champ ajouté en Phase 0.6 (absent des sauvegardes plus anciennes : rien n'est « vu »).
+  out.rewardsSeen = Array.isArray(raw.rewardsSeen)
+    ? [...new Set(raw.rewardsSeen.filter((x): x is CosmeticId => typeof x === 'string' && COSMETIC_BY_ID.has(x as CosmeticId)))]
+    : [];
   return out;
 }
 

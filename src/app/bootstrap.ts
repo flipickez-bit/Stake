@@ -56,7 +56,10 @@ async function createRgs(params: LaunchParams): Promise<{ rgs: RgsPort; mock: Mo
 export async function bootstrap(host: HTMLElement): Promise<GameContext> {
   const params = readLaunchParams(window.location.href);
   const stage = new PixiStage();
+  // Mesure (DEV) : initialisation de la scène, rastérisation des atlas d'art comprise (Phase 0.6).
+  const stageT0 = performance.now();
   await stage.init(host);
+  const stageInitMs = performance.now() - stageT0;
   const audio = new AudioDirector();
   const contentErrors: string[] = [];
   const presenter = new Presenter(stage, audio, {
@@ -89,12 +92,14 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
   }
 
   // Boucle de rendu unique : le temps réel avance la séquence, puis Pixi dessine.
+  // `capturePaused` : outils de capture (DEV) seulement ; l'image reste une fonction pure du temps de séquence.
   let last = performance.now();
+  let capturePaused = false;
   const loop = (now: number) => {
     const dt = now - last;
     last = now;
     const t0 = performance.now();
-    presenter.tick(dt);
+    presenter.tick(capturePaused ? 0 : dt);
     stage.draw();
     perf.frame(dt, performance.now() - t0, presenter.frame.particleCount);
     requestAnimationFrame(loop);
@@ -136,6 +141,13 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
         }),
       perf: () => perf.snapshot(),
       stats: () => stage.stats(),
+      stageInitMs: () => stageInitMs,
+      /** Captures d'écran reproductibles (avant / après) : pause de la boucle et positionnement de la séquence. */
+      capture: {
+        pause: () => void (capturePaused = true),
+        resume: () => void (capturePaused = false),
+        seek: (t: number) => presenter.debugSeek(t),
+      },
     },
   };
   void flow.start(params.replay);

@@ -200,6 +200,8 @@ describe('déterminisme de la présentation', () => {
     };
     scan('src/presentation');
     scan('src/content');
+    // Phase 0.6 : l'art (rigs, décor, particules) est lui aussi une fonction pure du FrameState.
+    scan('src/render');
     expect(offenders).toEqual([]);
   });
 });
@@ -269,5 +271,58 @@ describe('SequencePlayer', () => {
     expect(b.skipToReveal()).toBe(true);
     expect(b.isFinished).toBe(true);
     expect(skipped.signals).toEqual(full.signals);
+  });
+});
+
+describe('Phase 0.6 — VERTICAL SLICE (GRUMPY + SWIVEL SLINGSHOT)', () => {
+  const gadget = gadgetFor('grumpy');
+  const rest = restLayout(gadget);
+  const slice = (id: string, forced: ForcedOutcome) =>
+    compileSequence(outcome('grumpy', forced), gadget, 'normal', LIBRARY, { forceBranchId: id });
+  const A4 = () => slice('SLG-A4', { kind: 'WIN', multiplier: 2, seed: 7, script: 'DIRECT' });
+  const A5 = () => slice('SLG-A5', { kind: 'BIG_WIN', multiplier: 10, seed: 7, script: 'DIRECT' });
+  const C1 = () => slice('SLG-C1', { kind: 'LOSS', multiplier: 0, seed: 7, script: 'BACKFIRE' });
+
+  it('image d\'impact puis HIT STOP au contact : deux gels, l\'état « impact » ne dure qu\'1 ms de séquence', () => {
+    const seq = A4();
+    const reveal = seq.markers.reveal;
+    const freezes = seq.cues.filter((c) => c.kind === 'freeze' && c.at >= reveal && c.at <= reveal + 1);
+    expect(freezes.length).toBe(2);
+    const tl = buildTimeline(seq, rest);
+    expect(evaluate(tl, reveal).actors.flash?.states.frame).toBe('impact');
+    expect(evaluate(tl, reveal + 1).actors.flash?.states.frame).toBe('none');
+  });
+
+  it('les trois branches de la slice : reveal unique, mug échappé seulement dans la fin A4, chaîne C1 après le reveal', () => {
+    for (const seq of [A4(), A5(), C1()]) expect(signals(seq, ['reveal'])).toHaveLength(1);
+    const a4 = A4();
+    const mugCue = a4.cues.find((c) => c.kind === 'tween' && c.actor === 'mugProp')!;
+    expect(mugCue.at).toBeGreaterThanOrEqual(a4.markers.d1);
+    const c1 = C1();
+    const plant = c1.cues.find((c) => c.kind === 'tween' && c.actor === 'plant')!;
+    expect(plant.at).toBeGreaterThan(c1.markers.reveal);
+  });
+
+  it('mouvement secondaire : nul au repos, non nul au lancement ; lecture continue = seek (mêmes images)', () => {
+    const seq = A5();
+    const tl = buildTimeline(seq, rest);
+    expect(evaluate(tl, 0).actors.boss!.motion.lagX).toBe(0);
+    const launch = seq.markers.d1 + 200;
+    expect(Math.abs(evaluate(tl, launch).actors.boss!.motion.lagX)).toBeGreaterThan(1);
+    const a = new SequencePlayer(new RecordingSinks());
+    a.load(seq, rest);
+    for (let i = 0; i < 140; i++) a.tick(16);
+    const b = new SequencePlayer(new RecordingSinks());
+    b.load(seq, rest);
+    b.seek(a.time);
+    expect(JSON.parse(JSON.stringify(b.lastFrame))).toEqual(JSON.parse(JSON.stringify(a.lastFrame)));
+  });
+
+  it('LE SIP (réaction) : le son « sip » est calé sur la gorgée du rig (≈ 440 ms après le début)', () => {
+    const seq = C1();
+    const re = seq.segments.find((s) => s.id === 'RE_SIP')!;
+    const sip = seq.cues.find((c) => c.kind === 'sound' && c.sound === 'sip' && c.at >= re.start)!;
+    expect(sip.at - re.start).toBeGreaterThanOrEqual(420);
+    expect(sip.at - re.start).toBeLessThanOrEqual(620);
   });
 });

@@ -24,9 +24,13 @@ export type SoundId =
   | 'click' | 'creak' | 'twang' | 'screech' | 'thud' | 'tink' | 'ding' | 'whoosh' | 'glass' | 'crash'
   | 'pfft' | 'roar' | 'fuse' | 'clunk' | 'plop' | 'hmpf' | 'laugh' | 'wahwah' | 'boing' | 'clang'
   | 'crack' | 'gold' | 'deflate' | 'giantRoar' | 'elevator' | 'cheer' | 'fall'
-  | 'sip' | 'spin' | 'spray' | 'coo' | 'bonk';
+  | 'sip' | 'spin' | 'spray' | 'coo' | 'bonk'
+  // Phase 0.6 : repères de synchronisation son/image (sons provisoires synthétisés).
+  | 'stretch' | 'snap' | 'clink' | 'paper' | 'debris';
 
-export type VfxId = 'dust' | 'sparks' | 'glass' | 'papers' | 'confetti' | 'smoke' | 'flame' | 'stars' | 'gold' | 'soot' | 'foam' | 'feathers' | 'hair';
+export type VfxId =
+  | 'dust' | 'sparks' | 'glass' | 'papers' | 'confetti' | 'smoke' | 'flame' | 'stars' | 'gold' | 'soot' | 'foam' | 'feathers' | 'hair'
+  | 'burst' | 'debris' | 'leaves';
 
 export type Signal = 'd1' | 'reveal' | 'bfStart' | 'bfRung' | 'bfBlocked' | 'bfKo' | 'end';
 

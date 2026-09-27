@@ -2,7 +2,17 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-_Dernière mise à jour : 2026-09-26, **Phase 0.5C terminée** (COLLECTION BOOK, après la variété V2 de la 0.5B). Règle d'OFFICE MELTDOWN validée (8 / 8 / 8). **Contenu P05-C FIGÉ.** PLAYTEST #1 fait. **En attente du PLAYTEST #2 humain.** Aucune Phase 1 avant son analyse. Aucun asset définitif._
+_Dernière mise à jour : 2026-09-27, **Phase 0.6 — VISUAL UPGRADE : vertical slice GRUMPY + SWIVEL SLINGSHOT livrée, en attente de validation** (`PHASE_0_6.md`, `BAD_BOSS_ART_BIBLE.md`). Les 48 autres branches et la Phase 1 ne sont PAS commencées. La préversion P05-C (PLAYTEST #2) reste publiée à part, inchangée. **PLAYTEST #2 humain toujours attendu** sur P05-C._
+
+## Phase 0.6 : état (`PHASE_0_6.md`)
+- ✅ Skills PixiJS (15, MIT) installés et utilisés ; Game Assets Enhancer **non utilisé** (fal.ai payant : STOP, rien dépensé).
+- ✅ **Art bible** (`BAD_BOSS_ART_BIBLE.md`) + **contrôle automatique** (`tests/unit/artBible.test.ts` : palette, traits, pas de texte ni d'image, atlas, mémoire).
+- ✅ **Concept frames** GRUMPY / FURIOUS / UNHINGED (`docs/phase06/concepts/`).
+- ✅ **Art illustré** (130 pièces SVG, 4 atlas, aucun fichier binaire) : B.B. (visage animable, 44 animations), Wendell, COO, mains, bureau 2.5D en couches, lumière pré-calculée, VFX en sprites.
+- ✅ **Vertical slice** : PERTE `SLG-C1` (réaction en chaîne + LE SIP), GAIN `SLG-A4` (mug suspendu, CLINK, Wendell), GROS GAIN `SLG-A5` (COO en fuite, regard caméra, fracas, décor qui réagit) ; image d'impact + hit stop ; mouvement secondaire déterministe ; NEW DISCOVERY qui vole jusqu'au bouton COLLECTION ; notification NEW REWARD.
+- ✅ Tests : 98 unitaires + 18 e2e verts ; aucune modification des maths, du RTP, des probabilités, de GameFlow, du RGS ni des fréquences de branches.
+- **Préversion de la slice** (privée) : https://claude.ai/artifact/GyhNWNHRZfpJddDK2M5oNh (la préversion P05-C du PLAYTEST #2 reste https://claude.ai/artifact/2oG78eNrGNuwiL9aL2SWkA).
+- ⏳ **Validation de la slice** (vous). Ensuite seulement : fin de SLINGSHOT, puis TRAPDOOR, ROCKET, BOSS FIGHT (estimation : `PHASE_0_6.md` §12).
 
 ## Phase 0.5 : état (`PHASE_0_5.md`)
 Question : **BAD BOSS est-il déjà satisfaisant à jouer avec des placeholders ?**
@@ -36,14 +46,14 @@ Jeu instantané pour **Stake Engine**. Le joueur se venge, façon cartoon slapst
 ## Phase 0 : état
 **Terminée.** Le prototype prouve l'architecture : boucle complète, coupures réseau et reprise, DEV PANEL, déterminisme.
 - Recette détaillée : **[PHASE_0_ACCEPTANCE.md](PHASE_0_ACCEPTANCE.md)** (PASS / FAIL / NOT TESTED). Aucun critère en FAIL. NOT TESTED : appareils réels, RGS Stake réel, jugement humain du « fun », vraie session PLAYTEST 50.
-- Tests (à la fin de la 0.5C) : **89 unitaires/intégration** (Vitest, dont l'audit de variété, le garde-fou de vitesse et la collection) + **18 e2e** (Playwright, Chromium, dont un PLAYTEST 50 complet, l'aperçu BOSS FIGHT et la collection) : tous verts.
+- Tests (à la fin de la 0.6) : **98 unitaires/intégration** (89 à la fin de la 0.5C) (Vitest, dont l'audit de variété, le garde-fou de vitesse et la collection) + **18 e2e** (Playwright, Chromium, dont un PLAYTEST 50 complet, l'aperçu BOSS FIGHT et la collection) : tous verts.
 - LOOP ×100 (sans mise) : 100/100, 0 erreur, 0 appel wallet (`docs/generated/LOOP_X100.md`).
 - Build : 719 Ko bruts au total, **≈ 196 Ko gzip** au chargement initial (`docs/generated/BUILD_SIZE.md`). Aucun asset binaire.
 - **Préversion jouable** (privée) : https://claude.ai/artifact/2oG78eNrGNuwiL9aL2SWkA (fichier unique `npm run build:single`, Mock RGS, aucun argent réel).
 
 ## Stack (figée en Phase 0)
 - **Svelte 5.57** (UI HTML) + **PixiJS 8.21** (scène) + **TypeScript 5.9 strict**, SPA **Vite 8** (`base: './'`), sans SvelteKit ni monorepo.
-- Personnages derrière **`CharacterAnimator`** (placeholders à pièces). **Spine n'est pas une dépendance.**
+- Personnages derrière **`CharacterAnimator`** : rigs illustrés à pièces (Phase 0.6), atlas rastérisés depuis des SVG écrits en code. **Spine n'est pas une dépendance.**
 - Séquenceur, particules analytiques, caméra : **maison**, déterministes. Audio : **WebAudio synthétisé** (Howler reviendra avec les vrais sons).
 - Réseau : **`RgsPort`** ← `MockRgsAdapter` (développement) ou `StakeRgsAdapter` (client npm `stake-engine` 0.1.32 BETA, confiné).
 - Tests : Vitest 5 + Playwright 1.56. CI GitHub Actions. Maths : calculateur Python (modèle) ; math-sdk officiel en Phase 2.
@@ -60,7 +70,7 @@ src/flow                    GameFlow (machine à états), FeatureGate, délais
 src/presentation            moteur : compileSequence (pur), timeline, SequencePlayer, particules, CharacterAnimator
 src/content                 données : bureau, bibliothèques partagées, modules (dsl), 3 gadgets (51 branches), cartes, épisode
 src/collection              COLLECTION BOOK : catalogue, jalons, stockage, service, observateur (n'est importé par aucun module du jeu)
-src/presenter · src/render  pont GameFlow ↔ séquenceur · scène Pixi et placeholders
+src/presenter · src/render  pont GameFlow ↔ séquenceur · scène Pixi ; src/render/art : palette, pièces SVG, atlas, rigs, bureau (Phase 0.6)
 src/audio · src/dev · src/app   sons synthétisés · outils dev (boucle, perf, playtest) · UI Svelte + DEV PANEL
 tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports générés) · math/
 ```
@@ -97,7 +107,7 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 - SLINGSHOT : manches en moyenne +0,4 s (+11 %) par rapport à P05-A, tout avant la révélation ; à surveiller avec Q4 au PLAYTEST #2.
 - COLLECTION BOOK : stockage local modifiable par le joueur (sans conséquence : rien n'a de valeur) ; perdu si le navigateur efface ses données ; pas de synchronisation entre appareils. Le 100 % reste très long par nature (≈ 9 800 manches en médiane) : c'est voulu (trophée de collectionneur), il ne débloque que du cosmétique. Vignettes de quelques cartes « dans la fumée » peu lisibles (révélation dans le brouillard).
 - Répétition immédiate d'une même branche encore possible (≈ 17 % perte → perte, 20-26 % gain → gain) : pas d'anti-répétition, par choix (déterminisme du replay).
-- Chaque nouvelle branche est un placeholder : la lisibilité de certains gags (chaise qui revient, fumée, ascenseur) sera à revoir avec les vrais assets.
+- Art illustré (Phase 0.6) : chorégraphie améliorée seulement pour la slice (`SLG-A4`, `SLG-A5`, `SLG-C1`) ; les accessoires de FURIOUS / UNHINGED et du BOSS FIGHT restent des placeholders. Atlas rastérisés au démarrage (CSP `blob:` / `data:` à vérifier chez Stake ; pré-rendu WebP prévu). Liste complète : `PHASE_0_6.md` §11.
 - Sons placeholders synthétisés ; ambiance minimale ; déverrouillage audio non vérifié sur iOS.
 - `minimumRoundDuration` : interprétation provisoire (≤ 60 → secondes). **Bloquant avant production.**
 - `StakeRgsAdapter` non testé contre un vrai RGS.
@@ -107,7 +117,8 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 `docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11 (20 questions, dont 4 sur la méta-progression) et §12 (13 hypothèses portées par le code, chacune isolée à un seul endroit).
 
 ## Prochaine tâche
-**Attendre le PLAYTEST #2** (vos résultats exportés, contenu P05-C figé). Ensuite : rapport de Phase 0.5 comparant P05-A et P05-C (Q1, Q7, Q8, mesures de collection), puis arrêt. Aucune Phase 1 avant cette analyse.
+1. **Votre validation de la vertical slice** (préversion Phase 0.6). Aucune autre branche convertie avant.
+2. **PLAYTEST #2** sur la préversion P05-C (inchangée), puis rapport de Phase 0.5 (P05-A vs P05-C). Aucune Phase 1 avant cette analyse.
 
 ## Commandes
 ```bash
@@ -115,7 +126,7 @@ npm install                     # une fois
 npm run dev                     # développement : http://localhost:5173  (?dev=1 ouvre le DEV PANEL)
 npm run build && npm run preview   # build statique : http://localhost:4173
 npm run build:single            # un seul fichier : dist-single/index.html (s'ouvre aussi en double-cliquant)
-npm test                        # Vitest : 89 tests
+npm test                        # Vitest : 98 tests
 npm run test:e2e                # Playwright : 18 tests (Chromium)
 npm run check                   # svelte-check
 npm run size                    # taille du build (après build)
@@ -126,6 +137,10 @@ VARIETY_REPORT=docs/generated/VARIETY_REPORT.md npx vitest run tests/unit/variet
 COLLECTION_REPORT=docs/generated/COLLECTION_REPORT.md npx vitest run tests/unit/collection.test.ts   # temps de découverte
 node tools/capture-portrait.mjs --dist dist --prefix after   # captures portrait
 node tools/capture-screens.mjs  # captures → docs/phase0/screens
+node tools/capture-phase06.mjs --dist dist --prefix after      # captures de la slice (4 formats)
+node tools/filmstrip.mjs --url http://localhost:5173/ --branch SLG-A4 --out <dossier>   # image par image
+node tools/drawcalls.mjs --url http://localhost:4173/          # appels de dessin par image
+# DEV : ?artsheet=parts | ?artsheet=rig&t=700 | ?artsheet=concept&world=furious (revue de l'art)
 python3 math/model/bad_boss_math.py --quick
 python3 tools/check_gadget_catalogue.py
 ```

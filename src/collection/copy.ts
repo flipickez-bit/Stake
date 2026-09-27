@@ -58,6 +58,8 @@ export const COPY = {
   theEnd: 'THE END',
   replayAgain: 'WATCH AGAIN',
   devTag: 'DEV',
+  newReward: 'NEW REWARD',
+  rewardUnlocked: 'REWARD UNLOCKED',
 } as const;
 
 /** Formulations interdites dans tout texte de la collection (tests). */
@@ -81,4 +83,7 @@ export const FORBIDDEN_PHRASES: readonly string[] = [
   'CLOSE TO',
   'NEARLY',
   'SO CLOSE',
+  'CASH',
+  'FREE MONEY',
+  'BONUS WIN',
 ];

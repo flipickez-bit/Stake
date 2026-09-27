@@ -96,6 +96,20 @@ export class Collection {
     this.commit();
   }
 
+  /** Récompenses débloquées mais pas encore vues (notification « NEW REWARD »). */
+  get unseenRewards(): CosmeticDef[] {
+    const seen = new Set(this.s.rewardsSeen);
+    return this.unlocked.filter((c) => !seen.has(c.id));
+  }
+
+  /** L'onglet REWARDS a été ouvert : toutes les récompenses débloquées sont vues. */
+  markRewardsSeen(): void {
+    const ids = this.unlocked.map((c) => c.id);
+    if (ids.every((id) => this.s.rewardsSeen.includes(id))) return;
+    this.s = { ...this.s, rewardsSeen: [...new Set([...this.s.rewardsSeen, ...ids])] };
+    this.commit();
+  }
+
   /** Porter / retirer un cosmétique débloqué. `null` = aspect par défaut. */
   equip(slot: CosmeticSlot, id: CosmeticId | null): void {
     const equipped = { ...this.s.equipped };

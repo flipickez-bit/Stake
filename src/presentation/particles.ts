@@ -17,20 +17,25 @@ export interface ParticlePreset {
   shape: 'rect' | 'circle';
 }
 
+/** Couleurs : palette de l'ART BIBLE (teinte appliquée aux textures claires ; les autres gardent leurs couleurs). */
 export const PARTICLE_PRESETS: Record<VfxId, ParticlePreset> = {
-  dust: { colors: [0xcfc6b8, 0xb8ad9c], speed: [40, 160], angle: [-170, -10], gravity: -30, life: [500, 900], size: [10, 22], spin: 0, shape: 'circle' },
-  sparks: { colors: [0xffe066, 0xffb700, 0xffffff], speed: [250, 520], angle: [-180, 0], gravity: 900, life: [250, 500], size: [3, 6], spin: 0, shape: 'rect' },
-  glass: { colors: [0xbfe9ff, 0xe8f8ff, 0x8fd3f5], speed: [200, 480], angle: [-160, -20], gravity: 1200, life: [600, 1000], size: [5, 12], spin: 12, shape: 'rect' },
-  papers: { colors: [0xffffff, 0xf2f2f2, 0xfff5c0], speed: [120, 300], angle: [-150, -30], gravity: 260, life: [900, 1500], size: [10, 16], spin: 5, shape: 'rect' },
-  confetti: { colors: [0xff2e4d, 0xffc400, 0x1e90ff, 0x31d67b, 0xb057ff], speed: [260, 560], angle: [-140, -40], gravity: 500, life: [1100, 1700], size: [6, 11], spin: 14, shape: 'rect' },
-  smoke: { colors: [0x9a9a9a, 0xbdbdbd, 0x7a7a7a], speed: [20, 90], angle: [-120, -60], gravity: -60, life: [600, 1100], size: [18, 34], spin: 0, shape: 'circle' },
-  flame: { colors: [0xff8a00, 0xffc400, 0xff2e4d], speed: [120, 260], angle: [60, 120], gravity: -200, life: [150, 320], size: [8, 16], spin: 0, shape: 'circle' },
-  stars: { colors: [0xffe066, 0xffffff], speed: [0, 0], angle: [0, 0], gravity: 0, life: [1400, 1400], size: [8, 10], spin: 0, shape: 'rect' },
-  gold: { colors: [0xffd700, 0xffe98a, 0xffb700], speed: [100, 420], angle: [-170, -10], gravity: 380, life: [900, 1600], size: [5, 10], spin: 10, shape: 'circle' },
-  soot: { colors: [0x2b2b2b, 0x444444], speed: [30, 120], angle: [-180, 0], gravity: 60, life: [400, 700], size: [8, 16], spin: 0, shape: 'circle' },
-  foam: { colors: [0xffffff, 0xe6f4ff, 0xcfe8ff], speed: [140, 380], angle: [-200, -100], gravity: 260, life: [700, 1200], size: [12, 24], spin: 0, shape: 'circle' },
-  feathers: { colors: [0x8b7fa6, 0xb3a9c9, 0xffffff], speed: [40, 160], angle: [-170, -10], gravity: 90, life: [900, 1500], size: [8, 14], spin: 6, shape: 'rect' },
-  hair: { colors: [0x3f1c5e, 0x5b2a86], speed: [60, 200], angle: [-160, -20], gravity: 420, life: [500, 900], size: [4, 8], spin: 10, shape: 'rect' },
+  dust: { colors: [0xfff8ee, 0xe9dcca, 0xd9c3a0], speed: [40, 170], angle: [-170, -10], gravity: -40, life: [500, 900], size: [22, 42], spin: 0.6, shape: 'circle' },
+  sparks: { colors: [0xffe9a0, 0xffc21f, 0xfff8ee], speed: [250, 520], angle: [-180, 0], gravity: 900, life: [250, 500], size: [10, 18], spin: 6, shape: 'rect' },
+  glass: { colors: [0xcdefff, 0xfff8ee, 0x8fd0ff], speed: [200, 480], angle: [-160, -20], gravity: 1200, life: [600, 1000], size: [10, 18], spin: 12, shape: 'rect' },
+  papers: { colors: [0xfff8ee, 0xfff8ee, 0xffe36e], speed: [120, 300], angle: [-150, -30], gravity: 260, life: [900, 1500], size: [16, 24], spin: 5, shape: 'rect' },
+  confetti: { colors: [0xe23b3b, 0xffc21f, 0x2f3f73, 0x52b45c, 0x8a5fc7], speed: [260, 560], angle: [-140, -40], gravity: 500, life: [1100, 1700], size: [9, 14], spin: 14, shape: 'rect' },
+  smoke: { colors: [0x8e8494, 0xc8bfcb, 0xa69bc4], speed: [20, 90], angle: [-120, -60], gravity: -60, life: [600, 1100], size: [30, 56], spin: 0.5, shape: 'circle' },
+  flame: { colors: [0xff8a3d, 0xffc21f, 0xe23b3b], speed: [120, 260], angle: [60, 120], gravity: -200, life: [150, 320], size: [14, 24], spin: 0, shape: 'circle' },
+  stars: { colors: [0xffc21f, 0xfff8ee], speed: [0, 0], angle: [0, 0], gravity: 0, life: [1400, 1400], size: [18, 22], spin: 2, shape: 'rect' },
+  gold: { colors: [0xffd23f, 0xfff1a8, 0xc9981a], speed: [100, 420], angle: [-170, -10], gravity: 380, life: [900, 1600], size: [10, 18], spin: 10, shape: 'circle' },
+  soot: { colors: [0x2a1b2f, 0x5c4760], speed: [30, 120], angle: [-180, 0], gravity: 60, life: [400, 700], size: [16, 30], spin: 0.5, shape: 'circle' },
+  foam: { colors: [0xfff8ee, 0xddf3ff, 0xcdefff], speed: [140, 380], angle: [-200, -100], gravity: 260, life: [700, 1200], size: [14, 26], spin: 0, shape: 'circle' },
+  feathers: { colors: [0xa69bc4, 0xc9c1e0, 0xfff8ee], speed: [40, 160], angle: [-170, -10], gravity: 90, life: [900, 1500], size: [14, 22], spin: 6, shape: 'rect' },
+  hair: { colors: [0x3a2150, 0x5e3a7e], speed: [60, 200], angle: [-160, -20], gravity: 420, life: [500, 900], size: [10, 16], spin: 10, shape: 'rect' },
+  /** Phase 0.6 : éclat d'impact (1 particule immobile, très brève). */
+  burst: { colors: [0xfff8ee], speed: [0, 0], angle: [0, 0], gravity: 0, life: [110, 110], size: [150, 170], spin: 0, shape: 'rect' },
+  debris: { colors: [0xa2603a, 0xb4bdc9, 0x7c4526], speed: [180, 420], angle: [-160, -20], gravity: 1100, life: [600, 900], size: [12, 20], spin: 12, shape: 'rect' },
+  leaves: { colors: [0x52b45c, 0x8ed66a, 0x2f8745], speed: [60, 200], angle: [-160, -20], gravity: 160, life: [900, 1400], size: [14, 20], spin: 7, shape: 'rect' },
 };
 
 export interface ParticleParams {
@@ -76,6 +81,7 @@ export function prepareBurst(fx: VfxId, at: number, x: number, y: number, count:
 }
 
 export interface ParticleState {
+  fx: VfxId;
   x: number;
   y: number;
   size: number;
@@ -105,7 +111,8 @@ export function particlesAt(bursts: readonly ParticleBurst[], t: number, out: Pa
         x = b.x + p.vx * s;
         y = b.y + p.vy * s + 0.5 * b.gravity * s * s;
       }
-      const item = out[n] ?? (out[n] = { x: 0, y: 0, size: 0, rot: 0, alpha: 0, color: 0, shape: 'rect' });
+      const item = out[n] ?? (out[n] = { fx: b.fx, x: 0, y: 0, size: 0, rot: 0, alpha: 0, color: 0, shape: 'rect' });
+      item.fx = b.fx;
       item.x = x;
       item.y = y;
       item.size = p.size;

@@ -29,6 +29,22 @@ export interface ActorFrame {
   states: Record<string, string>;
   anim: string;
   animElapsed: number;
+  /** Animation précédente (fondu court entre deux poses) et son temps écoulé au moment du changement. */
+  prevAnim: string | null;
+  prevElapsed: number;
+  /** Personnages : vitesse (unités/ms) et déplacement « à ressort » d'un élément suspendu (cravate, touffe). */
+  motion: ActorMotion;
+}
+
+/**
+ * Mouvement secondaire DÉTERMINISTE : réponse d'un ressort amorti à l'accélération de l'acteur, calculée par
+ * convolution sur l'historique des pistes (fonction pure de t). Seek, reprise, replay et gel donnent la même image.
+ */
+export interface ActorMotion {
+  vx: number;
+  vy: number;
+  lagX: number;
+  lagY: number;
 }
 
 export interface FrameState {
@@ -39,6 +55,8 @@ export interface FrameState {
   particleCount: number;
   /** Silence dramatique en cours (ambiance coupée). */
   silence: boolean;
+  /** Horloge de présentation (temps de séquence + attente à D1) : vie ambiante du décor, fonction pure. */
+  clock: number;
 }
 
 export interface Timeline {
@@ -84,12 +102,47 @@ function trackValue(segs: TweenSeg[] | undefined, t: number, fallback: number): 
 
 function lastKeyed<T>(list: Keyed<T>[] | undefined, t: number): Keyed<T> | null {
   if (!list) return null;
-  let found: Keyed<T> | null = null;
-  for (const k of list) {
-    if (k.t <= t) found = k;
+  const i = lastKeyedIndex(list, t);
+  return i < 0 ? null : (list[i] as Keyed<T>);
+}
+
+function lastKeyedIndex<T>(list: Keyed<T>[], t: number): number {
+  let found = -1;
+  for (let i = 0; i < list.length; i++) {
+    if ((list[i] as Keyed<T>).t <= t) found = i;
     else break;
   }
   return found;
+}
+
+// Ressort des éléments suspendus : ~2,6 Hz, amortissement 0,3, fenêtre de 480 ms (échantillons de 20 ms).
+const MOTION_DT = 20;
+const MOTION_N = 24;
+const MOTION_KERNEL: readonly number[] = (() => {
+  const w = 2 * Math.PI * 2.6;
+  const zeta = 0.3;
+  const wd = w * Math.sqrt(1 - zeta * zeta);
+  const dt = MOTION_DT / 1000;
+  const k: number[] = [0];
+  for (let i = 1; i < MOTION_N; i++) {
+    const tau = i * dt;
+    k.push(((Math.exp(-zeta * w * tau) * Math.sin(wd * tau)) / wd) * dt);
+  }
+  return k;
+})();
+const motionSamples = new Float64Array(MOTION_N + 1);
+
+function trackMotion(segs: TweenSeg[] | undefined, t: number, rest: number): { v: number; lag: number } {
+  if (!segs || segs.length === 0) return { v: 0, lag: 0 };
+  for (let i = 0; i <= MOTION_N; i++) motionSamples[i] = trackValue(segs, t - i * MOTION_DT, rest);
+  const s = motionSamples;
+  const dt2 = (MOTION_DT / 1000) ** 2;
+  let lag = 0;
+  for (let i = 1; i < MOTION_N; i++) {
+    const a = ((s[i - 1] as number) - 2 * (s[i] as number) + (s[i + 1] as number)) / dt2;
+    lag -= (MOTION_KERNEL[i] as number) * a;
+  }
+  return { v: ((s[0] as number) - (s[1] as number)) / MOTION_DT, lag };
 }
 
 function splitState(state: string): [string, string] {
@@ -181,23 +234,49 @@ export function createFrame(): FrameState {
     particles: [],
     particleCount: 0,
     silence: false,
+    clock: 0,
   };
 }
 
 export function evaluate(tl: Timeline, t: number, out: FrameState = createFrame(), hold: HoldInfo | null = null): FrameState {
   out.t = t;
+  out.clock = t + (hold?.offset ?? 0);
   for (const actor of tl.actors) {
     if (actor === CAMERA) continue;
     const rest = restTransform(tl.rest, actor);
-    const frame = out.actors[actor] ?? (out.actors[actor] = { transform: { ...IDENTITY }, states: {}, anim: 'idle', animElapsed: 0 });
+    const frame = out.actors[actor] ?? (out.actors[actor] = {
+      transform: { ...IDENTITY }, states: {}, anim: 'idle', animElapsed: 0, prevAnim: null, prevElapsed: 0, motion: { vx: 0, vy: 0, lagX: 0, lagY: 0 },
+    });
     for (const prop of PROPS) frame.transform[prop] = trackValue(tl.tracks.get(`${actor}|${prop}`), t, rest[prop]);
     const restStates = tl.rest[actor]?.states ?? {};
     for (const slot of Object.keys(frame.states)) delete frame.states[slot];
     Object.assign(frame.states, restStates);
-    const anim = lastKeyed(tl.anims.get(actor), t);
-    frame.anim = anim ? anim.value : (tl.rest[actor]?.anim ?? 'idle');
+    const list = tl.anims.get(actor);
+    const ai = list ? lastKeyedIndex(list, t) : -1;
+    const anim = ai >= 0 && list ? (list[ai] as Keyed<string>) : null;
+    const restAnim = tl.rest[actor]?.anim ?? 'idle';
+    frame.anim = anim ? anim.value : restAnim;
     frame.animElapsed = t - (anim ? anim.t : 0);
     if (hold && (anim ? anim.t : 0) <= hold.at) frame.animElapsed += hold.offset;
+    if (anim && list) {
+      const prev = ai > 0 ? (list[ai - 1] as Keyed<string>) : null;
+      frame.prevAnim = prev ? prev.value : restAnim;
+      frame.prevElapsed = anim.t - (prev ? prev.t : 0);
+    } else {
+      frame.prevAnim = null;
+      frame.prevElapsed = 0;
+    }
+    const m = frame.motion;
+    if (list || tl.rest[actor]?.anim) {
+      const mx = trackMotion(tl.tracks.get(`${actor}|x`), t, rest.x);
+      const my = trackMotion(tl.tracks.get(`${actor}|y`), t, rest.y);
+      m.vx = mx.v;
+      m.vy = my.v;
+      m.lagX = mx.lag;
+      m.lagY = my.lag;
+    } else {
+      m.vx = m.vy = m.lagX = m.lagY = 0;
+    }
   }
   for (const [key, list] of tl.states) {
     const k = lastKeyed(list, t);

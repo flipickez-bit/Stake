@@ -111,6 +111,8 @@ export interface CollectionState {
   opens: number;
   /** Dernières manches observées : une reprise après le reveal ne compte pas deux fois. */
   recentRoundIds: string[];
+  /** Phase 0.6 : récompenses déjà vues (onglet REWARDS ouvert) — la notification « NEW REWARD » s'éteint. */
+  rewardsSeen: CosmeticId[];
 }
 
 /** Persistance interchangeable : LocalCollectionStore aujourd'hui, ServerCollectionStore peut-être demain. */

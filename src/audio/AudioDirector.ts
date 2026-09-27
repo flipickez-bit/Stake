@@ -120,6 +120,12 @@ export class AudioDirector implements AudioSink {
       case 'spray': this.noiseBurst(t, 0.75, 0.3, 'highpass', 2500, 4000); break;
       case 'coo': [0, 0.2].forEach((d) => this.tone(t + d, 'sine', 380 * p, 460 * p, 0.17, 0.2, undefined, 12)); break;
       case 'bonk': this.tone(t, 'sine', 330 * p, 120 * p, 0.14, 0.45); this.noiseBurst(t, 0.04, 0.25, 'lowpass', 2000, 900); break;
+      // Phase 0.6 : repères de synchronisation (provisoires, remplacés par les vrais sons sans toucher au contenu).
+      case 'stretch': this.tone(t, 'sawtooth', 70 * p, 150 * p, 0.5, 0.1, 500, 9); break;
+      case 'snap': this.noiseBurst(t, 0.05, 0.45, 'highpass', 2500, 1800); this.tone(t, 'square', 900 * p, 300 * p, 0.05, 0.12, 4000); break;
+      case 'clink': [2900, 4100].forEach((f, i) => this.tone(t + i * 0.012, 'triangle', f * p, f * p * 0.98, 0.18, 0.12)); break;
+      case 'paper': this.noiseBurst(t, 0.22, 0.14, 'bandpass', 3000 * p, 1800 * p, true); break;
+      case 'debris': for (let i = 0; i < 4; i++) this.noiseBurst(t + i * 0.045, 0.06, 0.2, 'bandpass', (1600 - i * 250) * p, 700, false); break;
     }
   }
 

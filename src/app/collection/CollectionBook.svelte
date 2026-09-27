@@ -47,6 +47,10 @@
   let collapsed = $state<Record<string, boolean>>({});
 
   const section = $derived(catalog.sections.find((s) => s.id === tab) ?? null);
+  // Phase 0.6 : ouvrir l'onglet REWARDS marque les récompenses comme vues (la notification « NEW REWARD » s'éteint).
+  $effect(() => {
+    if (tab === 'rewards' && cs) collection.markRewardsSeen();
+  });
   const theme = $derived(albumTheme(cs));
   const isFound = (id: string) => cs.entries[id] !== undefined;
   const cardsOf = (ids: readonly string[]) =>

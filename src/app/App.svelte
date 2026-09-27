@@ -15,7 +15,8 @@
   import { makeBossFightPreview } from '../dev/devOutcomes';
   import { cryptoRandom } from '../platform/rgs/mock/mockMath';
   import CollectionBook from './collection/CollectionBook.svelte';
-  import NewBadge from './collection/NewBadge.svelte';
+  import DiscoveryFlight from './collection/DiscoveryFlight.svelte';
+  import GiftNotice from './collection/GiftNotice.svelte';
   import ShowcaseOverlay from './collection/ShowcaseOverlay.svelte';
   import { lookFrom } from './collection/look';
   import { progress as collectionProgress } from '../collection/rewards';
@@ -36,6 +37,13 @@
   let coll = $state<CollectionState | null>(null);
   let discovery = $state<DiscoveryEvent | null>(null);
   let bookOpen = $state(false);
+  let bookTab = $state<'rewards' | null>(null);
+  // Phase 0.6 : le compteur et le cadeau attendent que la carte NEW ait atteint le bouton COLLECTION.
+  let collButton = $state<HTMLButtonElement | null>(null);
+  let countHold = $state(0);
+  let bump = $state(false);
+  let giftFresh = $state(false);
+  let lastUnseen = -1;
   let showcaseOn = $state(false);
   let thumbs = $state.raw<ThumbnailRenderer | null>(null);
 
@@ -44,6 +52,33 @@
   const ptResults = $derived(ptResultsId ? (pt?.sessions.find((x) => x.id === ptResultsId) ?? null) : null);
   const overlayOpen = $derived(ptIntro || showQuestionnaire || ptResults !== null || bookOpen || showcaseOn);
   const collProgress = $derived(ctx?.collection && coll ? collectionProgress(coll, ctx.collection.catalog) : null);
+  const shownCount = $derived(collProgress ? Math.max(0, collProgress.discovered - countHold) : 0);
+  const unseenRewards = $derived(ctx?.collection && coll ? ctx.collection.unseenRewards.length : 0);
+  const giftCount = $derived(countHold > 0 ? 0 : unseenRewards);
+  $effect(() => {
+    // « REWARD UNLOCKED » : court libellé quand une nouvelle récompense arrive (puis seulement l'icône).
+    // Au chargement, les récompenses déjà en attente affichent l'icône, sans libellé.
+    if (!coll) return;
+    if (lastUnseen >= 0 && giftCount > lastUnseen) {
+      giftFresh = true;
+      const t = setTimeout(() => (giftFresh = false), 2600);
+      lastUnseen = giftCount;
+      return () => clearTimeout(t);
+    }
+    lastUnseen = giftCount;
+  });
+
+  function onDiscovery(e: DiscoveryEvent) {
+    discovery = e;
+    // La carte vole jusqu'au bouton : le compteur n'avance qu'à son arrivée (jamais plus de 2,5 s).
+    if (e.isNew && (!e.loss || ctx?.meta.newBadgeOnLoss)) countHold = 1;
+  }
+
+  function onCardArrive() {
+    countHold = 0;
+    bump = true;
+    setTimeout(() => (bump = false), 420);
+  }
 
   onMount(() => {
     let off: (() => void)[] = [];
@@ -65,7 +100,7 @@
               c.audio.setDingVariant(look.ding);
             }),
           );
-          off.push(c.collection.onDiscovery((e) => (discovery = e)));
+          off.push(c.collection.onDiscovery(onDiscovery));
         }
       })
       .catch((e) => (bootError = e instanceof Error ? e.message : String(e)));
@@ -134,11 +169,12 @@
     void ctx.flow.replayRound(makeBossFightPreview(snap.level, cryptoRandom));
   }
 
-  function openCollection() {
+  function openCollection(tab: 'rewards' | null = null) {
     if (!ctx?.collection || snap?.state !== 'READY') return;
     gesture();
     devOpen = false;
     ptIntro = false;
+    bookTab = tab;
     bookOpen = true;
     thumbs ??= new ThumbnailRenderer();
     ctx.collection.markOpened();
@@ -179,7 +215,7 @@
 
 <div class="game" onpointerdown={gesture} role="presentation">
   <div class="topbar">
-    <span class="title">BAD BOSS <small>WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED · PHASE 0</small></span>
+    <span class="title">BAD BOSS <small>WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED · PHASE 0.6 VISUAL SLICE</small></span>
     <span class="balance" data-testid="balance">{formatBalance(snap?.balance ?? null)}</span>
     {#if ptCurrent}
       <span class="pt-chip" data-testid="playtest-counter">PLAYTEST {Math.min(ptCurrent.rounds.length + (ptCurrent.status === 'playing' ? 1 : 0), PLAYTEST_TARGET)}/{PLAYTEST_TARGET}</span>
@@ -187,7 +223,13 @@
       <button class="icon pt" onclick={() => (ptIntro = true)} disabled={snap?.state !== 'READY'} data-testid="playtest-open">PLAYTEST</button>
     {/if}
     {#if ctx?.collection && collProgress && !ctx.flow.isReplayOnly}
-      <button class="icon coll" onclick={openCollection} disabled={snap?.state !== 'READY'} aria-label="Collection: {collProgress.discovered} of {collProgress.total} discovered" data-testid="collection-open">📖 {collProgress.discovered}/{collProgress.total}</button>
+      <span class="coll-wrap">
+        <button class="icon coll" class:bump bind:this={collButton} onclick={() => openCollection()} disabled={snap?.state !== 'READY'} aria-label="Collection: {shownCount} of {collProgress.total} discovered" data-testid="collection-open">
+          <svg class="book" viewBox="0 0 20 16" aria-hidden="true" focusable="false"><path d="M1 2.5C4 1 7 1 10 3C13 1 16 1 19 2.5V14C16 12.5 13 12.5 10 14.5C7 12.5 4 12.5 1 14Z" fill="#fff8ee" stroke="#1d3b8f" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 3V14.5" stroke="#1d3b8f" stroke-width="1.6"/></svg>
+          {shownCount}/{collProgress.total}
+        </button>
+        <GiftNotice count={snap?.state === 'READY' || giftFresh ? giftCount : 0} fresh={giftFresh} onOpen={() => openCollection('rewards')} />
+      </span>
     {/if}
     <button class="icon" onclick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>{muted ? '🔇' : '🔊'}</button>
     {#if ctx?.devEnabled}<button class="icon dev" onclick={toggleDev} data-testid="dev-toggle">DEV</button>{/if}
@@ -208,7 +250,9 @@
       <!-- SPECIAL EPISODE : aucun chiffre à l'écran (ni résultat précédent, ni échelle, ni badge). -->
       <ResultPop revealed={snap?.revealed ?? null} currency={snap?.balance?.currency ?? 'USD'} />
       <BfLadder {bf} />
-      {#if ctx?.collection}<NewBadge event={discovery} showOnLoss={ctx.meta.newBadgeOnLoss} />{/if}
+      {#if ctx?.collection}
+        <DiscoveryFlight event={discovery} showOnLoss={ctx.meta.newBadgeOnLoss} target={() => collButton?.getBoundingClientRect() ?? null} onArrive={onCardArrive} />
+      {/if}
     {/if}
     {#if bootError}<div class="banner error">Boot failed: {bootError}</div>{/if}
     {#if snap?.capabilities.displayRtp}<div class="rtp">RTP 96.50% (provisional)</div>{/if}
@@ -221,14 +265,14 @@
 </div>
 
 {#if ctx && snap && devOpen}
-  <DevPanel {ctx} {snap} onClose={() => (devOpen = false)} onShowSession={(id) => { devOpen = false; ptResultsId = id; }} onPreviewBossFight={previewBossFight} onOpenCollection={openCollection} />
+  <DevPanel {ctx} {snap} onClose={() => (devOpen = false)} onShowSession={(id) => { devOpen = false; ptResultsId = id; }} onPreviewBossFight={previewBossFight} onOpenCollection={() => openCollection()} />
 {/if}
 
 {#if ctx?.collection && thumbs && bookOpen}
   <CollectionBook
     collection={ctx.collection}
     {thumbs}
-    initialTab={snap?.level ?? 'grumpy'}
+    initialTab={bookTab ?? snap?.level ?? 'grumpy'}
     canPlayEpisode={snap?.state === 'READY'}
     onClose={() => (bookOpen = false)}
     onPlayEpisode={playEpisode}
@@ -258,7 +302,22 @@
   .icon { background: #1f2447; border: 1px solid #2b3160; color: #fff; border-radius: 8px; padding: 4px 8px; cursor: pointer; font-weight: 800; }
   .icon.dev { background: var(--bb-violet); }
   .icon.pt { font-size: 11px; letter-spacing: 1px; }
-  .icon.coll { font-size: 11px; letter-spacing: 0.5px; white-space: nowrap; background: #2a2f55; }
+  .icon.coll { font-size: 11px; letter-spacing: 0.5px; white-space: nowrap; background: #2a2f55; display: inline-flex; align-items: center; gap: 5px; }
+  .icon.coll .book { width: 16px; height: 13px; }
+  /* Petits téléphones : barre resserrée (le bouton COLLECTION porte le cadeau des récompenses sur son coin). */
+  @media (max-width: 440px) {
+    .title { display: none; }
+    .topbar { gap: 6px; padding-left: 8px; padding-right: 8px; justify-content: space-between; }
+    .icon { padding: 4px 6px; }
+    .icon.coll { gap: 3px; }
+    .icon.coll .book { width: 13px; height: 11px; }
+    .balance { font-size: 14px; }
+  }
+  .coll-wrap { position: relative; display: inline-flex; align-items: center; }
+  /* Arrivée de la carte NEW : petite réaction du bouton (encre bleue, jamais l'or d'un gain). */
+  .icon.coll.bump { animation: bump 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 0 0 3px rgba(120, 150, 255, 0.55); }
+  @keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.18, 0.9); } 70% { transform: scale(0.96, 1.05); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .icon.coll.bump { animation: none; } }
   .icon:disabled { opacity: 0.4; }
   .pt-chip { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: #ff8a00; white-space: nowrap; }
   .stage { position: relative; min-height: 0; overflow: hidden; }

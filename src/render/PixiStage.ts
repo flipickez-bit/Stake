@@ -1,18 +1,28 @@
 /**
  * Scène Pixi : implémente SceneSink. Ne contient AUCUNE logique de manche : elle dessine le
  * FrameState qu'on lui donne (fonction pure du temps de séquence).
+ *
+ * Phase 0.6 (ART BIBLE) : bureau en couches 2.5D avec parallaxe discrète, lumière pré-calculée (rayon de la fenêtre,
+ * ombres de contact, vignettage), rigs illustrés, particules en sprites d'atlas, traînées de vitesse, image d'impact.
+ * Tout reste une fonction du FrameState : replay, reprise et seek donnent la même image.
  */
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { ALL_GADGET_PROPS } from '../content/gadgets';
-import type { CharacterAnimator } from '../presentation/characterAnimator';
+import type { RageLevelId } from '../domain/types';
+import type { CharacterAnimator, PoseContext } from '../presentation/characterAnimator';
+import type { VfxId } from '../presentation/types';
 import type { ActorFrame, FrameState } from '../presentation/timeline';
 import type { ActorId, GadgetDef } from '../presentation/types';
 import type { SceneSink } from '../presenter/Presenter';
+import { loadTextures } from './art/atlas';
+import { scaledBooks } from './art/books';
+import { BossRig, CHAIR_SCALE } from './art/BossRig';
+import { CooRig, HandsRig, WendellRig } from './art/castRigs';
+import { ArtKit } from './art/kit';
+import { drawCeiling, drawFloor, drawPlayerDesk, drawWall, FLOOR_Y, makeGradeCanvas, paintGrade, WindowView } from './art/officeScene';
+import { hex } from './art/palette';
 import { DEFAULT_LOOK, type CosmeticLook } from './cosmeticLook';
 import * as office from './office';
-import { BossAnimator } from './placeholder/BossAnimator';
-import { CooAnimator, HandsAnimator, WendellAnimator } from './placeholder/minorCharacters';
-import { C } from './placeholder/palette';
 
 /**
  * Zone de jeu à toujours montrer (coordonnées du monde logique 1000 × 700).
@@ -23,14 +33,17 @@ const SAFE_LANDSCAPE = { width: 920, height: 640 };
 /**
  * Cadrage PORTRAIT adaptatif (rendu seulement : fonction pure du FrameState, donc reprise et replay identiques).
  * - largeur utile resserrée sur l'action ;
- * - sol ancré à 62 % de la hauteur : le boss remonte, le plafond vide disparaît, le premier plan (bureau du joueur)
- *   remplit le bas ;
+ * - sol ancré à 62 % de la hauteur : le boss remonte, le premier plan (bureau du joueur) remplit le bas ;
  * - la caméra suit partiellement le boss (point focal) tant qu'il est visible, et retombe sur la caméra du contenu
  *   quand il quitte le cadre (fenêtre, trappe, plafond).
  */
 const PORTRAIT = { width: 640, minHeight: 600, floorY: 560, floorAt: 0.62, follow: 0.45, restY: 350 };
 
+/** Parallaxe (ART BIBLE §6) : fond lent, premier plan rapide ; le ciel de la fenêtre encore plus lent. */
+const PARALLAX = { bg: 0.96, fg: 1.08, sky: 0.8, restX: 500 };
+
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const INK = hex('ink');
 
 type Updater = (frame: ActorFrame, all: FrameState) => void;
 
@@ -51,23 +64,105 @@ function applyTransform(view: Container, f: ActorFrame): void {
   view.visible = t.alpha > 0.002;
 }
 
+/** Texture d'atlas et mode de teinte de chaque effet. */
+const FX_ART: Record<VfxId, { tex: string; tint: boolean; grow?: number }> = {
+  dust: { tex: 'fx_puff', tint: true, grow: 0.7 },
+  smoke: { tex: 'fx_puff', tint: true, grow: 0.9 },
+  soot: { tex: 'fx_puff', tint: true, grow: 0.5 },
+  sparks: { tex: 'fx_spark', tint: false },
+  glass: { tex: 'fx_shard', tint: false },
+  papers: { tex: 'fx_paper', tint: false },
+  confetti: { tex: 'fx_confetti', tint: true },
+  flame: { tex: 'fx_flame', tint: false },
+  stars: { tex: 'fx_star', tint: false },
+  gold: { tex: 'fx_sparkle', tint: false },
+  foam: { tex: 'fx_bubble', tint: false },
+  feathers: { tex: 'fx_feather', tint: true },
+  hair: { tex: 'fx_strand', tint: true },
+  burst: { tex: 'fx_burst', tint: false, grow: 0.25 },
+  debris: { tex: 'fx_debris', tint: false },
+  leaves: { tex: 'fx_leaf', tint: false },
+};
+
+/** Habillage des mondes RAGE (ART BIBLE §9) : teintes d'étalonnage et accessoires. Rendu seulement. */
+interface WorldGrade {
+  bg: number;
+  room: number;
+  cast: number;
+  ceiling: number;
+  fg: number;
+  sky: number;
+  shaft: number;
+  shaftAlpha: number;
+  warm: number;
+  warmAlpha: number;
+  vignette: number;
+}
+
+const WORLDS: Record<RageLevelId, WorldGrade> = {
+  grumpy: { bg: 0xffffff, room: 0xffffff, cast: 0xffffff, ceiling: 0xffffff, fg: 0xf2e6dc, sky: 0xffffff, shaft: 0xffffff, shaftAlpha: 0.42, warm: 0xffe37a, warmAlpha: 0.3, vignette: 0.8 },
+  furious: { bg: 0xffd6b8, room: 0xffe2cc, cast: 0xfff0e2, ceiling: 0xf6d2bc, fg: 0xe0b89e, sky: 0xffb48a, shaft: 0xff9e5e, shaftAlpha: 0.5, warm: 0xff9e5e, warmAlpha: 0.32, vignette: 1 },
+  unhinged: { bg: 0x7f78ae, room: 0x9088bc, cast: 0xd6ceee, ceiling: 0x7a72a4, fg: 0x6a608e, sky: 0x3b3a78, shaft: 0x8fd0ff, shaftAlpha: 0.22, warm: 0xff4b4b, warmAlpha: 0.0, vignette: 1.15 },
+};
+
 export class PixiStage implements SceneSink {
   readonly app = new Application();
   private readonly world = new Container();
+  private readonly bg = new Container();
+  private readonly action = new Container();
+  private readonly room = new Container();
+  private readonly overlays = new Container();
+  private readonly gadget = new Container();
+  private readonly shadows = new Container();
+  private readonly speed = new Container();
+  private readonly cast = new Container();
+  private readonly front = new Container();
+  private readonly light = new Container();
+  private readonly ceiling = new Container();
+  private readonly fg = new Container();
+  private readonly particleLayer = new Container();
+  private readonly screen = new Container();
   private readonly updaters = new Map<ActorId, Updater>();
   private readonly views = new Map<ActorId, Container>();
   private readonly characters: CharacterAnimator<Container>[] = [];
-  private readonly particles = new Graphics();
+  private readonly poseContexts = new Map<string, PoseContext>();
   private readonly elastic = new Graphics();
   private readonly fuseLine = new Graphics();
+  private readonly impactPlane = new Graphics();
+  private readonly cable = new Graphics();
+  private readonly particlePool: Sprite[] = [];
+  private readonly shadowOf = new Map<ActorId, Sprite>();
+  private readonly speedLines: Sprite[] = [];
+  private readonly dressing = new Container();
+  private readonly ceilingDressing = new Container();
+  private readonly motes: Sprite[] = [];
+  private kit: ArtKit | null = null;
+  private windowView: WindowView | null = null;
+  private portraitInner: Container | null = null;
+  private corkSprite: Sprite | null = null;
+  private certSprite: Sprite | null = null;
+  private plantInner: Container | null = null;
+  private fanInner: Container | null = null;
+  private ceilingLights: Sprite[] = [];
+  /** Objets hauts du premier plan : seulement en portrait (en paysage, seule la bordure du bureau apparaît). */
+  private fgTall: Sprite[] = [];
+  private shaft: Sprite | null = null;
+  private vignette: Sprite | null = null;
+  private gradeCanvas: HTMLCanvasElement | null = null;
+  private alarm: Graphics | null = null;
+  private pouch: Sprite | null = null;
   private gadgetProps = new Set<ActorId>();
   private width = 1;
   private height = 1;
   private look: CosmeticLook = DEFAULT_LOOK;
-  private boss: BossAnimator | null = null;
-  private duck: Graphics | null = null;
+  private boss: BossRig | null = null;
+  private wendell: WendellRig | null = null;
+  private duck: Sprite | null = null;
   private trapView: Container | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private worldLevel: RageLevelId = 'grumpy';
+  /** DEV (concepts, captures) : impose l'habillage d'un monde, quel que soit le gadget. */
+  worldOverride: RageLevelId | null = null;
 
   /**
    * `offscreen` : scène secondaire (vignettes du COLLECTION BOOK) — tampon conservé pour la lecture des pixels,
@@ -75,7 +170,7 @@ export class PixiStage implements SceneSink {
    */
   async init(host: HTMLElement, options: { offscreen?: boolean } = {}): Promise<void> {
     await this.app.init({
-      background: 0x1b1f3b,
+      background: hex('ink'),
       antialias: true,
       autoDensity: true,
       resolution: options.offscreen ? 1 : Math.min(window.devicePixelRatio || 1, 2),
@@ -87,7 +182,10 @@ export class PixiStage implements SceneSink {
     this.app.ticker.stop();
     host.appendChild(this.app.canvas);
     if (!options.offscreen) this.app.canvas.setAttribute('data-testid', 'stage');
-    this.build();
+    // Vignettes (hors écran) : atlas à demi-densité, largement suffisants pour une carte de 320 px.
+    const { textures } = await loadTextures(scaledBooks(options.offscreen ? 0.5 : 1));
+    this.kit = new ArtKit(textures);
+    this.build(this.kit);
     this.resize();
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(host);
@@ -111,146 +209,357 @@ export class PixiStage implements SceneSink {
     this.app.resize();
     this.width = this.app.screen.width;
     this.height = this.app.screen.height;
+    this.vignette?.setSize(this.width, this.height);
   }
 
-  private add(id: ActorId, view: Container, update?: Updater): void {
+  private add(id: ActorId, view: Container, update?: Updater, layer: Container = this.room): void {
     this.views.set(id, view);
-    this.world.addChild(view);
+    layer.addChild(view);
     this.updaters.set(id, (f, all) => {
       applyTransform(view, f);
       update?.(f, all);
     });
   }
 
-  private addCharacter(animator: CharacterAnimator<Container>): void {
+  private addCharacter(animator: CharacterAnimator<Container>, layer: Container = this.cast): void {
     this.characters.push(animator);
-    this.add(animator.id, animator.view, (f) => animator.pose(f.anim, f.animElapsed, f.states));
+    const ctx: PoseContext = { prevAnim: null, prevElapsed: 0, vx: 0, vy: 0, lagX: 0, lagY: 0 };
+    this.poseContexts.set(animator.id, ctx);
+    this.add(animator.id, animator.view, (f) => {
+      ctx.prevAnim = f.prevAnim;
+      ctx.prevElapsed = f.prevElapsed;
+      ctx.vx = f.motion.vx;
+      ctx.vy = f.motion.vy;
+      ctx.lagX = f.motion.lagX;
+      ctx.lagY = f.motion.lagY;
+      animator.pose(f.anim, f.animElapsed, f.states, ctx);
+    }, layer);
   }
 
-  private build(): void {
+  /** Accessoire posé sur un conteneur intérieur (l'habillage peut l'incliner sans toucher au transform de l'acteur). */
+  private wrap(...children: Container[]): { outer: Container; inner: Container } {
+    const outer = new Container();
+    const inner = new Container();
+    inner.addChild(...children);
+    outer.addChild(inner);
+    return { outer, inner };
+  }
+
+  private build(kit: ArtKit): void {
     const w = this.world;
-    this.app.stage.addChild(w);
-    w.addChild(office.drawBackground());
+    this.app.stage.addChild(w, this.screen);
+    this.action.addChild(this.room, this.overlays, this.gadget, this.shadows, this.impactPlane, this.speed, this.cast, this.front, this.light);
+    w.addChild(this.bg, this.action, this.ceiling, this.fg);
 
-    const win = office.drawWindow();
-    this.add('window', win.view, (f) => {
-      win.intact.visible = f.states.main !== 'broken';
-      win.broken.visible = f.states.main === 'broken';
+    // ---------------------------------------------------------------- fond (parallaxe lente)
+    this.bg.addChild(drawWall());
+    const win = new WindowView(kit);
+    this.windowView = win;
+    this.add('window', win.view, (f) => win.setBroken(f.states.main === 'broken'), this.bg);
+    this.corkSprite = kit.sprite('cork', 440, 132);
+    this.bg.addChild(this.corkSprite);
+    const clock = new Container();
+    clock.position.set(716, 140);
+    const hourHand = kit.sprite('clock_hand');
+    const minuteHand = kit.sprite('clock_hand_long');
+    hourHand.rotation = 0.9;
+    minuteHand.rotation = -0.4;
+    clock.addChild(kit.sprite('clock'), hourHand, minuteHand);
+    this.bg.addChild(clock);
+    this.certSprite = kit.sprite('certificate', 846, 206);
+    this.bg.addChild(this.certSprite);
+    const portrait = this.wrap(kit.sprite('portrait'));
+    this.portraitInner = portrait.inner;
+    this.add('portrait', portrait.outer, undefined, this.bg);
+    this.bg.addChild(this.dressing);
+
+    // ---------------------------------------------------------------- plan d'action : sol et pièces du bureau
+    this.room.addChild(drawFloor());
+    const cab = kit.sprite('cabinet');
+    const dent = kit.sprite('cabinet_dent');
+    this.add('cabinet', this.wrap(cab, dent).outer, (f) => (dent.visible = f.states.main === 'dented'));
+    const elevator = new Container();
+    const elevLamp = kit.sprite('elevator_lamp', 0, -305);
+    const elevDent = kit.sprite('elevator_dent');
+    elevator.addChild(kit.sprite('elevator'), elevLamp, elevDent);
+    this.add('elevator', elevator, (f) => {
+      elevLamp.tint = f.states.main === 'arrived' ? hex('plant') : f.states.main === 'moving' ? hex('tie') : hex('inkSoft');
+      elevLamp.scale.y = f.states.main === 'moving' ? -1 : 1;
+      elevDent.visible = f.states.dent === 'yes';
     });
-    this.add('portrait', office.drawPortrait());
-    const cab = office.drawCabinet();
-    this.add('cabinet', cab.view, (f) => (cab.dent.visible = f.states.main === 'dented'));
-    this.add('bell', office.drawBell());
-    // Accessoires de réactions en chaîne (Phase 0.5B).
-    const elevator = office.drawElevator();
-    this.add('elevator', elevator.view, (f) => {
-      elevator.lamp.tint = f.states.main === 'arrived' ? 0x31d67b : f.states.main === 'moving' ? 0xffc400 : 0x555a6b;
-      elevator.lamp.rotation = 0;
-      elevator.lamp.scale.y = f.states.main === 'moving' ? -1 : 1;
-      elevator.dent.visible = f.states.dent === 'yes';
-    });
-    const monitor = office.drawMonitor();
-    this.add('monitor', monitor.view, (f) => {
-      monitor.normal.visible = f.states.main !== 'broken';
-      monitor.broken.visible = f.states.main === 'broken';
-    });
-    this.add('plant', office.drawPlant());
-    const ext = office.drawExtinguisher();
-    this.add('extinguisher', ext.view, (f) => (ext.nozzle.rotation = f.states.main === 'fired' ? -0.5 : 0));
-    const fan = office.drawFan();
-    this.add('fan', fan.view, (f) => {
+    const plant = this.wrap(kit.sprite('plant'));
+    this.plantInner = plant.inner;
+    this.add('plant', plant.outer);
+    const nozzle = kit.sprite('ext_nozzle', 6, -80);
+    this.add('extinguisher', this.wrap(kit.sprite('extinguisher', 0, 0), nozzle).outer, (f) => (nozzle.rotation = f.states.main === 'fired' ? -0.6 : 0));
+    const fanMotor = kit.sprite('fan_motor');
+    const blades = kit.sprite('fan_blades', 0, 36);
+    const droop = kit.sprite('fan_droop', 0, 32);
+    const fan = this.wrap(fanMotor, blades, droop);
+    this.fanInner = fan.inner;
+    this.add('fan', fan.outer, (f) => {
       const broken = f.states.main === 'broken';
-      fan.blades.visible = !broken;
-      fan.droop.visible = broken;
+      blades.visible = !broken;
+      droop.visible = broken;
       // Rotation = fonction du temps propre de l'acteur (séquence + attente) : reprise et replay identiques.
-      fan.blades.scale.x = Math.cos(f.animElapsed * 0.012);
+      blades.scale.x = Math.cos(f.animElapsed * (this.worldLevel === 'unhinged' ? 0.006 : 0.012));
     });
-    this.add('bfBack', office.drawBfBackdrop());
-    this.add('dim', new Graphics().rect(-1400, -700, 2800, 1400).fill(0x000000));
+    const desk = kit.sprite('desk', 730, FLOOR_Y);
+    this.room.addChild(desk);
+    const monitor = kit.sprite('monitor');
+    const crack = kit.sprite('monitor_crack');
+    this.add('monitor', this.wrap(monitor, crack).outer, (f) => {
+      const broken = f.states.main === 'broken';
+      kit.swap(monitor, broken ? 'monitor_broken' : 'monitor');
+      crack.visible = !broken && this.worldLevel !== 'grumpy';
+    });
+    this.add('bell', kit.sprite('bell'));
 
-    // Accessoires des gadgets.
-    this.add('slingPost', office.drawSlingPost(), (f, all) => this.drawElastic(f, all));
-    w.addChild(this.elastic);
+    // Superpositions plein cadre du contenu (BOSS FIGHT, assombrissement).
+    this.add('bfBack', office.drawBfBackdrop(), undefined, this.overlays);
+    this.add('dim', new Graphics().rect(-1400, -700, 2800, 1400).fill(INK), undefined, this.overlays);
+
+    // ---------------------------------------------------------------- accessoires des gadgets
+    this.add('slingPost', kit.sprite('sling_post'), (f, all) => this.drawElastic(f, all), this.gadget);
+    this.gadget.addChild(this.elastic);
+    this.pouch = kit.sprite('sling_pouch');
+    this.gadget.addChild(this.pouch);
     const trap = office.drawTrapdoor();
     this.trapView = trap.view;
     this.add('trapdoor', trap.view, (f) => {
       trap.closed.visible = f.states.main !== 'open';
       trap.open.visible = f.states.main === 'open';
       trap.jammed.visible = f.states.main === 'jammed';
-    });
+    }, this.gadget);
     const lever = office.drawLever();
     this.add('lever', lever.view, (f) => {
       lever.view.rotation = 0;
       lever.stick.rotation = f.transform.rot;
-    });
-    w.addChild(this.fuseLine);
-    this.add('fuse', new Container(), (f, all) => this.drawFuse(f, all));
-    this.add('spark', new Graphics().star(0, 0, 6, 9, 4).fill(C.yellow).circle(0, 0, 4).fill(C.white), (f, all) => {
-      const s = 1 + 0.25 * Math.sin(all.t / 30);
-      this.views.get('spark')?.scale.set(s);
-    });
-    this.add('glow', office.drawGlow());
-    const chair = office.drawChairProp();
-    this.add('chairProp', chair.view, (f) => {
-      chair.rocket.visible = f.states.kind === 'rocket';
-    });
+    }, this.gadget);
+    this.gadget.addChild(this.fuseLine);
+    this.add('fuse', new Container(), (f, all) => this.drawFuse(f, all), this.gadget);
+    const spark = kit.sprite('fx_spark');
+    this.add('spark', spark, (_f, all) => spark.scale.set(1 + 0.25 * Math.sin(all.t / 30)), this.gadget);
+    this.add('glow', office.drawGlow(), undefined, this.gadget);
+    const chairTex = kit.sprite('bb_chair', 0, 4);
+    chairTex.scale.set(CHAIR_SCALE);
+    const rocketTex = kit.sprite('bb_rocket', 0, -8);
+    const chair = new Container();
+    chair.addChild(chairTex, rocketTex);
+    this.add('chairProp', chair, (f) => {
+      rocketTex.visible = f.states.kind === 'rocket';
+      chairTex.visible = true;
+      kit.swap(rocketTex, this.look.rocket === 'retro' ? 'bb_rocket_retro' : 'bb_rocket');
+    }, this.gadget);
 
-    this.boss = new BossAnimator();
+    // Mug échappé (reste suspendu, tombe) : même taille que dans la main de B.B.
+    const mugProp = kit.sprite('bb_mug');
+    mugProp.scale.set(1.22);
+    this.add('mugProp', mugProp, () => kit.swap(mugProp, this.look.mug === 'okayest' ? 'bb_mug_okayest' : 'bb_mug'), this.gadget);
+    // Câble de l'écran (réaction en chaîne) : tendu ou détendu, de l'écran jusqu'au pot de la plante.
+    this.gadget.addChild(this.cable);
+
+    // Ombres de contact (personnages).
+    for (const [id, sx] of [['boss', 1.25], ['wendell', 0.75], ['coo', 0.36], ['chairProp', 0.9]] as const) {
+      const s = kit.sprite('shadow');
+      s.scale.set(sx, sx * 0.8);
+      s.visible = false;
+      this.shadows.addChild(s);
+      this.shadowOf.set(id, s);
+    }
+
+    // Image d'impact : fond papier + silhouettes encre (1 à 3 images au contact).
+    this.impactPlane.rect(-1600, -900, 3600, 2400).fill(hex('paper'));
+    this.impactPlane.visible = false;
+
+    // Traînées de vitesse (derrière les corps rapides).
+    for (let i = 0; i < 2; i++) {
+      const s = kit.sprite('fx_speed');
+      s.tint = INK;
+      s.visible = false;
+      this.speed.addChild(s);
+      this.speedLines.push(s);
+    }
+
+    // ---------------------------------------------------------------- personnages
+    this.boss = new BossRig(kit);
+    this.boss.setLook(this.look);
     this.addCharacter(this.boss);
-    this.addCharacter(new WendellAnimator());
-    this.addCharacter(new CooAnimator());
+    this.wendell = new WendellRig(kit);
+    this.addCharacter(this.wendell);
+    this.addCharacter(new CooRig(kit));
     // Portes de l'ascenseur devant les personnages : B.B. peut y attendre caché.
-    this.add('elevL', office.drawElevatorDoor(1));
-    this.add('elevR', office.drawElevatorDoor(-1));
+    this.add('elevL', kit.sprite('elevator_door_l'), undefined, this.front);
+    this.add('elevR', kit.sprite('elevator_door_r'), undefined, this.front);
+    // Sol de premier plan : masque le boss qui tombe dans la trappe.
+    this.front.addChild(drawFloor(FLOOR_Y + 18));
 
-    w.addChild(office.drawFloorFront());
-    const desk = office.drawPlayerDesk();
-    this.duck = office.drawRubberDuck();
-    this.duck.visible = false;
-    desk.addChild(this.duck);
-    w.addChild(desk);
-    const ceiling = new Container();
-    const hole = office.drawCeilingHole();
-    ceiling.addChild(office.drawCeilingStrip());
-    const holeWrap = new Container();
-    holeWrap.addChild(hole);
-    this.add('ceiling', holeWrap, (f) => (hole.visible = f.states.main === 'hole'));
-    w.addChild(ceiling);
-    w.setChildIndex(holeWrap, w.children.length - 1);
+    // Rayon de lumière de la fenêtre (additif) et poussière qui y flotte.
+    const shaft = kit.sprite('light_shaft', 96, 292);
+    shaft.scale.set(1, 0.66);
+    shaft.blendMode = 'add';
+    this.shaft = shaft;
+    this.light.addChild(shaft);
+    for (let i = 0; i < 12; i++) {
+      const m = kit.sprite('fx_bubble');
+      m.scale.set(0.12 + (i % 3) * 0.04);
+      m.tint = hex('tieLight');
+      m.alpha = 0.5;
+      m.blendMode = 'add';
+      this.light.addChild(m);
+      this.motes.push(m);
+    }
+
+    // ---------------------------------------------------------------- plafond (devant : B.B. peut s'y encastrer)
+    const ceiling = drawCeiling(kit);
+    this.ceilingLights = ceiling.lights;
+    this.ceiling.addChild(ceiling.view, this.ceilingDressing);
+    const hole = kit.sprite('ceiling_hole');
+    this.add('ceiling', this.wrap(hole).outer, (f) => (hole.visible = f.states.main === 'hole'), this.ceiling);
+
+    // ---------------------------------------------------------------- premier plan
+    const desk2 = drawPlayerDesk(kit);
+    this.fgTall = desk2.tall;
+    this.duck = desk2.duck;
+    this.duck.visible = this.look.duck;
+    this.fg.addChild(desk2.view);
 
     const projectiles = office.drawProjectiles();
     const proj = new Container();
     for (const g of Object.values(projectiles)) proj.addChild(g);
     this.add('proj', proj, (f) => {
       for (const [kind, g] of Object.entries(projectiles)) g.visible = kind === (f.states.kind ?? 'stapler');
-    });
-    this.addCharacter(new HandsAnimator());
-    this.add('fog', office.drawFog());
-    w.addChild(this.particles);
-    this.add('flash', new Graphics().rect(-1400, -700, 2800, 1400).fill(C.white));
+    }, w);
+    this.addCharacter(new HandsRig(kit), w);
+    this.add('fog', office.drawFog(), undefined, w);
+    w.addChild(this.particleLayer);
+    this.add('flash', new Graphics().rect(-1400, -700, 2800, 1400).fill(hex('paper')), undefined, w);
+
+    // ---------------------------------------------------------------- étalonnage (écran) : une seule passe
+    this.gradeCanvas = makeGradeCanvas();
+    this.vignette = new Sprite(Texture.from(this.gradeCanvas));
+    this.alarm = new Graphics().rect(0, 0, 16, 16).fill(hex('alarm'));
+    this.alarm.blendMode = 'add';
+    this.alarm.visible = false;
+    this.screen.addChild(this.alarm, this.vignette);
+    this.applyWorld('grumpy');
+  }
+
+  // ------------------------------------------------------------------ habillage des mondes (rendu seulement)
+
+  private applyWorld(level: RageLevelId): void {
+    this.worldLevel = level;
+    const g = WORLDS[level];
+    const kit = this.kit;
+    if (!kit) return;
+    this.bg.tint = g.bg;
+    this.room.tint = g.room;
+    this.gadget.tint = g.room;
+    this.cast.tint = g.cast;
+    this.ceiling.tint = g.ceiling;
+    this.fg.tint = g.fg;
+    this.windowView?.setSkyTint(g.sky);
+    if (this.shaft) {
+      this.shaft.tint = g.shaft;
+      this.shaft.alpha = g.shaftAlpha;
+    }
+    if (this.gradeCanvas && this.vignette) {
+      paintGrade(this.gradeCanvas, g.warm, g.warmAlpha, g.vignette);
+      this.vignette.texture.source.update();
+    }
+    if (this.wendell) this.wendell.helmetOn = level === 'unhinged';
+    if (this.portraitInner) this.portraitInner.rotation = level === 'grumpy' ? 0 : level === 'furious' ? 0.1 : -0.22;
+    if (this.plantInner) this.plantInner.rotation = level === 'grumpy' ? 0 : level === 'furious' ? 0.16 : 0.34;
+    if (this.fanInner) this.fanInner.rotation = level === 'unhinged' ? 0.28 : 0;
+    if (this.corkSprite) this.corkSprite.rotation = level === 'grumpy' ? 0 : level === 'furious' ? -0.06 : 0.1;
+    if (this.certSprite) this.certSprite.rotation = level === 'grumpy' ? 0 : level === 'furious' ? 0.12 : -0.3;
+    // Accessoires d'habillage.
+    this.dressing.removeChildren().forEach((c) => c.destroy());
+    this.ceilingDressing.removeChildren().forEach((c) => c.destroy());
+    this.room.children.find((c) => c.label === 'dressing-papers')?.destroy();
+    if (level === 'grumpy') return;
+    const papers: [number, number, number][] = level === 'furious'
+      ? [[160, 572, 0.3], [250, 590, -0.5], [880, 580, 0.8], [40, 600, 1.9]]
+      : [[140, 574, 0.3], [230, 596, -0.5], [300, 612, 2.2], [880, 584, 0.8], [30, 604, 1.9], [950, 612, -1.1], [520, 640, 0.6], [760, 630, -0.3]];
+    // Papiers au sol : dans la couche du sol (sous les personnages).
+    const floorPapers = new Container();
+    for (const [x, y, r] of papers) {
+      const p = kit.sprite('fx_paper', x, y);
+      p.scale.set(1.3, 0.55);
+      p.rotation = r;
+      floorPapers.addChild(p);
+    }
+    floorPapers.label = 'dressing-papers';
+    this.room.addChildAt(floorPapers, 1);
+    if (level === 'unhinged') {
+      // Fissures du plafond, câbles pendants, fumée, gyrophare.
+      const g2 = new Graphics();
+      g2.moveTo(420, 60).lineTo(460, 20).lineTo(450, -30).lineTo(500, -90).moveTo(460, 20).lineTo(520, 6)
+        .moveTo(760, 60).lineTo(730, 10).lineTo(760, -60).moveTo(730, 10).lineTo(690, -10)
+        .stroke({ width: 3, color: hex('inkSoft') });
+      g2.moveTo(520, 40).bezierCurveTo(530, 140, 560, 150, 575, 110).stroke({ width: 5, color: INK });
+      g2.moveTo(880, 40).bezierCurveTo(870, 170, 840, 190, 830, 150).stroke({ width: 5, color: hex('red') });
+      g2.moveTo(360, 40).bezierCurveTo(350, 120, 380, 140, 392, 118).stroke({ width: 4, color: hex('tie') });
+      this.ceilingDressing.addChild(g2);
+      for (const [x, y, s] of [[380, 20, 1.6], [620, -10, 2.2], [880, 30, 1.8], [160, 0, 1.4]] as const) {
+        const puff = kit.sprite('fx_puff', x, y);
+        puff.scale.set(s);
+        puff.tint = hex('smoke');
+        puff.alpha = 0.55;
+        this.ceilingDressing.addChild(puff);
+      }
+      const stapler = kit.sprite('stuck_stapler', 330, 300);
+      stapler.rotation = -0.35;
+      this.dressing.addChild(stapler);
+      const beacon = new Graphics();
+      beacon.roundRect(-14, -4, 28, 10, 3).fill(hex('metalDark')).stroke({ width: 2, color: INK });
+      beacon.arc(0, -4, 12, Math.PI, 0).fill(hex('alarm')).stroke({ width: 2, color: INK });
+      beacon.position.set(640, 76);
+      this.dressing.addChild(beacon);
+    }
   }
 
   private drawElastic(f: ActorFrame, all: FrameState): void {
     const g = this.elastic;
     g.clear();
+    if (this.pouch) this.pouch.visible = false;
     if (!this.gadgetProps.has('slingPost') || f.states.elastic === 'none') return;
     const px = f.transform.x;
     const py = f.transform.y - 122;
+    const color = this.elasticColor();
+    const band = (pts: number[][], width: number) => {
+      const [a, b, c2] = pts as [number[], number[], number[]];
+      g.moveTo(a[0] ?? 0, a[1] ?? 0).quadraticCurveTo(b[0] ?? 0, b[1] ?? 0, c2[0] ?? 0, c2[1] ?? 0).stroke({ width: width + 3.5, color: INK, cap: 'round' });
+      g.moveTo(a[0] ?? 0, a[1] ?? 0).quadraticCurveTo(b[0] ?? 0, b[1] ?? 0, c2[0] ?? 0, c2[1] ?? 0).stroke({ width, color, cap: 'round' });
+    };
     if (f.states.elastic === 'snapped') {
-      g.moveTo(px - 22, py).quadraticCurveTo(px - 30, py + 30, px - 16, py + 50);
-      g.moveTo(px + 22, py).quadraticCurveTo(px + 30, py + 30, px + 20, py + 46);
-      g.stroke({ width: 5, color: this.elasticColor() });
+      const wob = Math.sin(all.clock / 45) * 6 * Math.exp(-((all.t % 100000) / 100000));
+      band([[px - 22, py], [px - 34 + wob, py + 26], [px - 18, py + 52]], 5);
+      band([[px + 22, py], [px + 34 - wob, py + 22], [px + 20, py + 48]], 5);
       return;
     }
     const boss = all.actors.boss?.transform;
     if (!boss) return;
-    const bx = boss.x - 40;
-    const by = boss.y - 70;
-    g.moveTo(px - 22, py).lineTo(bx, by).moveTo(px + 22, py).lineTo(bx, by).stroke({ width: 5, color: this.elasticColor() });
+    const bx = boss.x - 52;
+    const by = boss.y - 58;
+    // Tension : l'élastique tremble d'autant plus qu'il est étiré (fonction du temps : déterministe).
+    const len = Math.hypot(bx - px, by - py);
+    const tension = clamp01((len - 260) / 160);
+    const tremble = Math.sin(all.clock / 16) * 5 * tension;
+    const sag = 18 * (1 - tension);
+    for (const dx of [-22, 22]) {
+      const ax = px + dx;
+      band([[ax, py], [(ax + bx) / 2, (py + by) / 2 + sag + tremble], [bx, by]], 6 - tension * 2);
+    }
+    if (this.pouch) {
+      this.pouch.visible = true;
+      this.pouch.position.set(bx, by);
+      this.pouch.rotation = Math.atan2(by - py, bx - px) - Math.PI;
+    }
   }
 
   private elasticColor(): number {
-    return this.look.elastic === 'candy' ? 0xff7eb6 : C.red;
+    return this.look.elastic === 'candy' ? 0xff7eb6 : hex('elastic');
   }
 
   private drawFuse(f: ActorFrame, all: FrameState): void {
@@ -267,6 +576,14 @@ export class PixiStage implements SceneSink {
       const v = this.views.get(id);
       if (v) v.visible = this.gadgetProps.has(id);
     }
+    const level = this.worldOverride ?? gadget.rageLevel;
+    if (level !== this.worldLevel) this.applyWorld(level);
+  }
+
+  /** DEV : habillage imposé (concepts). null : suit le gadget. */
+  setWorldOverride(level: RageLevelId | null, fallback: RageLevelId = 'grumpy'): void {
+    this.worldOverride = level;
+    this.applyWorld(level ?? fallback);
   }
 
   render(frame: FrameState): void {
@@ -276,18 +593,28 @@ export class PixiStage implements SceneSink {
       if (!view) continue;
       if (!f || (ALL_GADGET_PROPS.includes(id) && !this.gadgetProps.has(id))) {
         view.visible = false;
-        if (id === 'slingPost') this.elastic.clear();
+        if (id === 'slingPost') {
+          this.elastic.clear();
+          if (this.pouch) this.pouch.visible = false;
+        }
         if (id === 'fuse') this.fuseLine.clear();
         continue;
       }
       update(f, frame);
     }
+    this.drawCable(frame);
+    this.drawShadows(frame);
+    this.drawSpeed(frame);
     this.drawParticles(frame);
+    this.drawAmbient(frame);
+    this.drawImpactFrame(frame);
+
     const cam = frame.camera;
     let base: number;
     let camX = cam.x;
     let camY = cam.y;
-    if (this.width / this.height < 0.8) {
+    const portrait = this.width / this.height < 0.8;
+    if (portrait) {
       base = Math.min(this.width / PORTRAIT.width, this.height / PORTRAIT.minHeight);
       const visibleH = this.height / base;
       camY = PORTRAIT.floorY - (PORTRAIT.floorAt - 0.5) * visibleH + (cam.y - PORTRAIT.restY);
@@ -299,6 +626,15 @@ export class PixiStage implements SceneSink {
     } else {
       base = Math.min(this.width / SAFE_LANDSCAPE.width, this.height / SAFE_LANDSCAPE.height);
     }
+    // Parallaxe : décalage des couches selon la position de la caméra (fonction pure du cadrage).
+    const d = camX - PARALLAX.restX;
+    this.bg.x = (1 - PARALLAX.bg) * d;
+    this.ceiling.x = (1 - PARALLAX.bg) * d;
+    this.fg.x = (1 - PARALLAX.fg) * d;
+    this.fg.y = portrait ? 0 : -64;
+    this.fgTall.forEach((item) => (item.visible = portrait));
+    this.windowView?.setParallax((PARALLAX.bg - PARALLAX.sky) * d);
+
     const s = base * cam.zoom;
     this.world.scale.set(s);
     this.world.pivot.set(camX, camY);
@@ -306,27 +642,141 @@ export class PixiStage implements SceneSink {
     this.world.position.set(this.width / 2 + cam.shakeX * base, this.height / 2 + cam.shakeY * base);
   }
 
-  private drawParticles(frame: FrameState): void {
-    const g = this.particles;
+  private drawCable(frame: FrameState): void {
+    const g = this.cable;
     g.clear();
+    const mon = frame.actors.monitor;
+    const plant = frame.actors.plant?.transform;
+    const mode = mon?.states.cable;
+    if (!mon || !plant || (mode !== 'taut' && mode !== 'slack')) return;
+    const ax = mon.transform.x - 30;
+    const ay = mon.transform.y - 30;
+    const bx = plant.x + 12;
+    const by = plant.y - 40;
+    const sag = mode === 'taut' ? 0 : 70;
+    const path = () => g.moveTo(ax, ay).quadraticCurveTo((ax + bx) / 2, Math.max(ay, by) + sag, bx, by);
+    path().stroke({ width: 6, color: INK, cap: 'round' });
+    path().stroke({ width: 3, color: hex('metalDark'), cap: 'round' });
+  }
+
+  private drawShadows(frame: FrameState): void {
+    for (const [id, s] of this.shadowOf) {
+      const f = frame.actors[id];
+      const view = this.views.get(id);
+      if (!f || !view?.visible || f.transform.alpha < 0.2 || f.transform.y > FLOOR_Y + 30 || f.transform.z > 200) {
+        s.visible = false;
+        continue;
+      }
+      const h = Math.max(0, FLOOR_Y - f.transform.y);
+      const k = clamp01(1 - h / 360);
+      s.visible = k > 0.05;
+      s.position.set(f.transform.x + h * 0.08, FLOOR_Y + 3);
+      s.alpha = 0.85 * k * f.transform.alpha;
+      const base = id === 'boss' ? 1.25 : id === 'wendell' ? 0.75 : id === 'coo' ? 0.36 : 0.9;
+      s.scale.set(base * (0.55 + 0.45 * k), base * 0.8 * (0.55 + 0.45 * k));
+    }
+  }
+
+  /** Traînée : lignes de vitesse derrière B.B. (et la chaise) + étirement dans le sens du mouvement. */
+  private drawSpeed(frame: FrameState): void {
+    const ids: ActorId[] = ['boss', 'chairProp'];
+    ids.forEach((id, i) => {
+      const line = this.speedLines[i];
+      const f = frame.actors[id];
+      const view = this.views.get(id);
+      if (!line) return;
+      if (!f || !view?.visible) {
+        line.visible = false;
+        return;
+      }
+      const vx = f.motion.vx;
+      const vy = f.motion.vy;
+      const v = Math.hypot(vx, vy);
+      const k = clamp01((v - 0.9) / 1.4);
+      line.visible = k > 0.02 && f.transform.alpha > 0.3;
+      if (!line.visible) return;
+      line.position.set(f.transform.x - vx * 20, f.transform.y - 120 - vy * 20);
+      line.rotation = Math.atan2(vy, vx);
+      line.scale.set(0.6 + k * 0.9, 0.9 + k * 0.4);
+      line.alpha = 0.18 + 0.35 * k;
+      // Étirement (smear) : volume conservé.
+      const stretch = 1 + 0.28 * k;
+      if (Math.abs(vx) >= Math.abs(vy)) {
+        view.scale.x *= stretch;
+        view.scale.y /= Math.sqrt(stretch);
+      } else {
+        view.scale.y *= stretch;
+        view.scale.x /= Math.sqrt(stretch);
+      }
+    });
+  }
+
+  private drawParticles(frame: FrameState): void {
+    const kit = this.kit;
+    if (!kit) return;
+    let n = 0;
     for (let i = 0; i < frame.particleCount; i++) {
       const p = frame.particles[i];
       if (!p) break;
-      if (p.shape === 'circle') {
-        g.circle(p.x, p.y, p.size / 2).fill({ color: p.color, alpha: p.alpha });
-      } else {
-        const h = p.size / 2;
-        const w = p.size / 3;
-        const c = Math.cos(p.rot);
-        const s = Math.sin(p.rot);
-        g.poly([
-          p.x - h * c + w * s, p.y - h * s - w * c,
-          p.x + h * c + w * s, p.y + h * s - w * c,
-          p.x + h * c - w * s, p.y + h * s + w * c,
-          p.x - h * c - w * s, p.y - h * s + w * c,
-        ]).fill({ color: p.color, alpha: p.alpha });
+      const art = FX_ART[p.fx];
+      let s = this.particlePool[n];
+      if (!s) {
+        s = new Sprite();
+        this.particlePool.push(s);
+        this.particleLayer.addChild(s);
       }
+      n++;
+      const tex: Texture = kit.texture(art.tex);
+      if (s.texture !== tex) {
+        s.texture = tex;
+        s.anchor.set(0.5);
+      }
+      const life = 1 - p.alpha;
+      const scale = (p.size / Math.max(1, tex.frame.width)) * (1 + (art.grow ?? 0) * life);
+      s.visible = true;
+      s.position.set(p.x, p.y);
+      s.scale.set(scale);
+      s.rotation = p.rot;
+      s.alpha = p.fx === 'burst' ? Math.min(1, p.alpha * 2) : p.fx === 'dust' || p.fx === 'smoke' ? p.alpha * 0.9 : p.alpha;
+      s.tint = art.tint ? p.color : 0xffffff;
     }
+    for (let i = n; i < this.particlePool.length; i++) {
+      const s = this.particlePool[i];
+      if (s) s.visible = false;
+    }
+  }
+
+  /** Vie ambiante (fonction de l'horloge de présentation) : poussière dans le rayon, néons, alarme. */
+  private drawAmbient(frame: FrameState): void {
+    const t = frame.clock;
+    this.motes.forEach((m, i) => {
+      const k = ((t * 0.012 + i * 37) % 260) / 260;
+      m.position.set(170 + ((i * 53) % 260) + k * 120 + Math.sin(t / 900 + i) * 10, 330 + ((i * 71) % 220) - k * 40);
+      m.alpha = (0.2 + 0.3 * Math.sin(Math.PI * k)) * (this.shaft?.alpha ?? 0) * 2;
+    });
+    if (this.worldLevel === 'unhinged') {
+      // Néons qui grésillent et alarme rouge (pulsation lente, jamais plus de 3 Hz).
+      this.ceilingLights.forEach((l, i) => (l.alpha = Math.sin(t / 97 + i * 2.1) > 0.85 ? 0.35 : 1));
+      if (this.alarm) {
+        this.alarm.visible = true;
+        this.alarm.setSize(this.width, this.height);
+        this.alarm.alpha = 0.06 + 0.08 * (0.5 + 0.5 * Math.sin(t / 380));
+      }
+    } else {
+      for (const l of this.ceilingLights) l.alpha = 1;
+      if (this.alarm) this.alarm.visible = false;
+    }
+  }
+
+  /** Image d'impact (état `frame=impact` de l'acteur « flash ») : silhouettes encre sur papier. */
+  private drawImpactFrame(frame: FrameState): void {
+    const on = frame.actors.flash?.states.frame === 'impact';
+    this.impactPlane.visible = on;
+    const tint = on ? INK : WORLDS[this.worldLevel].cast;
+    this.cast.tint = tint;
+    this.gadget.tint = on ? INK : WORLDS[this.worldLevel].room;
+    for (const layer of [this.room, this.bg, this.ceiling, this.fg, this.light, this.front]) layer.visible = !on;
+    this.screen.visible = !on;
   }
 
   /** Dessine l'image courante. */
@@ -356,3 +806,4 @@ export class PixiStage implements SceneSink {
     return { textures, textureBytes, displayObjects, visibleActors };
   }
 }
+

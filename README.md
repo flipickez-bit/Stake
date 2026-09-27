@@ -32,7 +32,8 @@ Aucun argent réel : en l'absence de `sessionID`/`rgs_url` dans l'URL, le jeu ut
 | 9 | [STAKE_ENGINE_FAITS_VERIFIES](docs/STAKE_ENGINE_FAITS_VERIFIES.md) | Analyse technique Stake Engine |
 | 10-11 | [TECH_ARCHITECTURE](TECH_ARCHITECTURE.md) | Stack, architecture, GameFlow, modèle d'animation, DEV PANEL |
 | 12 | [MVP_ROADMAP](MVP_ROADMAP.md) | Phases, portes, budgets de performance, critères MVP, proposition de Phase 1 |
-| Phase 0.5 | [PHASE_0_5](PHASE_0_5.md) · [portrait avant/après](docs/phase05/portrait) · [LOOP x500](docs/generated/LOOP_X500.md) | Playtest et game feel (en cours) |
+| Phase 0.5 | [PHASE_0_5](PHASE_0_5.md) · [portrait avant/après](docs/phase05/portrait) · [LOOP x500](docs/generated/LOOP_X500.md) | Playtest et game feel (PLAYTEST #2 attendu) |
+| Phase 0.6 | [PHASE_0_6](PHASE_0_6.md) · [ART BIBLE](BAD_BOSS_ART_BIBLE.md) · [concepts](docs/phase06/concepts) · [avant/après](docs/phase06) | Visual upgrade : vertical slice GRUMPY + SWIVEL SLINGSHOT (en attente de validation) |
 | Phase 0 | [PHASE_0_ACCEPTANCE](PHASE_0_ACCEPTANCE.md) · [captures](docs/phase0/screens) · [LOOP x100](docs/generated/LOOP_X100.md) · [taille du build](docs/generated/BUILD_SIZE.md) | Recette du prototype |
 
 ## Maths

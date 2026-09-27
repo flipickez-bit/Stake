@@ -6,7 +6,7 @@ import type { Outcome } from '../domain/outcome';
 import type { ResultClass } from '../domain/types';
 import type { ContentLibrary, ImpactTier } from '../presentation/compileSequence';
 import type { BossReaction, Cue, ImpactDirection, SegmentDef } from '../presentation/types';
-import { anim, freeze, fx, paced, punch, seg, segments, shake, signal, silence, sound, state, tw } from './dsl';
+import { anim, freeze, fx, impactFrame, paced, punch, seg, segments, shake, signal, silence, sound, state, tw } from './dsl';
 import { ELEVATOR, IMPACT_POINTS } from './office';
 
 // ------------------------------------------------------------------ IMPACT : le COMBIEN
@@ -42,7 +42,8 @@ function impactSegment(tier: ImpactTier, direction: ImpactDirection): SegmentDef
     fx(0, 'dust', p.x, p.y, t.dust),
     anim(0, 'boss', tier === 'T05' ? 'ouch' : 'splat'),
   ];
-  if (t.freeze > 0) cues.push(freeze(0, t.freeze));
+  // Phase 0.6 : image d'impact (silhouettes, ~2 images) puis HIT STOP ; éclat d'impact au point de contact.
+  if (t.freeze > 0) cues.push(...impactFrame(0, 40, Math.max(0, t.freeze - 40)), fx(0, 'burst', p.x, p.y, 1));
   if (t.flash > 0) cues.push(tw(0, 'flash', { alpha: t.flash }, 30, 'linear'), tw(40, 'flash', { alpha: 0 }, 260, 'outQuad'));
   if (tier !== 'T05') cues.push(fx(0, 'sparks', p.x, p.y, big ? 16 : 8), punch(0, 220, big ? 8 : 4));
   if (big) cues.push(fx(60, 'papers', p.x, p.y, tier === 'T2' ? 14 : 24));
@@ -64,11 +65,12 @@ function impactSegment(tier: ImpactTier, direction: ImpactDirection): SegmentDef
 // ------------------------------------------------------------------ REACTION
 
 const REACTION_LIST: SegmentDef[] = [
-  seg('RE_SIP', 'reaction', 1000, 'compress', [anim(0, 'boss', 'sip'), sound(420, 'hmpf')]),
+  // LE SIP (ART BIBLE §5.1) : regard, montée lente, pause, SIP, sourcil levé — sons calés sur la pose.
+  seg('RE_SIP', 'reaction', 1000, 'compress', [anim(0, 'boss', 'sip'), sound(440, 'sip'), sound(680, 'hmpf', 1.1)]),
   seg('RE_LAUGH', 'reaction', 1000, 'compress', [anim(0, 'boss', 'laugh'), sound(0, 'laugh')]),
   seg('RE_FLEX', 'reaction', 1000, 'compress', [anim(0, 'boss', 'flex'), sound(150, 'hmpf', 0.8)]),
   seg('RE_SULK', 'reaction', 900, 'compress', [anim(0, 'boss', 'sulk'), sound(80, 'deflate')]),
-  seg('RE_DAZED', 'reaction', 1100, 'compress', [anim(0, 'boss', 'dazed'), fx(0, 'stars', 0, -205, 5, 'boss'), sound(60, 'boing', 1.3)]),
+  seg('RE_DAZED', 'reaction', 1100, 'compress', [anim(0, 'boss', 'dazed'), fx(0, 'stars', 0, -236, 5, 'boss'), sound(60, 'boing', 1.3)]),
   seg('RE_OFFICE_CHEER', 'reaction', 1200, 'compress', [
     anim(0, 'wendell', 'run'), tw(0, 'wendell', { x: 860 }, 420, 'outQuad'), anim(430, 'wendell', 'cheer'), sound(450, 'cheer'),
   ]),
@@ -208,7 +210,7 @@ const ELEV_GOLD = seg('ELEV_GOLD', 'twist', 700, 'compress', [
 
 // ------------------------------------------------------------------ RUNNING GAG : LE SIP (ne veut PAS dire « perdu »)
 
-const SIP_BEAT = paced(0.6, seg('SIP_BEAT', 'twist', 900, 'compress', [anim(0, 'boss', 'sip'), sound(560, 'sip')]));
+const SIP_BEAT = paced(0.6, seg('SIP_BEAT', 'twist', 900, 'compress', [anim(0, 'boss', 'sip'), sound(720, 'sip')]));
 /** Le mug est vide. Il regarde dedans… (la suite peut être un gain comme une perte). */
 const SIP_EMPTY = paced(0.7, seg('SIP_EMPTY', 'twist', 650, 'compress', [
   state(0, 'boss', 'mug=empty'), anim(0, 'boss', 'mugcheck'), sound(180, 'hmpf', 1.35), silence(0, 500),

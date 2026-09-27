@@ -379,7 +379,7 @@ Aucun chiffre à l'écran pendant l'épisode : le résultat de la manche précé
 | Modèle, catalogue, jalons et récompenses, stockage, service, observateur, textes | `src/collection/{types,catalog,rewards,store,Collection,tracker,copy}.ts` |
 | Activation par plateforme | `metaFeaturesFor()` dans `src/flow/featureGate.ts` |
 | Branchement (sans modifier GameFlow) | `src/app/bootstrap.ts` : `attachCollectionTracker(flow, collection)` avant `flow.start()` |
-| Album, badge, épisode, silhouettes | `src/app/collection/{CollectionBook,NewBadge,ShowcaseOverlay,GadgetSilhouette}.svelte`, `look.ts` |
+| Album, badge, épisode, silhouettes | `src/app/collection/{CollectionBook,DiscoveryFlight,GiftNotice,ShowcaseOverlay,GadgetSilhouette}.svelte`, `look.ts` |
 | Vignettes générées depuis le contenu | `src/render/ThumbnailRenderer.ts` (scène Pixi hors écran, image clé cadrée sur l'action) |
 | Cosmétiques (rendu seul) | `src/render/cosmeticLook.ts`, `BossAnimator.setLook`, `PixiStage.setCosmetics`, `AudioDirector.setDingVariant` |
 | Épisode | `src/content/showcase.ts`, `compileShowcase()` (moteur), `Presenter.playShowcase()` |
