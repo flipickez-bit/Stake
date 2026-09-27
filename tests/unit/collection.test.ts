@@ -17,7 +17,7 @@ import { COSMETICS, MELTDOWN_PER_GADGET as N, MELTDOWN_RULE, MILESTONES, meltdow
 import { LocalCollectionStore, MemoryCollectionStore, sanitizeCollection } from '../../src/collection/store';
 import { attachCollectionTracker, shouldObserve } from '../../src/collection/tracker';
 import { CARD_TEXTS, SETUP_HINTS } from '../../src/content/collectionCards';
-import { GADGETS } from '../../src/content/gadgets';
+import { CLASSIC_GADGETS, GADGETS } from '../../src/content/gadgets';
 
 /** PRODUCTION 3 GADGETS : 9 gadgets, 147 cartes (129 de Rage Level + 18 BOSS FIGHT). */
 const TOTAL = GADGETS.reduce((n, g) => n + g.branches.length, 0);
@@ -360,8 +360,9 @@ describe('déterminisme et architecture', () => {
 });
 
 describe('SPECIAL EPISODE : OFFICE MELTDOWN (showcase, aucune manche)', () => {
-  it('5 tableaux, tous les accessoires, aucun signal de manche (reveal, BOSS FIGHT), animations connues', () => {
-    expect(OFFICE_MELTDOWN.map((b) => b.id)).toEqual(['intro', 'slingshot', 'trapdoor', 'rocket', 'finale']);
+  it('8 tableaux (dont 3 gadgets B/C), tous les accessoires, aucun signal de manche (reveal, BOSS FIGHT), animations connues', () => {
+    expect(OFFICE_MELTDOWN.map((b) => b.id)).toEqual(['intro', 'slingshot', 'trapdoor', 'rocket', 'espresso', 'dominoes', 'safe', 'finale']);
+    expect(OFFICE_MELTDOWN.map((b) => b.stage.id)).toContain('cabinet-domino');
     const anims = CHARACTER_ANIMS as Record<string, readonly string[]>;
     let total = 0;
     for (const beat of OFFICE_MELTDOWN) {
@@ -372,9 +373,9 @@ describe('SPECIAL EPISODE : OFFICE MELTDOWN (showcase, aucune manche)', () => {
       expect(signals, beat.id).toEqual(['end']);
       for (const c of seq.cues) if (c.kind === 'anim' && anims[c.actor]) expect(anims[c.actor], `${beat.id}: ${c.actor}.${c.anim}`).toContain(c.anim);
     }
-    // ≈ 15 s de spectacle (hors pauses entre les tableaux).
-    expect(total).toBeGreaterThan(10_000);
-    expect(total).toBeLessThan(20_000);
+    // ≈ 30 s de spectacle (hors pauses entre les tableaux), rythmé par le joueur.
+    expect(total).toBeGreaterThan(20_000);
+    expect(total).toBeLessThan(40_000);
   });
 
   it('le Presenter joue un tableau hors GameFlow et rend la main à la fin', async () => {
@@ -488,6 +489,24 @@ if (reportPath) {
       '', '## Courbe de découverte (joueur réparti)', '',
       '| Manches | 10 | 25 | 50 | 100 | 200 | 500 | 1 000 |', '|---|---:|---:|---:|---:|---:|---:|---:|',
       `| Cartes découvertes (espérance, sur ${catalog.cards.length}) | ${[10, 25, 50, 100, 200, 500, 1000].map((n) => all(uniform).reduce((a, x) => a + 1 - Math.exp(-x * n), 0).toFixed(1)).join(' | ')} |`,
+      '', '## MODE CLASSIQUE (un gadget par Rage Level : Stake tant qu\'A2 n\'est pas confirmée, ou ?plans=off)', '',
+      ...(() => {
+        // Catalogue des 3 gadgets jouables (51 cartes) et règle historique d'OFFICE MELTDOWN (≥ 8 dans chaque Rage Level).
+        const classicIds = new Set(Object.values(CLASSIC_GADGETS).map((g) => g.id as string));
+        const classic = buildCatalog(Object.values(CLASSIC_GADGETS));
+        const share = Object.fromEntries([...classicIds].map((id) => [id, 1 / 3]));
+        const ps = (filter: (c: (typeof classic.cards)[number]) => boolean) => classic.cards.filter(filter).map((c) => (perGadget.get(c.gadgetId)!.get(c.id) ?? 0) * share[c.gadgetId]!);
+        const allC = ps(() => true);
+        const legacy = (t: number) => (['grumpy', 'furious', 'unhinged'] as const).map((lv) => atLeast(ps((c) => c.section === lv), t, 8)).reduce((a, b) => a * b, 1);
+        return [
+          `Catalogue : **${classic.cards.length} cartes** (${classic.sections.map((x) => `${x.label} ${x.total}`).join(' · ')}). Joueur qui répartit ses manches (1/3 par Rage Level).`, '',
+          '| Jalon | Manches (médiane) | Manches (90 %) |', '|---|---:|---:|',
+          row('25 DISCOVERED', (t) => atLeast(allC, t, 25)),
+          row('50 %', (t) => atLeast(allC, t, Math.ceil(0.5 * allC.length))),
+          row('OFFICE MELTDOWN (≥ 8 dans GRUMPY, FURIOUS, UNHINGED)', legacy),
+          row('100 % COLLECTION', (t) => atLeast(allC, t, allC.length)),
+        ];
+      })(),
       '', '## Par gadget (joueur réparti) : cartes de Rage Level découvertes (espérance)', '',
       '| Gadget | Cartes | 25 manches | 50 | 100 | 200 |', '|---|---:|---:|---:|---:|---:|',
       ...GADGETS.map((g) => {

@@ -142,7 +142,8 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 4 with each
   // Aucun chiffre ni bouton FIRE pendant l'épisode.
   await expect(page.getByTestId('result')).toHaveCount(0);
   await expect(page.getByTestId('fire')).toHaveCount(0);
-  for (let i = 0; i < 4; i++) {
+  // 8 tableaux : 7 passages « NEXT GAG ».
+  for (let i = 0; i < 7; i++) {
     await expect(show).toHaveAttribute('data-phase', 'between', { timeout: 30_000 });
     await page.getByTestId('showcase-next').click();
   }

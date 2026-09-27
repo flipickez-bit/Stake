@@ -44,6 +44,19 @@
 - [ ] Atlas pré-rendus au build (WebP @1x / @2x) ; vérifier la CSP de Stake (`blob:` / `data:`).
 - [ ] Tests sur téléphones réels (FPS, mémoire, résolution dynamique).
 
+## P0 : PRODUCTION 3 GADGETS — `PRODUCTION_3_GADGETS.md`
+- [x] LOT 1 GRUMPY : ESPRESSO BLASTER (18) et COPIER CATAPULT (17) ; registre de production.
+- [x] LOT 2 FURIOUS : art de la trappe, CABINET DOMINO (15), WATER COOLER BOWLING (16).
+- [x] LOT 3 UNHINGED : art de la fusée, CEILING SAFE (15), HVAC HURRICANE (15).
+- [x] LOT 4 BOSS FIGHT : entrées et projectiles par gadget, musique de combat.
+- [x] LOT 5 Collection : niveau → gadget → animations ; nouvelle règle d'OFFICE MELTDOWN (N = 4, simulation exacte).
+- [x] LOT 6 : SOUND KIT et SOUND BIBLE v1, ANIMATION KIT, transitions de monde, perf (UI chargée à la demande, atlas différés), mobile, recherche de branche, mode classique de la collection, PLAYTEST #3, épisode MELTDOWN à 8 tableaux.
+- [ ] **PLAYTEST #3 humain** (vous) : 50 manches, 11 affirmations + questions libres, export.
+- [ ] Images/s sur un vrai téléphone moyen de gamme (cible 60, minimum 45).
+- [ ] Réponses de Stake : Q21–Q29 (A2), méta-progression, CSP (`blob:` / `data:`), hébergement, audio.
+- [ ] Sons définitifs (sound design original, sans service payant sans votre accord) ; voix.
+- [ ] Dette : renommer « poc » ; fusionner les enregistreurs de playtest ; contenu par niveau à la demande (voir `PRODUCTION_3_GADGETS.md` §14).
+
 ## P0 : POC « 3 PLANS » (BAD BOSS — 3 GADGET POC) — `POC_3_GADGETS.md`
 - [x] Étude de faisabilité (`docs/ETUDE_CHOIX_3_GADGETS.md`) ; principe adopté PROVISOIREMENT (9 gadgets cibles, production NON lancée).
 - [x] Maths A2 expérimentales dans le Mock RGS (`IND_BFC_v1`, triple tiré sans le plan, RTP A = B = C) ; maths de production inchangées.

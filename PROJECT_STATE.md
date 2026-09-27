@@ -2,7 +2,21 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-_Dernière mise à jour : 2026-09-27, **POC « 3 PLANS » livré (`POC_3_GADGETS.md`), en attente du playtest A/B et de Stake** ; **Phase 0.6 — VISUAL UPGRADE : vertical slice GRUMPY + SWIVEL SLINGSHOT livrée, en attente de validation** (`PHASE_0_6.md`, `BAD_BOSS_ART_BIBLE.md`). Les 48 autres branches et la Phase 1 ne sont PAS commencées. La préversion P05-C (PLAYTEST #2) reste publiée à part, inchangée. **PLAYTEST #2 humain toujours attendu** sur P05-C._
+_Dernière mise à jour : 2026-09-27, **PRODUCTION 3 GADGETS PAR RAGE LEVEL livrée, prête pour le PLAYTEST #3** (`PRODUCTION_3_GADGETS.md`). A2 : INFORMATION STAKE ENGINE REQUISE (Mock seulement ; Stake = mode classique)._
+
+## PRODUCTION 3 GADGETS (`PRODUCTION_3_GADGETS.md`)
+- ✅ 9 gadgets réels, 3 par Rage Level :
+  - GRUMPY : SWIVEL SLINGSHOT, ESPRESSO BLASTER, COPIER CATAPULT ;
+  - FURIOUS : TRAPDOOR EXPRESS, CABINET DOMINO, WATER COOLER BOWLING ;
+  - UNHINGED : OFFICE ROCKET, CEILING SAFE, HVAC HURRICANE.
+- ✅ 147 branches (15 à 18 par gadget) : pertes, gains, gros gains, RARE, VERY RARE, 2 entrées de BOSS FIGHT par gadget ; chaque début mène à des pertes et à des gains.
+- ✅ SOUND KIT et `SOUND_BIBLE.md` v1 : x0,5 sans DING (test), variantes déterministes, impacts en couches, LE SIP ×4, musique non permanente.
+- ✅ ANIMATION KIT (`ANIMATION_KIT.md`, `src/content/kit.ts`).
+- ✅ Collection niveau → gadget → animations : 147 cartes. OFFICE MELTDOWN = ≥ 4 avec chacun des 9 gadgets (P50 89 / P90 131) ; mode classique = règle historique.
+- ✅ BOSS FIGHT 1/150 inchangé, entrées et projectiles par gadget.
+- ✅ Mondes et transitions ; mobile portrait ; perf (JS initial 279 KB gzip, textures ≤ 40,5 Mo, ≤ 10 appels de dessin, ≤ 226 particules).
+- ✅ DEV PANEL : recherche de branche, LOOP A → B → C. PLAYTEST #3 (bouton PLAYTEST du Mock).
+- ⏳ **PLAYTEST #3** (vous) ; réponses de Stake (Q21–Q29, méta-progression, CSP, audio) ; mesure des images/s sur un vrai téléphone.
 
 ## POC « 3 PLANS » : BAD BOSS — 3 GADGET POC (`POC_3_GADGETS.md`)
 - ✅ Étude validée comme base de travail (`docs/ETUDE_CHOIX_3_GADGETS.md`). Principe adopté PROVISOIREMENT (3 gadgets par Rage Level, 9 au total) ; **production des 9 gadgets NON lancée**.

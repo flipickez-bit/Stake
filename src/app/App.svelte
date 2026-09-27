@@ -118,7 +118,7 @@
         off.push(c.flow.subscribe((s) => { if (s.state === 'READY' || s.state === 'BET_PENDING') bf = c.presenter.status.bossFight; }));
         off.push(c.playtest.subscribe((s) => (pt = s)));
         if (c.poc) {
-          document.title = 'BAD BOSS — 3 GADGET POC (working title)';
+          document.title = 'BAD BOSS Playtest 3';
           off.push(c.poc.altDisplay.subscribe((v) => (altMode = v)));
           off.push(c.poc.playtest.subscribe((v) => (pocPt = v)));
         }
@@ -437,10 +437,14 @@
   .pt-chip { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: #ff8a00; white-space: nowrap; }
   .stage { position: relative; min-height: 0; overflow: hidden; }
   .wt { display: none; position: absolute; right: 8px; bottom: 4px; font-size: 8px; letter-spacing: 0.5px; color: #fff; opacity: 0.45; pointer-events: none; }
-  /* Portrait : scène à hauteur maîtrisée (plus de plafond vide), HUD juste en dessous. */
+  /*
+   * Portrait : la scène prend toute la hauteur que laisse le HUD (plus de bande vide sous le HUD sur les grands
+   * téléphones). La caméra borne le haut du cadre au plafond : un écran plus haut montre davantage le bureau du joueur
+   * (là où sont les gadgets), jamais du vide au-dessus du plafond.
+   */
   @media (orientation: portrait) and (max-aspect-ratio: 4/5) {
     .game { grid-template-rows: auto auto minmax(0, 1fr); }
-    .stage { height: min(140vw, 64vh, calc(100dvh - 262px)); }
+    .stage { height: min(165vw, calc(100dvh - 262px)); }
     .title small { display: none; }
     .wt { display: block; }
   }

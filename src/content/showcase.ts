@@ -1,12 +1,15 @@
 /**
  * SPECIAL EPISODE « OFFICE MELTDOWN » (COLLECTION BOOK, COLLECTION_BOOK.md §F).
  * SHOWCASE / ENTERTAINMENT ONLY : aucune mise, aucun RGS, aucun payout, aucun chiffre. Ce n'est pas une manche.
- * Cinq tableaux courts, rythmés par le joueur (« NEXT GAG »), qui réunissent tous les running gags.
+ * Tableaux courts, rythmés par le joueur (« NEXT GAG »), qui réunissent tous les running gags.
  * Les tableaux réutilisent les segments des gadgets et de la bibliothèque : même moteur, même rendu.
+ * PRODUCTION 3 GADGETS : l'épisode récompense l'exploration des 9 gadgets ; trois tableaux mettent donc en scène des
+ * gadgets B/C, choisis pour leurs gags croisés (le tiroir actionne la trappe, le coffre allume la fusée).
  */
-import type { GadgetDef, SegmentDef } from '../presentation/types';
+import type { ImpactTier } from '../presentation/compileSequence';
+import type { BossReaction, GadgetDef, SegmentDef } from '../presentation/types';
 import { anim, fx, seg, shake, silence, sound, state, tw } from './dsl';
-import { ALL_GADGET_PROPS, GADGETS, gadgetFor } from './gadgets';
+import { ALL_GADGET_PROPS, GADGETS, gadgetById, gadgetFor } from './gadgets';
 import { LIBRARY } from './library';
 
 export interface ShowcaseBeat {
@@ -38,6 +41,24 @@ const s = (g: GadgetDef, id: string): SegmentDef => {
   if (!found) throw new Error(`OFFICE MELTDOWN : segment inconnu ${id}`);
   return found;
 };
+
+/**
+ * Tableau tiré d'une VRAIE branche (tronc + modules + fin) : mêmes segments que dans une manche. Le choc est joué au
+ * palier donné, la réaction « auto / away » est fixée (aucun hasard, aucun résultat : c'est un épisode sans mise).
+ */
+function fromBranch(gadgetId: string, branchId: string, tier: ImpactTier, reaction: BossReaction): { stage: GadgetDef; segments: SegmentDef[] } {
+  const g = gadgetById(gadgetId);
+  const b = g?.branches.find((x) => x.id === branchId);
+  if (!g || !b) throw new Error(`OFFICE MELTDOWN : branche inconnue ${gadgetId}/${branchId}`);
+  const steps = b.steps.flatMap((step): SegmentDef[] => {
+    if ('seg' in step) return [s(g, step.seg)];
+    if ('impact' in step) return [LIBRARY.impact(tier, step.impact)];
+    if ('reaction' in step) return [LIBRARY.reaction(step.reaction === 'auto' || step.reaction === 'away' ? reaction : step.reaction, 1)];
+    if ('silence' in step) return [seg(`SHOW_PAUSE_${step.silence}`, 'twist', step.silence, 'keep', [silence(0, step.silence)])];
+    return [];
+  });
+  return { stage: stageFor(g), segments: [...g.trunk.map((id) => s(g, id)), ...steps] };
+}
 
 const INTRO = seg('SHOW_INTRO', 'setup', 1500, 'keep', [
   tw(0, 'camera', { x: 560, y: 350, sx: 0.95 }, 600, 'inOutQuad'),
@@ -96,5 +117,8 @@ export const OFFICE_MELTDOWN: readonly ShowcaseBeat[] = [
     stage: stageFor(rocket),
     segments: [s(rocket, 'RKT_IN'), s(rocket, 'RKT_FUSE'), s(rocket, 'RKT_C_UP'), s(rocket, 'RKT_E_CEILING'), LIBRARY.impact('T2', 'ceiling'), LIBRARY.reaction('WENDELL_PEEK', 1)],
   },
+  { id: 'espresso', title: 'THE ESPRESSO', ...fromBranch('espresso-blaster', 'ESP-S3', 'T2', 'WENDELL_PEEK') },
+  { id: 'dominoes', title: 'THE DOMINOES', ...fromBranch('cabinet-domino', 'DOM-D3', 'T2', 'OFFICE_CHEER') },
+  { id: 'safe', title: 'THE SAFE', ...fromBranch('ceiling-safe', 'SAFE-S3', 'T2', 'WENDELL_PEEK') },
   { id: 'finale', title: 'FINALE', stage: stageFor(sling), segments: [FINALE] },
 ];

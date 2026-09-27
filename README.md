@@ -6,19 +6,19 @@ Jeu instantané cartoon pour **Stake Engine** : on se venge de Barnaby « B.B. �
 Trois Rage Levels (trois vrais niveaux de risque), un résultat tiré avant l'animation, des animations qui ne révèlent rien avant la fin, et un BOSS FIGHT jusqu'à x5 000.
 
 ## État
-**Phase 0 terminée** (prototype technique en formes simples, Mock RGS, DEV PANEL). Recette : **[PHASE_0_ACCEPTANCE.md](PHASE_0_ACCEPTANCE.md)**.
-Voir **[PROJECT_STATE.md](PROJECT_STATE.md)** et **[TODO.md](TODO.md)**.
+**PRODUCTION 3 GADGETS PAR RAGE LEVEL — prête pour le PLAYTEST #3** : 9 gadgets, 147 branches, 147 cartes de collection, SOUND KIT, ANIMATION KIT. Détails : **[PRODUCTION_3_GADGETS.md](PRODUCTION_3_GADGETS.md)**.
+Le choix A/B/C (A2) n'existe qu'avec le Mock RGS (INFORMATION STAKE ENGINE REQUISE) ; avec le RGS Stake, le jeu reste en mode classique (un gadget par Rage Level).
+Voir **[PROJECT_STATE.md](PROJECT_STATE.md)** et **[TODO.md](TODO.md)**. Phase 0 : **[PHASE_0_ACCEPTANCE.md](PHASE_0_ACCEPTANCE.md)**.
 
 ## Lancer le prototype
 ```bash
 npm install
-npm run dev              # http://localhost:5173  — ajoutez ?dev=1 pour ouvrir le DEV PANEL
-npm test                 # 58 tests unitaires et d'intégration
-npm run test:e2e         # 13 tests Playwright (Chromium)
-npm run build:single     # préversion en un seul fichier : dist-single/index.html
-npm run build:poc        # préversion « BAD BOSS — 3 GADGET POC » : dist-poc/index.html (Mock seulement)
+npm run dev              # http://localhost:5173 — Mock, 3 gadgets par Rage Level (?plans=off : mode classique ; ?dev=1 : DEV PANEL)
+npm test                 # tests unitaires et d'intégration (Vitest)
+npm run test:e2e         # tests Playwright (Chromium)
+npm run build:single     # préversion en un seul fichier : dist-single/index.html (PLAYTEST #3)
 ```
-POC « 3 PLANS » en développement : `npm run dev` puis `http://localhost:5173/?poc=3gadget` (jamais avec le RGS Stake).
+Le choix entre 3 gadgets n'est jamais proposé avec le RGS Stake (mode classique).
 Aucun argent réel : en l'absence de `sessionID`/`rgs_url` dans l'URL, le jeu utilise le **Mock RGS** (solde fictif, stocké dans le navigateur).
 
 ## Documents
@@ -37,6 +37,7 @@ Aucun argent réel : en l'absence de `sessionID`/`rgs_url` dans l'URL, le jeu ut
 | Phase 0.5 | [PHASE_0_5](PHASE_0_5.md) · [portrait avant/après](docs/phase05/portrait) · [LOOP x500](docs/generated/LOOP_X500.md) | Playtest et game feel (PLAYTEST #2 attendu) |
 | Phase 0.6 | [PHASE_0_6](PHASE_0_6.md) · [ART BIBLE](BAD_BOSS_ART_BIBLE.md) · [concepts](docs/phase06/concepts) · [avant/après](docs/phase06) | Visual upgrade : vertical slice GRUMPY + SWIVEL SLINGSHOT (en attente de validation) |
 | POC 3 PLANS | [POC_3_GADGETS](POC_3_GADGETS.md) · [étude](docs/ETUDE_CHOIX_3_GADGETS.md) · [résumé Stake](docs/STAKE_A2_TECH_SUMMARY.md) · [captures](docs/poc3) · [SOUND BIBLE](SOUND_BIBLE.md) | Choix entre 3 gadgets : preuve de concept (Mock/DEV), playtest A/B attendu |
+| PRODUCTION 3 GADGETS | [PRODUCTION_3_GADGETS](PRODUCTION_3_GADGETS.md) · [SOUND BIBLE](SOUND_BIBLE.md) · [ANIMATION KIT](ANIMATION_KIT.md) · [captures](docs/production) · [perf](docs/generated/P3_PERF.md) · [collection](docs/generated/COLLECTION_REPORT_P3.md) | 9 gadgets, 147 branches, collection, MELTDOWN, PLAYTEST #3 |
 | Phase 0 | [PHASE_0_ACCEPTANCE](PHASE_0_ACCEPTANCE.md) · [captures](docs/phase0/screens) · [LOOP x100](docs/generated/LOOP_X100.md) · [taille du build](docs/generated/BUILD_SIZE.md) | Recette du prototype |
 
 ## Maths

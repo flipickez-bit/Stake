@@ -408,6 +408,59 @@ describe('LOOP ×100 par Rage Level et par plan (maths A2 réelles du mock, 3 vi
   });
 });
 
+describe('RGS / réseau en mode 3 gadgets (régression) : ROUND_STATUS_UNKNOWN, jamais de Play automatique, EndRound unique', () => {
+  async function plansFlow(level: RageLevelId, seed = 21) {
+    const mock = createMock(seed);
+    const presenter = new FakePresenter();
+    const flow = new GameFlow({ rgs: mock.adapter, presenter, timeouts: FAST, planLevels: [...RAGE_LEVEL_IDS], maxAutoResync: 4 });
+    await flow.start();
+    flow.setLevel(level);
+    expect(flow.setPlan('C')).toBe(true);
+    return { ...mock, presenter, flow };
+  }
+  const until = (flow: GameFlow, state: FlowState, ms = 3000) => waitFor(() => flow.snapshot.state === state, ms, state);
+
+  it('PLAY hors ligne → ROUND_STATUS_UNKNOWN, aucun Play, plan conservé, puis RETRY (resync seulement)', async () => {
+    for (const level of RAGE_LEVEL_IDS) {
+      const { flow, server } = await plansFlow(level);
+      server.update((s) => (s.faults.offline = true));
+      flow.fire();
+      await waitFor(() => flow.snapshot.retryAvailable, 5000, 'retry');
+      expect(flow.snapshot.state).toBe('ROUND_STATUS_UNKNOWN');
+      expect(flow.snapshot.canFire).toBe(false);
+      expect(flow.setPlan('A')).toBe(false);
+      server.update((s) => (s.faults.offline = false));
+      await flow.retry();
+      await until(flow, 'READY');
+      expect(server.snapshot().calls.play, level).toBe(0);
+      expect(flow.snapshot.plan).toBe('C');
+    }
+  }, 30_000);
+
+  it('PLAY : réponse perdue après envoi → la manche du SERVEUR est reprise (même plan), un seul Play, un seul EndRound', async () => {
+    for (const level of RAGE_LEVEL_IDS) {
+      const { flow, server, presenter } = await plansFlow(level, 33);
+      server.update((s) => (s.faults.playTimeoutAfterSend = true));
+      flow.fire();
+      await waitFor(() => flow.snapshot.state === 'READY' && server.snapshot().settledRounds === 1, 4000);
+      expect(server.snapshot().calls.play, level).toBe(1);
+      expect(server.snapshot().calls.endRound, level).toBe(1);
+      expect(presenter.calls).toHaveLength(1);
+      expect(presenter.calls[0]!.outcome.plans?.selected).toBe('C');
+      expect(presenter.calls[0]!.options.mode).toBe('resume');
+    }
+  }, 30_000);
+
+  it('END ROUND : réponse perdue → un seul EndRound logique, solde réglé une fois', async () => {
+    const { flow, server } = await plansFlow('unhinged', 44);
+    server.update((s) => (s.faults.endRoundTimeoutAfterSend = true));
+    flow.fire();
+    await waitFor(() => flow.snapshot.state === 'READY' && server.snapshot().settledRounds === 1, 4000);
+    expect(server.snapshot().calls.endRound).toBe(1);
+    expect(flow.snapshot.balance?.amount).toBe(server.snapshot().balance);
+  }, 30_000);
+});
+
 describe('déterminisme de la présentation (reprise / replay)', () => {
   it('même book, même gadget → même branche, même séquence (clé), pour les 9 gadgets', () => {
     for (const g of GADGETS) {

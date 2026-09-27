@@ -5,7 +5,7 @@
    * Choix possible en READY seulement : pendant la manche, le plan est verrouillé (celui du serveur) et les
    * étiquettes disparaissent (la barre du bas rappelle « YOUR PLAN »).
    */
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { PlanSlot } from '../../domain/plans';
   import type { FlowSnapshot, GameFlow } from '../../flow/GameFlow';
   import type { PixiStage, PlanRect } from '../../render/PixiStage';
@@ -33,6 +33,51 @@
   const align = (r: PlanRect) => (r.x + r.w / 2 < 80 ? 'start' : r.x + r.w / 2 > width - 80 ? 'end' : 'center');
   /** Décalage horizontal de l'étiquette si la zone du gadget déborde de l'écran. */
   const dx = (r: PlanRect) => (align(r) === 'end' ? Math.min(0, width - 4 - (r.x + r.w)) : align(r) === 'start' ? Math.max(0, 4 - r.x) : 0);
+  /**
+   * Étiquettes qui se chevauchent (petit téléphone, gadgets proches) : mesurées dans le DOM puis écartées
+   * horizontalement ; si l'écran est trop étroit, la plus à droite monte d'un cran. Rendu seulement.
+   */
+  const tags: Partial<Record<PlanSlot, HTMLElement>> = {};
+  let nudge = $state<Partial<Record<PlanSlot, { x: number; y: number }>>>({});
+  $effect(() => {
+    void rects;
+    void width;
+    void snap.plan;
+    void snap.level;
+    const raf = requestAnimationFrame(() => {
+      const prev = untrack(() => nudge);
+      const boxes = (Object.keys(tags) as PlanSlot[])
+        .filter((slot) => rects.some((r) => r.slot === slot) && tags[slot]?.isConnected)
+        .map((slot) => {
+          const b = tags[slot]!.getBoundingClientRect();
+          const n = prev[slot] ?? { x: 0, y: 0 };
+          return { slot, left: b.left - n.x, right: b.right - n.x, top: b.top - n.y, bottom: b.bottom - n.y };
+        })
+        .sort((a, b) => a.left - b.left);
+      const next: Partial<Record<PlanSlot, { x: number; y: number }>> = {};
+      for (const b of boxes) next[b.slot] = { x: 0, y: 0 };
+      const host = tags[boxes[0]?.slot ?? 'A']?.closest('.picker')?.getBoundingClientRect();
+      const minX = (host?.left ?? 0) + 2;
+      const maxX = (host?.right ?? width) - 2;
+      for (let i = 0; i + 1 < boxes.length; i++) {
+        const a = boxes[i]!;
+        const b = boxes[i + 1]!;
+        const na = next[a.slot]!;
+        const nb = next[b.slot]!;
+        const vertical = a.top + na.y < b.bottom + nb.y && a.bottom + na.y > b.top + nb.y;
+        const overlap = a.right + na.x + 4 - (b.left + nb.x);
+        if (!vertical || overlap <= 0) continue;
+        const left = Math.min(overlap / 2, a.left + na.x - minX);
+        const right = Math.min(overlap - Math.max(0, left), maxX - (b.right + nb.x));
+        na.x -= Math.max(0, left);
+        nb.x += Math.max(0, right);
+        if (a.right + na.x + 4 - (b.left + nb.x) > 0) nb.y -= b.bottom - b.top + 4;
+      }
+      const same = boxes.every((b) => prev[b.slot]?.x === next[b.slot]!.x && prev[b.slot]?.y === next[b.slot]!.y);
+      if (!same) nudge = next;
+    });
+    return () => cancelAnimationFrame(raf);
+  });
   let hover = $state<PlanSlot | null>(null);
   const ready = $derived(snap.state === 'READY' && snap.plansEnabled);
   const selected = $derived(snap.plan);
@@ -81,7 +126,7 @@
         onblur={() => (hover = hover === r.slot ? null : hover)}
         onclick={() => pick(r.slot)}
       >
-        <span class="tag" style="--dx:{dx(r)}px">
+        <span class="tag" bind:this={tags[r.slot]} style="--dx:{dx(r) + (nudge[r.slot]?.x ?? 0)}px;--dy:{nudge[r.slot]?.y ?? 0}px">
           <b>PLAN {r.slot}</b>
           <span class="name">{planLabel(snap.level, r.slot)}</span>
           {#if isPrototypePlan(snap.level, r.slot)}<i>{COPY.prototype}</i>{/if}
@@ -101,7 +146,7 @@
   .plan { position: absolute; pointer-events: auto; background: transparent; border: 0; padding: 0; cursor: pointer; border-radius: 18px; display: flex; align-items: flex-end; justify-content: center; }
   .plan:focus-visible { outline: 3px solid #e8ecff; outline-offset: -3px; }
   .locked .plan { pointer-events: none; cursor: default; }
-  .tag { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 2px 5px; max-width: 150%; transform: translate(var(--dx, 0px), 55%); padding: 3px 7px; border-radius: 9px; background: rgba(18, 21, 43, 0.82); color: #e8ecff; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; white-space: nowrap; border: 2px solid transparent; }
+  .tag { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 2px 5px; max-width: 150%; transform: translate(var(--dx, 0px), calc(55% + var(--dy, 0px))); padding: 3px 7px; border-radius: 9px; background: rgba(18, 21, 43, 0.82); color: #e8ecff; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; white-space: nowrap; border: 2px solid transparent; }
   .tag b { color: #fff; letter-spacing: 1px; }
   .tag .name { opacity: 0.85; }
   .tag i { font-style: normal; font-size: 8px; opacity: 0.6; letter-spacing: 1px; }

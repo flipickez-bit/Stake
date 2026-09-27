@@ -39,7 +39,7 @@ const SAFE_LANDSCAPE = { width: 920, height: 640 };
  * - la caméra suit partiellement le boss (point focal) tant qu'il est visible, et retombe sur la caméra du contenu
  *   quand il quitte le cadre (fenêtre, trappe, plafond).
  */
-const PORTRAIT = { width: 640, minHeight: 600, floorY: 560, floorAt: 0.62, follow: 0.45, restY: 350 };
+const PORTRAIT = { width: 640, minHeight: 600, floorY: 560, floorAt: 0.62, follow: 0.45, restY: 350, topMargin: 14 };
 
 /** Parallaxe (ART BIBLE §6) : fond lent, premier plan rapide ; le ciel de la fenêtre encore plus lent. */
 const PARALLAX = { bg: 0.96, fg: 1.08, sky: 0.8, restX: 500 };
@@ -1013,7 +1013,9 @@ export class PixiStage implements SceneSink {
     if (portrait) {
       base = Math.min(this.width / PORTRAIT.width, this.height / PORTRAIT.minHeight);
       const visibleH = this.height / base;
-      camY = PORTRAIT.floorY - (PORTRAIT.floorAt - 0.5) * visibleH + (cam.y - PORTRAIT.restY);
+      // Écran très haut : le sol remonte dans le cadre pour que le haut reste au plafond (le bas montre le bureau du joueur).
+      const floorAt = Math.min(PORTRAIT.floorAt, (PORTRAIT.floorY + PORTRAIT.topMargin) / visibleH);
+      camY = PORTRAIT.floorY - (floorAt - 0.5) * visibleH + (cam.y - PORTRAIT.restY);
       const boss = frame.actors.boss?.transform;
       if (boss) {
         const w = clamp01((boss.alpha - 0.2) / 0.3) * clamp01((720 - boss.y) / 120) * clamp01(1 - boss.z / 400);
