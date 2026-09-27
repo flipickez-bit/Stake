@@ -14,8 +14,9 @@ _Dernière mise à jour : 2026-09-27, **PRODUCTION 3 GADGETS PAR RAGE LEVEL livr
 - ✅ ANIMATION KIT (`ANIMATION_KIT.md`, `src/content/kit.ts`).
 - ✅ Collection niveau → gadget → animations : 147 cartes. OFFICE MELTDOWN = ≥ 4 avec chacun des 9 gadgets (P50 89 / P90 131) ; mode classique = règle historique.
 - ✅ BOSS FIGHT 1/150 inchangé, entrées et projectiles par gadget.
-- ✅ Mondes et transitions ; mobile portrait ; perf (JS initial 279 KB gzip, textures ≤ 40,5 Mo, ≤ 10 appels de dessin, ≤ 226 particules).
+- ✅ Mondes et transitions ; mobile portrait ; perf (JS initial 279 KB gzip, textures ≤ 41,5 Mo, ≤ 10 appels de dessin, ≤ 226 particules).
 - ✅ DEV PANEL : recherche de branche, LOOP A → B → C. PLAYTEST #3 (bouton PLAYTEST du Mock).
+- **Préversion privée PLAYTEST #3** : https://claude.ai/artifact/789J7CSPYoxkkJkmFSb9co (Mock RGS, argent fictif ; bouton PLAYTEST).
 - ⏳ **PLAYTEST #3** (vous) ; réponses de Stake (Q21–Q29, méta-progression, CSP, audio) ; mesure des images/s sur un vrai téléphone.
 
 ## POC « 3 PLANS » : BAD BOSS — 3 GADGET POC (`POC_3_GADGETS.md`)

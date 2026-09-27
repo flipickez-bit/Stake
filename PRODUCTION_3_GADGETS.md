@@ -2,7 +2,9 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-**Date** : 2026-09-27. **Statut** : version complète pour le **PLAYTEST #3**. On revient en arrière avec `git checkout 2c91db0` (Phase 0.6) ou `git checkout ed2b1b3` (POC 3 gadgets).
+**Date** : 2026-09-27. **Statut** : version complète pour le **PLAYTEST #3**.
+
+**Préversion privée PLAYTEST #3** : https://claude.ai/artifact/789J7CSPYoxkkJkmFSb9co. C'est un fichier unique (`npm run build:single`) qui tourne sur le Mock RGS, avec de l'argent fictif. Le bouton PLAYTEST lance la session. On revient en arrière avec `git checkout 2c91db0` (Phase 0.6) ou `git checkout ed2b1b3` (POC 3 gadgets).
 
 **Ce qui est livré**
 - **9 gadgets réels**, 3 par Rage Level.
@@ -309,11 +311,11 @@ Captures avec et sans interface (test de lisibilité du monde) : `docs/productio
 |---|---|---|
 | JS initial (gzip) | ≤ 300 KB | **279,4 KB** (écrans DEV, playtest, collection et épisode chargés à la première ouverture) |
 | Total du build (gzip) | — | 335,4 KB (`docs/generated/BUILD_SIZE.md`) |
-| Mémoire des textures | ≤ 64 Mo | **32,7 à 40,5 Mo** selon le format, après les 9 gadgets (`docs/generated/P3_PERF.md`) |
+| Mémoire des textures | ≤ 64 Mo | **32,7 à 41,5 Mo** selon le format, après les 9 gadgets (`docs/generated/P3_PERF.md`) |
 | Appels de dessin / image | ≤ 60 | **≤ 10** (8 au choix, 7 en moyenne en manche) |
-| Particules | ≤ 300 | **≤ 226** (LOOP ×100 GRUMPY), ≤ 134 en vitesse normale |
-| Temps CPU / image | — | ≈ 1,1 ms en moyenne, p95 ≤ 3,3 ms |
-| Scène prête / livres différés | — | 1,2 à 1,5 s en téléphone émulé, puis +50 à 100 ms pour FURIOUS, UNHINGED et plans |
+| Particules | ≤ 300 | **≤ 226** (LOOP ×100 GRUMPY, turbo), ≤ 152 en vitesse normale |
+| Temps CPU / image | — | ≈ 1 ms en moyenne, p95 ≤ 2,5 ms |
+| Scène prête / livres différés | — | ≈ 1,2 s en téléphone émulé, puis +55 à 70 ms pour FURIOUS, UNHINGED et plans |
 | 60 FPS (45 minimum) | appareil réel | **NON MESURÉ** : Chromium headless utilise un rendu logiciel (SwiftShader, 7 à 10 images/s pour tous les builds). À mesurer sur un vrai téléphone |
 
 **Chargement des atlas** :
@@ -430,7 +432,7 @@ Le bouton **PLAYTEST** du Mock lance la session. Tout reste local : export manue
 1. Les 3 gadgets historiques (Phase 0.6) n'utilisent pas l'ANIMATION KIT. Plusieurs chorégraphies du kit ne sont pas encore utilisées (`ANIMATION_KIT.md` §7).
 2. Le contenu des 9 gadgets est dans le bundle initial (~23 KB de marge sous 300 KB). Prochaine étape possible : charger le contenu d'un Rage Level à la demande.
 3. Atlas rastérisés au démarrage (SVG → canvas) ; pré-rendu au build étudié, non fait (§7).
-4. Les atlas ne sont jamais déchargés (≤ 40,5 Mo, sous le budget).
+4. Les atlas ne sont jamais déchargés (≤ 41,5 Mo, sous le budget).
 5. Le nom « POC » survit dans le code (`poc`, `PocDevSection`, `?poc=3gadget`, `build:poc`) alors que le système est en production. Renommage à faire hors d'un lot fonctionnel.
 6. Deux enregistreurs de playtest (`dev/playtest.ts` pour le PLAYTEST #3, `dev/pocPlaytest.ts` pour l'étude A/B) : à fusionner après le PLAYTEST #3.
 7. `DevPanel.svelte` est volumineux (chargé seulement à la demande) : à découper.
