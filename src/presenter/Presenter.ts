@@ -20,7 +20,8 @@ export interface SceneSink {
 }
 
 export interface AudioSink {
-  play(sound: SoundId, pitch: number): void;
+  /** `seed` : variante déterministe (graine d'effets de la séquence). Absente : variante de base. */
+  play(sound: SoundId, pitch: number, seed?: number): void;
   silence(ms: number): void;
 }
 
@@ -128,7 +129,7 @@ export class Presenter implements RoundPresenter {
     this.library = options.library ?? LIBRARY;
     this.player = new SequencePlayer({
       frame: (f) => this.scene.render(f),
-      sound: (s, pitch) => this.audio.play(s, pitch),
+      sound: (s, pitch, seed) => this.audio.play(s, pitch, seed),
       silence: (ms) => this.audio.silence(ms),
       signal: (s, v) => this.onSignal(s, v),
     });

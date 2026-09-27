@@ -7,10 +7,10 @@
  *   C BACKFIRE : le mécanisme part dans le mauvais sens ; B.B. saute, se protège… la chaise part seule.
  *   D ELEVATOR : B.B. est projeté dans l'ascenseur. Silence. DING. (signature hors champ)
  */
-import type { GadgetDef } from '../../presentation/types';
+import type { GadgetDef } from '../../../presentation/types';
 import {
   anim, BOSS_FIGHT, compose, freeze, fx, impactFrame, LOSS, mod, paced, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_SMALL,
-} from '../dsl';
+} from '../../dsl';
 
 const D1 = 'released';
 
@@ -37,6 +37,14 @@ export const swivelSlingshot: GadgetDef = {
   props: ['slingPost'],
   trunk: ['SLG_IN', 'SLG_PULL'],
   hold: { sound: 'creak', everyMs: 700 },
+  signature: ['stretch', 'creak', 'twang', 'snap'],
+  // Choix : le poteau dans la pièce ; au survol, l'élastique vibre (dessiné par la scène) et le poteau frémit.
+  pick: {
+    layer: 'room',
+    box: { x: 372, y: 392, w: 116, h: 180 },
+    spot: { x: 430, y: 556, sx: 0.8 },
+    idle: [{ actor: 'slingPost', prop: 'rot', amp: 0.018, periodMs: 260 }],
+  },
   segments: segments([
     // ---------------------------------------------------------------- tronc (neutre, avant le résultat)
     // Phase 0.6 (VERTICAL SLICE) : mêmes durées ; anticipation lisible (les mains saisissent, l'élastique se tend et

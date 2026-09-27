@@ -67,10 +67,17 @@ export const CHARACTER_ANIMS = {
     'sulk', 'dazed', 'tapfoot', 'hover', 'lookdown', 'lookcam', 'tiptoe', 'wave', 'fall', 'furious', 'sniff',
     'drink', 'grow', 'giant-idle', 'giant-wind', 'giant-hurt', 'giant-swat', 'giant-laugh', 'giant-ko', 'away',
     'braced', 'peek', 'phew', 'lookback', 'mugcheck', 'hang', 'tiefix', 'taunt', 'hop', 'lookup', 'climb', 'ring',
+    // ANIMATION KIT (production 3 gadgets)
+    'blink', 'smirk', 'anticipate', 'airborne', 'land', 'recover', 'ko', 'panic', 'confused', 'relief', 'rage',
+    'duck', 'push', 'catch', 'dodge',
   ],
-  wendell: ['idle', 'walk', 'run', 'cheer', 'peek', 'thumbsup', 'stuck', 'pull', 'hit', 'shrug', 'fall'],
-  coo: ['idle', 'fly', 'salute', 'crash', 'applaud', 'carry'],
-  hands: ['open', 'grab', 'strain', 'lighter'],
+  wendell: [
+    'idle', 'walk', 'run', 'cheer', 'peek', 'thumbsup', 'stuck', 'pull', 'hit', 'shrug', 'fall',
+    // ANIMATION KIT
+    'panic', 'duck', 'dive', 'look', 'bowl', 'push', 'carry', 'dizzy',
+  ],
+  coo: ['idle', 'fly', 'salute', 'crash', 'applaud', 'carry', 'escape', 'land', 'shock'],
+  hands: ['open', 'grab', 'strain', 'lighter', 'push', 'pull', 'turn', 'roll'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type CharacterId = keyof typeof CHARACTER_ANIMS;

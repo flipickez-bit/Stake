@@ -170,6 +170,8 @@ export class GameFlow {
   private lastKnownRoundId: string | null = null;
   /** Lancé en mode replay (URL) : aucune mise possible, jamais d'appel wallet. */
   private replayOnly = false;
+  /** Dernier plan choisi par Rage Level (READY seulement ; confort de rejeu, jamais une entrée de la manche). */
+  private readonly planMemory = new Map<RageLevelId, PlanSlot>();
   private settlePromise: Promise<boolean> | null = null;
   private retryAction: (() => Promise<void>) | null = null;
   private lastOutcome: Outcome | null = null;
@@ -278,7 +280,8 @@ export class GameFlow {
   setLevel(level: RageLevelId): void {
     if (this.s.state !== 'READY') return;
     const plansEnabled = (this.deps.planLevels ?? []).includes(level);
-    this.set({ level, plansEnabled, plan: plansEnabled ? this.s.plan : null });
+    // Chaque Rage Level se souvient de son dernier plan (rejouer le même gadget = un seul geste : FIRE).
+    this.set({ level, plansEnabled, plan: plansEnabled ? (this.planMemory.get(level) ?? null) : null });
     this.presenter.toIdle(level);
   }
 
@@ -288,6 +291,7 @@ export class GameFlow {
    */
   setPlan(plan: PlanSlot): boolean {
     if (this.s.state !== 'READY' || !this.s.plansEnabled || this.replayOnly) return false;
+    this.planMemory.set(this.s.level, plan);
     if (this.s.plan !== plan) this.set({ plan });
     return true;
   }
@@ -477,6 +481,7 @@ export class GameFlow {
     this.handle = handle;
     // I9 : le plan affiché devient celui de la manche selon le serveur (reprise après rechargement comprise).
     const plan = outcome.plans?.selected ?? null;
+    if (plan && outcome.source !== 'replay') this.planMemory.set(outcome.mode, plan);
     this.set({
       state: source === 'play' ? 'PRESENTING' : 'RESUMING',
       round: { roundId: outcome.roundId, mode: outcome.mode, source: outcome.source, plan },

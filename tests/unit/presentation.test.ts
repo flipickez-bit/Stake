@@ -7,6 +7,7 @@ import { GADGETS, gadgetFor, restLayout } from '../../src/content/gadgets';
 import { makeDevOutcome } from '../../src/dev/devOutcomes';
 import type { Outcome } from '../../src/domain/outcome';
 import { mulberry32 } from '../../src/domain/seed';
+import { PLAN_SETS } from '../../src/domain/plans';
 import { RAGE_LEVEL_IDS, type RageLevelId, type Speed } from '../../src/domain/types';
 import type { ForcedOutcome } from '../../src/platform/rgs/mock/mockMath';
 import { candidateBranches, compileSequence, compileTrunk, impactTierFor } from '../../src/presentation/compileSequence';
@@ -37,6 +38,15 @@ function stripSeeds(cues: ScheduledCue[]): unknown[] {
   });
 }
 
+/**
+ * Cues avant le reveal, graines d'effets retirées. Les micro-variantes de LE SIP (sons seulement, même durée, même
+ * pose) sont autorisées : leurs sons et silences sont écartés de la comparaison.
+ */
+function beforeReveal(q: AnimationSequence): unknown[] {
+  const variant = (c: ScheduledCue) => (c.kind === 'sound' || c.kind === 'silence') && q.segments[c.seg]?.id === 'SIP_BEAT';
+  return stripSeeds(q.cues.filter((c) => c.at <= q.markers.reveal && !variant(c)));
+}
+
 class RecordingSinks implements PlayerSinks {
   signals: string[] = [];
   sounds: string[] = [];
@@ -54,9 +64,10 @@ class RecordingSinks implements PlayerSinks {
 }
 
 describe('contenu placeholder (Phase 0)', () => {
-  it('3 gadgets, un par Rage Level (le détail des branches est audité dans variety.test.ts)', () => {
-    expect(GADGETS).toHaveLength(3);
-    expect(GADGETS.map((g) => g.rageLevel).sort()).toEqual([...RAGE_LEVEL_IDS].sort());
+  it('PRODUCTION : chaque gadget appartient au jeu de plans de son Rage Level ; le plan A est le gadget classique', () => {
+    for (const g of GADGETS) expect(PLAN_SETS[g.rageLevel], g.id).toContain(g.id);
+    for (const level of RAGE_LEVEL_IDS) expect(PLAN_SETS[level][0]).toBe(gadgetFor(level).id);
+    expect(new Set(GADGETS.map((g) => g.id)).size).toBe(GADGETS.length);
   });
 
   it('chaque combinaison classe × script du book a une branche, à chaque vitesse, avec un seul reveal', () => {
@@ -94,7 +105,7 @@ describe('contenu placeholder (Phase 0)', () => {
       for (const speed of SPEEDS) {
         const trunk = compileTrunk(gadget, speed, LIBRARY);
         for (const kind of KINDS) {
-          const seq = compile(outcome(gadget.rageLevel, { kind, seed: 1234 + kind.length }), speed);
+          const seq = compileSequence(outcome(gadget.rageLevel, { kind, seed: 1234 + kind.length }), gadget, speed, LIBRARY);
           expect(seq.markers.d1).toBeCloseTo(trunk.markers.d1, 6);
           const prefix = seq.cues.filter((c) => c.seg >= 0 && c.seg < trunk.segments.length);
           expect(prefix).toEqual(trunk.cues);
@@ -151,8 +162,7 @@ describe('déterminisme de la présentation', () => {
         // À branche égale (forcée), tout ce qui précède la révélation est identique, graines d'effets mises à part.
         const fa = compileSequence(a, gadget, 'normal', LIBRARY, { forceBranchId: qa.branchId });
         const fb = compileSequence(b, gadget, 'normal', LIBRARY, { forceBranchId: qa.branchId });
-        const upTo = (q: AnimationSequence) => stripSeeds(q.cues.filter((c) => c.at <= q.markers.reveal));
-        expect(upTo(fa)).toEqual(upTo(fb));
+        expect(beforeReveal(fa)).toEqual(beforeReveal(fb));
       }
     }
   });

@@ -17,7 +17,10 @@ import { COSMETICS, MELTDOWN_RULE, MILESTONES, meltdownProgress, milestoneCounte
 import { LocalCollectionStore, MemoryCollectionStore, sanitizeCollection } from '../../src/collection/store';
 import { attachCollectionTracker, shouldObserve } from '../../src/collection/tracker';
 import { CARD_TEXTS, SETUP_HINTS } from '../../src/content/collectionCards';
-import { GADGETS } from '../../src/content/gadgets';
+import { CLASSIC_GADGETS } from '../../src/content/gadgets';
+
+/** Mécanique de la collection, vérifiée sur le contenu CLASSIQUE (3 gadgets, 51 cartes) ; le catalogue de production a ses propres tests (productionCollection.test.ts). */
+const GADGETS = [CLASSIC_GADGETS.grumpy, CLASSIC_GADGETS.furious, CLASSIC_GADGETS.unhinged];
 import { classify } from '../../src/domain/resultClass';
 import { mulberry32 } from '../../src/domain/seed';
 import type { RageLevelId, ResultClass, Script } from '../../src/domain/types';
@@ -33,7 +36,7 @@ import { CHARACTER_ANIMS } from '../../src/content/office';
 import { ALL_GADGET_PROPS } from '../../src/content/gadgets';
 import { compileShowcase } from '../../src/presentation/compileSequence';
 
-const catalog = buildCatalog();
+const catalog = buildCatalog(GADGETS);
 const fixedNow = () => new Date('2026-09-26T10:00:00Z');
 const newCollection = () => new Collection(new MemoryCollectionStore(), catalog, fixedNow);
 const isLossCard = (id: string) => GADGETS.flatMap((g) => g.branches).find((b) => b.id === id)!.classes.includes('MISS');

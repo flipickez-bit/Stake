@@ -5,6 +5,7 @@
 import type { AtlasBook } from './atlas';
 import { BOSS_PARTS } from './parts/boss';
 import { CAST_PARTS } from './parts/cast';
+import { FURIOUS_PARTS } from './parts/furious';
 import { OFFICE_PARTS } from './parts/office';
 import { PLAN_PARTS } from './parts/plans';
 import { VFX_PARTS } from './parts/vfx';
@@ -26,7 +27,13 @@ export const SOFT_BOOK: AtlasBook = { id: 'soft', scale: 0.6, parts: OFFICE_PART
 /** Compatibilité des tests : tout le bureau. */
 export const OFFICE_BOOK: AtlasBook = { id: 'office', scale: 2, parts: [...OFFICE_PARTS] };
 
-export const ART_BOOKS: readonly AtlasBook[] = [CHARACTER_BOOK, PROPS_BOOK, DECOR_BOOK, SOFT_BOOK];
+/**
+ * FURIOUS : trappe et levier définitifs (aussi en mode classique), classeurs-dominos, rampe et bonbonne.
+ * Petite page (1024 px, 1,5 px par unité).
+ */
+export const FURIOUS_BOOK: AtlasBook = { id: 'furious', scale: 1.5, maxPx: 1024, parts: FURIOUS_PARTS };
+
+export const ART_BOOKS: readonly AtlasBook[] = [CHARACTER_BOOK, PROPS_BOOK, DECOR_BOOK, SOFT_BOOK, FURIOUS_BOOK];
 
 /**
  * POC « 3 PLANS » : prototypes des plans B et C, dans leur propre petite page (1024 × 512, 1,5 px par unité),

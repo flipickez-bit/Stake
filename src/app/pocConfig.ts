@@ -21,6 +21,16 @@ export function pocRequested(href: string, buildFlag: string | undefined, platfo
   return buildFlag === '1' || new URL(href).searchParams.get('poc') === '3gadget';
 }
 
+/**
+ * PRODUCTION 3 GADGETS : choix A/B/C activé par défaut avec le Mock RGS (architecture A2 isolée derrière RgsPort).
+ * JAMAIS avec le RGS Stake tant que Stake n'a pas répondu (INFORMATION STAKE ENGINE REQUISE, Q21–Q29) : le jeu y
+ * reste en mode CLASSIQUE (un gadget par Rage Level). `?plans=off` rejoue le mode classique avec le Mock.
+ */
+export function plansRequested(href: string, platform: 'mock' | 'stake'): boolean {
+  if (platform !== 'mock') return false;
+  return new URL(href).searchParams.get('plans') !== 'off';
+}
+
 export class AltDisplaySetting {
   private value: AltDisplay;
   private readonly listeners = new Set<(v: AltDisplay) => void>();

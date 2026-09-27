@@ -164,12 +164,27 @@ describe('variété V2 : contenu', () => {
   });
 });
 
+/**
+ * PRODUCTION 3 GADGETS : cible de rythme d'une manche normale (hors BOSS FIGHT), 3,5 à 5 s en moyenne (tolérance
+ * basse 3,2 s : les gadgets historiques sont un peu plus courts) ; turbo ≤ 3 s.
+ */
+const PACE = { normalMin: 3200, normalMax: 5000, turboMax: 3000 };
+
 describe('vitesse générale', () => {
-  it(`durée moyenne d'une manche ≤ P05-A × ${SPEED_BUDGET} (normal et turbo) : la variété ne ralentit pas le jeu`, () => {
-    for (const g of GADGETS) {
+  it(`gadgets historiques : durée moyenne d'une manche ≤ P05-A × ${SPEED_BUDGET} (normal et turbo)`, () => {
+    for (const g of GADGETS.filter((x) => P05A_MEAN_END[x.id])) {
       for (const speed of ['normal', 'turbo'] as const) {
         expect(meanDurations(g, speed).end, `${g.id} ${speed}`).toBeLessThanOrEqual(P05A_MEAN_END[g.id]![speed] * SPEED_BUDGET);
       }
+    }
+  });
+
+  it(`tous les gadgets : ${PACE.normalMin / 1000}–${PACE.normalMax / 1000} s en moyenne (normal), ≤ ${PACE.turboMax / 1000} s en turbo`, () => {
+    for (const g of GADGETS) {
+      const n = meanDurations(g, 'normal', 3000).end;
+      expect(n, `${g.id} normal`).toBeGreaterThanOrEqual(PACE.normalMin);
+      expect(n, `${g.id} normal`).toBeLessThanOrEqual(PACE.normalMax);
+      expect(meanDurations(g, 'turbo', 3000).end, `${g.id} turbo`).toBeLessThanOrEqual(PACE.turboMax);
     }
   });
 });
@@ -227,8 +242,8 @@ if (reportPath) {
     for (const g of GADGETS) {
       for (const speed of ['normal', 'turbo'] as const) {
         const m = meanDurations(g, speed);
-        const ref = P05A_MEAN_END[g.id]![speed];
-        lines.push(`| ${g.label} | ${speed} | ${(m.reveal / 1000).toFixed(2)} s | ${(m.end / 1000).toFixed(2)} s | ${(ref / 1000).toFixed(2)} s | ${signedPct(m.end / ref - 1)} |`);
+        const ref = P05A_MEAN_END[g.id]?.[speed];
+        lines.push(`| ${g.label} | ${speed} | ${(m.reveal / 1000).toFixed(2)} s | ${(m.end / 1000).toFixed(2)} s | ${ref ? `${(ref / 1000).toFixed(2)} s` : '—'} | ${ref ? signedPct(m.end / ref - 1) : '—'} |`);
       }
     }
     lines.push('');

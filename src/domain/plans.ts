@@ -7,7 +7,8 @@
  * plan choisi est payé et joué.
  *
  * STATUT : MOCK / DEV UNIQUEMENT. Neuf modes, ids et poids partagés, affichage de résultats non joués :
- * INFORMATION STAKE ENGINE REQUISE (Q21–Q29). Les maths de production ne sont pas modifiées.
+ * INFORMATION STAKE ENGINE REQUISE (Q21–Q29). Les maths de production ne sont pas modifiées. En mode Stake, les
+ * plans restent désactivés (un gadget par Rage Level, comportement historique) tant que Stake n'a pas répondu.
  */
 import type { RageLevelId } from './types';
 
@@ -34,15 +35,21 @@ export function parsePlanMode(mode: string): { level: RageLevelId; slot: PlanSlo
 export const TRIPLE_MODEL = 'IND_BFC_v1';
 
 /**
- * Gadgets de chaque plan, par Rage Level (POC : GRUMPY seulement). Simples identifiants : le serveur les écrit
- * dans le book pour que le client sache quel gadget porte chaque résultat. Ils ne changent aucune probabilité.
+ * Gadgets de chaque plan, par Rage Level (PRODUCTION 3 GADGETS : les trois niveaux). Simples identifiants : le
+ * serveur les écrit dans le book pour que le client sache quel gadget porte chaque résultat. Ils ne changent
+ * aucune probabilité. Le plan A est le gadget historique du niveau (celui du mode classique, un gadget par niveau).
  */
-export const POC_PLAN_SETS: Partial<Record<RageLevelId, readonly [string, string, string]>> = {
+export const PLAN_SETS: Readonly<Record<RageLevelId, readonly [string, string, string]>> = {
   grumpy: ['swivel-slingshot', 'espresso-blaster', 'copier-catapult'],
+  furious: ['trapdoor-express', 'cabinet-domino', 'cooler-bowling'],
+  unhinged: ['office-rocket', 'ceiling-safe', 'hvac-hurricane'],
 };
 
+/** Compatibilité (POC) : même table. */
+export const POC_PLAN_SETS: Partial<Record<RageLevelId, readonly [string, string, string]>> = PLAN_SETS;
+
 export function planGadgetId(level: RageLevelId, slot: PlanSlot): string | null {
-  const set = POC_PLAN_SETS[level];
+  const set = PLAN_SETS[level];
   return set ? (set[PLAN_SLOTS.indexOf(slot)] ?? null) : null;
 }
 

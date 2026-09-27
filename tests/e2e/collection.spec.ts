@@ -11,8 +11,11 @@ const hook = (page: Page) => page.evaluate(() => {
   return { state: h.state().state as string, calls: h.calls(), discovered: h.ctx.collection.progress.discovered as number };
 });
 
+/** Mode CLASSIQUE (un gadget par Rage Level) : les flux RGS testés ici sont identiques avec ou sans plans. */
+const classic = (query: string) => (query.includes('plans=') ? query : `${query ? `${query}&` : '?'}plans=off`);
+
 async function boot(page: Page, query = '') {
-  await page.goto(`/${query}`);
+  await page.goto(`/${classic(query)}`);
   await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__?.state().state === 'READY', null, { timeout: 30_000 });
 }
 
@@ -26,7 +29,7 @@ async function force(page: Page, forced: object, mode: string | null = null) {
 
 test('a played round unlocks its card with a NEW badge; the same card again is not NEW; a replay never unlocks', async ({ page }) => {
   await boot(page);
-  await expect(page.getByTestId('collection-open')).toHaveText(/0\/51/);
+  await expect(page.getByTestId('collection-open')).toHaveText(/0\/\d+/);
   await force(page, { kind: 'LOSS', multiplier: 0, seed: 11, script: 'CLEAN_MISS' });
   await page.getByTestId('fire').click();
   // Une PERTE peut aussi être une découverte.
@@ -36,7 +39,7 @@ test('a played round unlocks its card with a NEW badge; the same card again is n
   await expect(badge).toHaveAttribute('data-card', branch);
   await untilState(page, 'READY');
   expect((await hook(page)).discovered).toBe(1);
-  await expect(page.getByTestId('collection-open')).toHaveText(/1\/51/);
+  await expect(page.getByTestId('collection-open')).toHaveText(/1\/\d+/);
 
   // Même book (même graine, même script) → même branche → déjà connue : pas de badge.
   await force(page, { kind: 'LOSS', multiplier: 0, seed: 11, script: 'CLEAN_MISS' });
@@ -79,13 +82,14 @@ test('RESUME: a round interrupted before its reveal unlocks its card once, at th
 
 test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 8/8/8 (no BOSS FIGHT card), played with no wallet call; 100 % = trophy', async ({ page }) => {
   await boot(page);
+  const T = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.collection.catalog.cards.length as number);
   await page.getByTestId('dev-toggle').click();
   await page.getByTestId('dev-coll-random10').click();
-  await expect(page.getByTestId('dev-coll-count')).toContainText('10 / 51');
+  await expect(page.getByTestId('dev-coll-count')).toContainText(`10 / ${T}`);
   await page.getByTestId('dev-coll-view').click();
   const book = page.getByTestId('collection-book');
   await expect(book).toBeVisible();
-  await expect(page.getByTestId('collection-progress')).toContainText('10 / 51 discovered · 41 to find');
+  await expect(page.getByTestId('collection-progress')).toContainText(`10 / ${T} discovered · ${T - 10} to find`);
   // Rareté cachée et indice seulement sur les cartes manquantes.
   const missing = book.locator('[data-found=false]').first();
   await expect(missing).toContainText('???');
@@ -107,7 +111,7 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 8/8/8 (no B
   // 7 / 8 / 8, aucune carte BOSS FIGHT : progression factuelle, épisode verrouillé.
   await page.getByTestId('dev-toggle').click();
   await page.getByTestId('dev-coll-788').click();
-  await expect(page.getByTestId('dev-coll-count')).toContainText('23 / 51');
+  await expect(page.getByTestId('dev-coll-count')).toContainText(`23 / ${T}`);
   await page.getByTestId('dev-coll-view').click();
   await page.getByTestId('tab-rewards').click();
   await expect(page.getByTestId('meltdown-grumpy')).toContainText('7 / 8');
@@ -151,7 +155,7 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 8/8/8 (no B
   await page.getByTestId('dev-coll-49').click();
   await page.getByTestId('dev-coll-new').click();
   await page.getByTestId('dev-coll-new').click();
-  await expect(page.getByTestId('dev-coll-count')).toContainText('51 / 51');
+  await expect(page.getByTestId('dev-coll-count')).toContainText(`${T} / ${T}`);
   await page.getByTestId('dev-coll-view').click();
   await expect(page.getByTestId('collector-trophy')).toBeVisible();
 });

@@ -40,7 +40,7 @@ async function playRound(page: Page, plan: 'A' | 'B' | 'C', multipliers: [number
 
 test('POC : le plan est choisi AVANT Play, part avec la mise et ne change plus pendant l’animation', async ({ page }) => {
   await boot(page);
-  await expect(page.getByTestId('title')).toContainText('3 GADGET POC');
+  await expect(page.getByTestId('title')).toContainText('PLAYTEST #3 BUILD');
   await expect(page.getByTestId('fire')).toBeDisabled();
   await expect(page.getByTestId('fire')).toHaveText('PICK A PLAN');
   await page.getByTestId('plan-B').click();

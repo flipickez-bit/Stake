@@ -7,8 +7,11 @@ const calls = (page: Page) => page.evaluate(() => (window as unknown as Win).__B
 const mock = (page: Page) => page.evaluate(() => (window as unknown as Win).__BADBOSS__.mock());
 const presenter = (page: Page) => page.evaluate(() => (window as unknown as Win).__BADBOSS__.presenter());
 
+/** Mode CLASSIQUE (un gadget par Rage Level) : les flux RGS testés ici sont identiques avec ou sans plans. */
+const classic = (query: string) => (query.includes('plans=') ? query : `${query ? `${query}&` : '?'}plans=off`);
+
 async function boot(page: Page, query = '') {
-  await page.goto(`/${query}`);
+  await page.goto(`/${classic(query)}`);
   await page.waitForFunction(() => (window as unknown as Win).__BADBOSS__?.state().state === 'READY', null, { timeout: 30_000 });
 }
 
@@ -271,7 +274,8 @@ test('PLAYTEST 50 (LOCAL DEV ONLY): 50 uninterrupted rounds, questionnaire at th
   expect(session.answers.scores).toEqual([2, 3, 4, 5, null, 2, 3, 4]);
   expect(session.answers.wish).toBe('Un mug en or.');
   // COLLECTION BOOK : mesures locales de la session.
-  expect(session.collection.atStart).toEqual({ discovered: 0, total: 51 });
+  expect(session.collection.atStart).toMatchObject({ discovered: 0 });
+  expect(session.collection.atStart.total).toBeGreaterThan(51);
   expect(session.collection.discoveries).toBe(session.collection.atEnd.discovered);
   expect(session.collection.discoveries).toBeGreaterThan(5);
   expect(session.rounds.filter((r: { discovered: boolean }) => r.discovered)).toHaveLength(session.collection.discoveries);

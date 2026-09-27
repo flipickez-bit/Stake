@@ -39,6 +39,9 @@ export const PARTICLE_PRESETS: Record<VfxId, ParticlePreset> = {
   /** POC « 3 PLANS » : vapeur de l'ESPRESSO BLASTER, éclaboussure de café. */
   steam: { colors: [0xfff8ee, 0xddf3ff, 0xe9dccb], speed: [20, 80], angle: [-115, -65], gravity: -90, life: [500, 950], size: [18, 36], spin: 0.3, shape: 'circle' },
   coffee: { colors: [0x6b3a1e, 0x7c4526, 0xe9dccb], speed: [160, 380], angle: [-170, -10], gravity: 950, life: [380, 700], size: [9, 17], spin: 0, shape: 'circle' },
+  /** PRODUCTION : gerbe d'eau (WATER COOLER BOWLING), traînées de vent (HVAC HURRICANE). */
+  water: { colors: [0x8fd0ff, 0xcdefff, 0xddf3ff], speed: [180, 460], angle: [-165, -15], gravity: 1000, life: [420, 800], size: [10, 20], spin: 0, shape: 'circle' },
+  swirl: { colors: [0xddf3ff, 0xfff8ee, 0xc8bfcb], speed: [220, 460], angle: [-200, 20], gravity: -30, life: [350, 700], size: [26, 44], spin: 9, shape: 'rect' },
 };
 
 export interface ParticleParams {

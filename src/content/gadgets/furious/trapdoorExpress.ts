@@ -5,10 +5,11 @@
  *   B DROP  : il tombe tout de suite. La cravate se coince ? L'ascenseur ? Un bruit sourd ?
  *   C JAM   : rien ne se passe. Il tapote, hausse les épaules… LE SIP. (qui ne veut rien dire)
  */
-import type { GadgetDef } from '../../presentation/types';
+import type { GadgetDef } from '../../../presentation/types';
 import {
   anim, BOSS_FIGHT, compose, fx, LOSS, mod, paced, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG,
-} from '../dsl';
+} from '../../dsl';
+import { FURIOUS_DECOR, FURIOUS_WORLD_PROPS, LEVER } from './decor';
 
 const D1 = 'lever-pulled';
 
@@ -28,21 +29,25 @@ export const trapdoorExpress: GadgetDef = {
   id: 'trapdoor-express',
   label: 'TRAPDOOR EXPRESS',
   rageLevel: 'furious',
-  layout: {
-    boss: { transform: { x: 650, y: 560 }, states: { seat: 'none', mug: 'normal', face: 'normal' }, anim: 'tapfoot' },
-    trapdoor: { transform: { x: 650, y: 560 }, states: { main: 'closed' } },
-    lever: { transform: { x: 885, y: 560, rot: -0.35 } },
-  },
-  props: ['trapdoor', 'lever'],
+  layout: { ...FURIOUS_DECOR },
+  props: [...FURIOUS_WORLD_PROPS],
   trunk: ['TRP_IN', 'TRP_PULL'],
   hold: { sound: 'creak', everyMs: 650 },
+  signature: ['creak', 'clunk', 'fall', 'elevator'],
+  // Choix : le levier au sol, à droite du bureau ; au survol, il tremble dans son socle.
+  pick: {
+    layer: 'room',
+    box: { x: LEVER.x - 48, y: LEVER.y - 140, w: 96, h: 150 },
+    spot: { x: LEVER.x, y: LEVER.y - 4, sx: 0.6 },
+    idle: [{ actor: 'lever', prop: 'rot', amp: 0.06, periodMs: 300 }],
+  },
   segments: segments([
     seg('TRP_IN', 'intro', 450, 'compress', [
-      anim(0, 'hands', 'open'), tw(0, 'hands', { x: 885, y: 445 }, 380, 'outBack'),
+      anim(0, 'hands', 'open'), tw(0, 'hands', { x: LEVER.x, y: 445 }, 380, 'outBack'),
       anim(0, 'boss', 'tapfoot'), anim(400, 'hands', 'grab'), sound(400, 'click'),
     ]),
     seg('TRP_PULL', 'setup', 650, 'compress', [
-      anim(0, 'hands', 'strain'), tw(0, 'lever', { rot: 0.1 }, 600, 'inOutQuad'), tw(0, 'hands', { x: 865, y: 455 }, 600, 'inOutQuad'),
+      anim(0, 'hands', 'strain'), tw(0, 'lever', { rot: 0.1 }, 600, 'inOutQuad'), tw(0, 'hands', { x: LEVER.x - 20, y: 455 }, 600, 'inOutQuad'),
       sound(0, 'creak'), sound(300, 'creak', 0.9), anim(300, 'boss', 'oblivious'),
       tw(0, 'camera', { x: 600, sx: 1.05 }, 600, 'inOutQuad'),
     ]),
@@ -119,12 +124,12 @@ export const trapdoorExpress: GadgetDef = {
       sound(0, 'crack'), state(0, 'boss', 'tie=snapped'), anim(0, 'wendell', 'fall'), tw(0, 'wendell', { x: 880, rot: -0.4 }, 240, 'outQuad'),
       anim(0, 'boss', 'fall'), tw(20, 'boss', { y: 900 }, 260, 'inQuad'), sound(40, 'fall'), silence(300, 260), sound(520, 'thud', 0.6),
     ]),
-    /** Il remonte seul à la force des bras, puis sonne Wendell. DING. (ce DING-là ne paie rien) */
+    /** Il remonte seul à la force des bras, puis sonne Wendell (sonnette de bureau : « ting », jamais le DING de gain). */
     paced(0.85, seg('TRP_E_CLIMB', 'action', 1300, 'compress', [
       anim(0, 'boss', 'climb'), tw(0, 'boss', { y: 620 }, 300, 'outQuad'), tw(300, 'boss', { y: 560 }, 300, 'outQuad'),
       state(600, 'boss', 'tie=normal'), state(650, 'trapdoor', 'closed'), sound(650, 'clunk'), { kind: 'signal', at: 620, signal: 'reveal' },
       tw(650, 'boss', { x: 830 }, 300, 'inOutQuad'), anim(650, 'boss', 'tiptoe'), anim(960, 'boss', 'ring'),
-      tw(1000, 'bell', { rot: 0.35 }, 60, 'linear'), tw(1060, 'bell', { rot: 0 }, 220, 'outElastic'), sound(1000, 'ding', 1.25),
+      tw(1000, 'bell', { rot: 0.35 }, 60, 'linear'), tw(1060, 'bell', { rot: 0 }, 220, 'outElastic'), sound(1000, 'tink', 1.7),
       tw(600, 'camera', { x: 700, y: 350, sx: 1.05 }, 400, 'inOutQuad'),
     ])),
     /** Le mug est vide… et la trappe s'ouvre enfin. */
@@ -133,7 +138,7 @@ export const trapdoorExpress: GadgetDef = {
     ]),
     /** Le mug est vide : il sonne pour un café. Wendell accourt… sur la trappe. B.B., lui, flotte. */
     paced(0.8, seg('TRP_E_WENDELLDROP', 'action', 1200, 'compress', [
-      anim(0, 'boss', 'ring'), tw(60, 'bell', { rot: 0.35 }, 60, 'linear'), tw(120, 'bell', { rot: 0 }, 220, 'outElastic'), sound(60, 'ding', 1.25),
+      anim(0, 'boss', 'ring'), tw(60, 'bell', { rot: 0.35 }, 60, 'linear'), tw(120, 'bell', { rot: 0 }, 220, 'outElastic'), sound(60, 'tink', 1.7),
       anim(250, 'wendell', 'run'), tw(250, 'wendell', { x: 700 }, 350, 'outQuad'), state(620, 'trapdoor', 'open'), sound(620, 'clunk', 0.8),
       anim(620, 'boss', 'hover'), anim(640, 'wendell', 'fall'), tw(640, 'wendell', { y: 900 }, 250, 'inQuad'), sound(640, 'fall', 1.3),
       { kind: 'signal', at: 700, signal: 'reveal' }, anim(760, 'boss', 'tiptoe'), tw(760, 'boss', { x: 752 }, 360, 'inOutQuad'),

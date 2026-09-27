@@ -10,10 +10,11 @@ import { BOSS_PARTS } from '../../src/render/art/parts/boss';
 import { CAST_PARTS } from '../../src/render/art/parts/cast';
 import { OFFICE_PARTS } from '../../src/render/art/parts/office';
 import { PLAN_PARTS } from '../../src/render/art/parts/plans';
+import { FURIOUS_PARTS } from '../../src/render/art/parts/furious';
 import { VFX_PARTS } from '../../src/render/art/parts/vfx';
 import { ART_BOOKS, PLAN_BOOK } from '../../src/render/art/books';
 
-const ALL = [...BOSS_PARTS, ...CAST_PARTS, ...OFFICE_PARTS, ...VFX_PARTS, ...PLAN_PARTS];
+const ALL = [...BOSS_PARTS, ...CAST_PARTS, ...OFFICE_PARTS, ...VFX_PARTS, ...PLAN_PARTS, ...FURIOUS_PARTS];
 
 /** Retire les masques de luminance (blanc/noir techniques) et les dégradés qu'ils utilisent. */
 function visible(body: string): string {
@@ -65,22 +66,17 @@ describe('ART BIBLE : cohérence automatique des assets', () => {
     }
   });
 
-  it('atlas : chaque pièce dans un seul livre ; une page 2048 px par livre au plus, sans chevauchement ; budget mémoire', () => {
+  it('atlas : chaque pièce dans un seul livre ; une page par livre, sans chevauchement ; budget mémoire', () => {
+    const pow2 = (n: number) => { let v = 64; while (v < n) v *= 2; return v; };
     const seen = new Set<string>();
-    let bytes = 0;
-    for (const book of ART_BOOKS) {
-      for (const p of book.parts) {
-        expect(seen.has(p.id), `${p.id} dans deux livres`).toBe(false);
-        seen.add(p.id);
-      }
-      const max = 2048 / book.scale;
-      const { pages } = packShelves(book.parts, max, max);
+    /** Mémoire GPU d'un livre (mipmaps comprises, Mo), comme au chargement (largeur de page ≤ maxPx). */
+    const mb = (book: typeof PLAN_BOOK) => {
+      const maxW = (book.maxPx ?? 2048) / book.scale;
+      const { pages } = packShelves(book.parts, maxW, 2048 / book.scale);
       expect(pages.length, book.id).toBe(1);
-      const pow2 = (n: number) => { let v = 64; while (v < n) v *= 2; return v; };
-      for (const page of pages) bytes += pow2(page.width * book.scale) * pow2(page.height * book.scale) * 4;
       for (const page of pages) {
         const boxes = page.placed.map(({ part, x, y }) => ({ x, y, w: part.w, h: part.h }));
-        for (const b of boxes) expect(b.x + b.w <= max && b.y + b.h <= max).toBe(true);
+        for (const b of boxes) expect(b.x + b.w <= maxW && b.y + b.h <= 2048 / book.scale).toBe(true);
         for (let i = 0; i < boxes.length; i++) {
           for (let j = i + 1; j < boxes.length; j++) {
             const a = boxes[i]!;
@@ -90,17 +86,21 @@ describe('ART BIBLE : cohérence automatique des assets', () => {
           }
         }
       }
+      return pages.reduce((a, pg) => a + pow2(pg.width * book.scale) * pow2(pg.height * book.scale) * 4, 0) * (4 / 3) / 1048576;
+    };
+    for (const book of [...ART_BOOKS, PLAN_BOOK]) {
+      for (const p of book.parts) {
+        expect(seen.has(p.id), `${p.id} dans deux livres`).toBe(false);
+        seen.add(p.id);
+      }
     }
-    expect(seen.size).toBe(ALL.length - PLAN_BOOK.parts.length);
-    // Mémoire GPU des atlas (mipmaps comprises) : ≤ 32 Mo, soit la moitié du budget mobile (MVP_ROADMAP §4 : 64 Mo).
-    expect((bytes * 4) / 3 / 1048576).toBeLessThanOrEqual(32);
-    // POC « 3 PLANS » : une page de 1024 px au plus, chargée seulement en mode POC ; total POC compris ≤ 32 Mo.
-    const pocMax = (PLAN_BOOK.maxPx ?? 2048) / PLAN_BOOK.scale;
-    const poc = packShelves(PLAN_BOOK.parts, pocMax, 2048 / PLAN_BOOK.scale).pages;
-    expect(poc).toHaveLength(1);
-    const pow2 = (n: number) => { let v = 64; while (v < n) v *= 2; return v; };
-    const pocBytes = poc.reduce((a, pg) => a + pow2(pg.width * PLAN_BOOK.scale) * pow2(pg.height * PLAN_BOOK.scale) * 4, 0);
-    expect(pow2(poc[0]!.width * PLAN_BOOK.scale)).toBeLessThanOrEqual(1024);
-    expect(((bytes + pocBytes) * 4) / 3 / 1048576).toBeLessThanOrEqual(32);
+    expect(seen.size).toBe(ALL.length);
+    const base = ART_BOOKS.reduce((a, b) => a + mb(b), 0);
+    const plans = mb(PLAN_BOOK);
+    // Mémoire GPU des atlas (mipmaps comprises). Cible MVP_ROADMAP §4 : ≤ 64 Mo de textures actives sur mobile,
+    // tampons d'affichage compris : les atlas restent sous 40 Mo, tout chargé (pire cas).
+    expect(base).toBeLessThanOrEqual(36);
+    expect(base + plans).toBeLessThanOrEqual(40);
+    expect(pow2(packShelves(PLAN_BOOK.parts, (PLAN_BOOK.maxPx ?? 2048) / PLAN_BOOK.scale, 2048 / PLAN_BOOK.scale).pages[0]!.width * PLAN_BOOK.scale)).toBeLessThanOrEqual(1024);
   });
 });

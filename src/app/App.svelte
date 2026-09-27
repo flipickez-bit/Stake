@@ -297,7 +297,7 @@
 
 <div class="game" onpointerdown={gesture} role="presentation">
   <div class="topbar">
-    <span class="title" data-testid="title">BAD BOSS{#if poc} — 3 GADGET POC{/if} <small>WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED · {poc ? 'EXPERIMENTAL · MOCK ONLY' : 'PHASE 0.6 VISUAL SLICE'}</small></span>
+    <span class="title" data-testid="title">BAD BOSS <small>WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED · {poc ? 'PLAYTEST #3 BUILD · 3 GADGETS · MOCK' : 'CLASSIC MODE · 1 GADGET PER RAGE LEVEL'}</small></span>
     <span class="balance" data-testid="balance">{formatBalance(snap?.balance ?? null)}</span>
     {#if poc && pocSession}
       <span class="pt-chip" data-testid="poc-counter">PLAYTEST S{pocSession.index}/2 · {Math.min(pocSession.rounds.length + (pocSession.status === 'playing' ? 1 : 0), POC_SESSION_ROUNDS)}/{POC_SESSION_ROUNDS}</span>

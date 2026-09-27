@@ -43,8 +43,14 @@ export function impactTierFor(resultClass: ResultClass): ImpactTier | null {
 /** Ce que le contenu partagé fournit au compilateur (bibliothèques du GDD_04 §5.3). */
 export interface ContentLibrary {
   segments: Readonly<Record<string, SegmentDef>>;
+  /**
+   * Micro-variante cosmétique d'un segment partagé (LE SIP…), choisie par la graine du book. Même durée et mêmes
+   * poses que l'original : seuls les sons changent. null : pas de variante.
+   */
+  variant?(segmentId: string, seed: number): SegmentDef | null;
   impact(tier: ImpactTier, direction: ImpactDirection): SegmentDef;
-  reaction(reaction: BossReaction): SegmentDef;
+  /** Réaction partagée ; `seed` choisit sa micro-variante (LE SIP : geste, gorgée, CLINK… jamais les trois à chaque fois). */
+  reaction(reaction: BossReaction, seed: number): SegmentDef;
   reactionPool(resultClass: ResultClass): readonly BossReaction[];
   /** Réactions quand le boss a quitté le cadre (fenêtre, trappe, plafond). */
   awayPool: readonly BossReaction[];
@@ -145,7 +151,7 @@ interface Placed {
 
 function resolveStep(step: Step, outcome: Outcome, gadget: GadgetDef, lib: ContentLibrary, picks: { reaction: string | null }): SegmentDef[] {
   if ('seg' in step) {
-    const seg = gadget.segments[step.seg] ?? lib.segments[step.seg];
+    const seg = gadget.segments[step.seg] ?? lib.variant?.(step.seg, outcome.seed) ?? lib.segments[step.seg];
     if (!seg) throw new CompileError(`${gadget.id} : segment inconnu ${step.seg}`);
     return [seg];
   }
@@ -160,7 +166,7 @@ function resolveStep(step: Step, outcome: Outcome, gadget: GadgetDef, lib: Conte
       reaction = createRng(outcome.seed, 'reaction').pick(pool);
     }
     picks.reaction = reaction;
-    return [lib.reaction(reaction)];
+    return [lib.reaction(reaction, outcome.seed)];
   }
   if ('silence' in step) {
     return [{ id: `SILENCE_${step.silence}`, phase: 'twist', ms: step.silence, turbo: 'drop', cues: [{ kind: 'silence', at: 0, ms: step.silence }] }];
@@ -189,7 +195,9 @@ function place(
     segments.push({ id: p.seg.id, phase: p.seg.phase, start, ms });
     p.seg.cues.forEach((cue, cueIndex) => {
       if (rule.muteSounds && cue.kind === 'sound') return;
-      if (speed !== 'normal' && cue.kind === 'silence') return;
+      if (speed !== 'normal' && (cue.kind === 'silence' || cue.kind === 'slowmo')) return;
+      // Le tronc est joué avant le résultat, en temps réel (attente réseau) : jamais de ralenti.
+      if (p.trunk && cue.kind === 'slowmo') throw new CompileError(`Segment ${p.seg.id} : ralenti interdit dans le tronc`);
       // Graine des effets : fixe dans le tronc (joué avant le résultat), sinon dérivée de la graine cosmétique.
       const salt = p.trunk || cosmeticSeed === null ? `trunk|${gadgetId}` : `seed|${cosmeticSeed}`;
       const fxSeed = hash32(`${salt}|${segIndex}|${cueIndex}`);
@@ -209,7 +217,7 @@ function place(
 }
 
 function cueLength(c: Cue): number {
-  return c.kind === 'tween' || c.kind === 'camera' || c.kind === 'silence' ? c.ms : 0;
+  return c.kind === 'tween' || c.kind === 'camera' || c.kind === 'silence' || c.kind === 'slowmo' ? c.ms : 0;
 }
 
 function scaleCue(cue: Cue, at: number, scale: number, speed: Speed, fxSeed: number, seg: number): ScheduledCue {
@@ -218,7 +226,10 @@ function scaleCue(cue: Cue, at: number, scale: number, speed: Speed, fxSeed: num
     case 'camera': return { ...cue, at, ms: cue.ms / scale, intensity: cue.intensity * SHAKE_FACTOR[speed], seed: fxSeed, seg };
     case 'freeze': return { ...cue, at, wallMs: cue.wallMs * FREEZE_FACTOR[speed], seg };
     case 'silence': return { ...cue, at, ms: cue.ms / scale, seg };
+    case 'slowmo': return { ...cue, at, ms: cue.ms / scale, seg };
     case 'vfx': return { ...cue, at, seed: fxSeed, seg };
+    // Variante sonore : même graine d'effets que les particules (tronc : fixe ; sinon dérivée de la graine du book).
+    case 'sound': return { ...cue, at, seed: cue.seed ?? fxSeed, seg };
     default: return { ...cue, at, seg };
   }
 }

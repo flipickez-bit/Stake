@@ -11,9 +11,9 @@ export function planLabel(level: RageLevelId, slot: PlanSlot): string {
   return (id && gadgetById(id)?.label) || `PLAN ${slot}`;
 }
 
-/** Les plans B et C du POC ne sont que des prototypes visuels (quelques branches). */
-export function isPrototypePlan(level: RageLevelId, slot: PlanSlot): boolean {
-  return planGadgetId(level, slot) !== 'swivel-slingshot';
+/** PRODUCTION : plus aucun plan prototype (conservé pour compatibilité des composants). */
+export function isPrototypePlan(_level: RageLevelId, _slot: PlanSlot): boolean {
+  return false;
 }
 
 export const COPY = {

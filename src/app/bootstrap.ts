@@ -11,8 +11,10 @@ import { metaFeaturesFor, type MetaFeatures } from '../flow/featureGate';
 import { GameFlow } from '../flow/GameFlow';
 import { PerfMeter } from '../dev/perf';
 import { PlaytestRecorder } from '../dev/playtest';
-import { CONTENT_VERSION } from '../content/gadgets';
+import { CONTENT_VERSION, GADGETS, planReadyLevels } from '../content/gadgets';
 import { makeDevRound } from '../dev/devOutcomes';
+import { planForBranch } from '../dev/forceBranch';
+import type { ResultClass } from '../domain/types';
 import { runLoop, type LoopOptions } from '../dev/loop';
 import type { RageLevelId } from '../domain/types';
 import { cryptoRandom, type ForcedOutcome } from '../platform/rgs/mock/mockMath';
@@ -22,7 +24,7 @@ import type { RgsPort } from '../platform/rgs/RgsPort';
 import { createBrowserStore } from '../platform/storage';
 import { Presenter } from '../presenter/Presenter';
 import { PixiStage } from '../render/PixiStage';
-import { AltDisplaySetting, pocRequested } from './pocConfig';
+import { AltDisplaySetting, plansRequested } from './pocConfig';
 import { PocPlaytestRecorder } from '../dev/pocPlaytest';
 
 export interface GameContext {
@@ -36,7 +38,10 @@ export interface GameContext {
   /** COLLECTION BOOK : null si désactivé (mode Stake tant que non confirmé, voir metaFeaturesFor). */
   collection: Collection | null;
   meta: MetaFeatures;
-  /** POC « 3 PLANS » (BAD BOSS — 3 GADGET POC) : null hors POC. MOCK / DEV uniquement. */
+  /**
+   * PRODUCTION 3 GADGETS (choix A/B/C, architecture A2) : réglage ALTERNATIVE DISPLAY et playtest A/B du POC.
+   * null en mode classique (Stake, `?plans=off`). MOCK / DEV uniquement.
+   */
   poc: { altDisplay: AltDisplaySetting; playtest: PocPlaytestRecorder } | null;
   mock: MockServer | null;
   devEnabled: boolean;
@@ -59,8 +64,8 @@ async function createRgs(params: LaunchParams): Promise<{ rgs: RgsPort; mock: Mo
 
 export async function bootstrap(host: HTMLElement): Promise<GameContext> {
   const params = readLaunchParams(window.location.href);
-  // POC « 3 PLANS » : build de préversion dédié ou ?poc=3gadget ; jamais avec le RGS Stake (A2 non validée).
-  const poc = pocRequested(window.location.href, import.meta.env.VITE_BADBOSS_POC, params.rgs);
+  // PRODUCTION 3 GADGETS : choix A/B/C par défaut avec le Mock ; jamais avec le RGS Stake (A2 non validée).
+  const poc = plansRequested(window.location.href, params.rgs);
   const stage = new PixiStage();
   // Mesure (DEV) : initialisation de la scène, rastérisation des atlas d'art comprise (Phase 0.6).
   const stageT0 = performance.now();
@@ -86,8 +91,8 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
       playtest.onRoundComplete(r);
       pocPlaytest?.onRoundComplete(r);
     },
-    // POC « 3 PLANS » : GRUMPY se joue en choisissant A, B ou C avant le tir.
-    ...(poc ? { planLevels: ['grumpy'] as const } : {}),
+    // PRODUCTION 3 GADGETS : chaque Rage Level complet se joue en choisissant A, B ou C avant le tir.
+    ...(poc ? { planLevels: planReadyLevels() } : {}),
   });
 
   // COLLECTION BOOK : observateur branché sur les snapshots publics de GameFlow (aucune modification du flux).
@@ -155,8 +160,24 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
           ...options,
         }),
       perf: () => perf.snapshot(),
-      /** POC « 3 PLANS » : zones des plans à l'écran (tests e2e, captures). */
+      /** Zones des plans à l'écran (tests e2e, captures). */
       planRects: () => stage.planRects(),
+      /**
+       * DEV (Mock) : la prochaine manche jouera `branchId` de `gadgetId` (triple imposé, plan choisi, branche imposée).
+       * Le joueur (ou le test) n'a plus qu'à appuyer sur FIRE. null si impossible (mode classique, Stake, branche inconnue).
+       */
+      /** Contenu (DEV, captures) : gadgets et branches. */
+      gadgets: () => GADGETS.map((g) => ({ id: g.id, level: g.rageLevel, label: g.label, branches: g.branches.map((b) => ({ id: b.id, label: b.label, rarity: b.rarity, bf: b.categories.includes('BF_ENTRY'), loss: b.classes.includes('MISS') })) })),
+      forceBranch: (gadgetId: string, branchId: string, prefer?: ResultClass) => {
+        if (!mock || flow.snapshot.state !== 'READY') return null;
+        const plan = planForBranch(gadgetId, branchId, prefer);
+        if (!plan) return null;
+        flow.setLevel(plan.level);
+        if (!flow.snapshot.plansEnabled || !flow.setPlan(plan.slot) && flow.snapshot.plan !== plan.slot) return null;
+        mock.update((st) => (st.nextForcedTriple = plan.triple));
+        presenter.forceBranchId = branchId;
+        return { level: plan.level, slot: plan.slot, resultClass: plan.resultClass };
+      },
       stats: () => stage.stats(),
       stageInitMs: () => stageInitMs,
       /** Captures d'écran reproductibles (avant / après) : pause de la boucle et positionnement de la séquence. */

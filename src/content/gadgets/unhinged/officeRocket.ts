@@ -5,10 +5,10 @@
  *   B STALL  : elle cale ; B.B. nargue le joueur. Redémarrage brutal ? Fumée ? Elle part sans lui ?
  *   C UP     : droit vers le plafond… le ventilateur, le plafond, ou le toit (et l'ascenseur).
  */
-import type { GadgetDef } from '../../presentation/types';
+import type { GadgetDef } from '../../../presentation/types';
 import {
   anim, BOSS_FIGHT, compose, fx, LOSS, mod, paced, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_MID, WIN_SMALL,
-} from '../dsl';
+} from '../../dsl';
 
 const D1 = 'fuse-out';
 

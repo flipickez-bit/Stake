@@ -165,7 +165,11 @@ export function drawCeiling(kit: ArtKit): { view: Container; lights: Sprite[] } 
 }
 
 /** Bureau du joueur (premier plan, vue subjective) : plus sombre et plus doux (perspective atmosphérique inversée). */
-export function drawPlayerDesk(kit: ArtKit): { view: Container; duck: Sprite; tall: Sprite[] } {
+/**
+ * Bureau du joueur (premier plan). `plans` : cadrage PRODUCTION 3 GADGETS — les objets du bureau s'écartent pour
+ * laisser la place aux appareils des plans (ESPRESSO BLASTER, COPIER CATAPULT, rampe de la bonbonne…).
+ */
+export function drawPlayerDesk(kit: ArtKit, plans = false): { view: Container; duck: Sprite; tall: Sprite[] } {
   const view = new Container();
   view.addChild(bake(SPAN.x0, 716, SPAN.x1 - SPAN.x0, 460, 0.25, (ctx) => {
     ctx.fillStyle = linear(ctx, 0, 716, 0, 1176, [[0, css('wood')], [1, css('woodShade')]]);
@@ -182,16 +186,16 @@ export function drawPlayerDesk(kit: ArtKit): { view: Container; duck: Sprite; ta
   }
   g.stroke({ width: 2, color: hex('woodShade'), alpha: 0.45 });
   view.addChild(g);
-  const items: [string, number, number][] = [
-    ['fg_keyboard', 250, 724], ['fg_postits', 440, 722], ['fg_pens', 110, 722], ['fg_cactus', 620, 724], ['fg_mug', 780, 726],
-  ];
+  const items: [string, number, number][] = plans
+    ? [['fg_keyboard', 250, 740], ['fg_postits', 648, 736], ['fg_pens', 110, 736], ['fg_cactus', 930, 738], ['fg_mug', 920, 742]]
+    : [['fg_keyboard', 250, 724], ['fg_postits', 440, 722], ['fg_pens', 110, 722], ['fg_cactus', 620, 724], ['fg_mug', 780, 726]];
   const tall: Sprite[] = [];
   for (const [id, x, y] of items) {
     const s = kit.sprite(id, x, y);
     if (id === 'fg_cactus' || id === 'fg_pens' || id === 'fg_postits') tall.push(s);
     view.addChild(s);
   }
-  const duck = kit.sprite('fg_duck', 530, 724);
+  const duck = kit.sprite('fg_duck', plans ? 380 : 530, plans ? 740 : 724);
   duck.visible = false;
   view.addChild(duck);
   return { view, duck, tall };

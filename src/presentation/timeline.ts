@@ -69,6 +69,8 @@ export interface Timeline {
   shakes: CameraCue[];
   bursts: ParticleBurst[];
   silences: { t0: number; t1: number }[];
+  /** Ralentis (temps de séquence) : le lecteur y avance moins vite que le temps réel. */
+  slowmos: { t0: number; t1: number; factor: number }[];
   /** Événements ponctuels (sons, signaux, silences, gel), triés par temps. */
   events: ScheduledCue[];
 }
@@ -160,6 +162,7 @@ export function buildTimeline(seq: AnimationSequence, restLayout: Record<ActorId
   const shakes: CameraCue[] = [];
   const bursts: ParticleBurst[] = [];
   const silences: { t0: number; t1: number }[] = [];
+  const slowmos: { t0: number; t1: number; factor: number }[] = [];
   const events: ScheduledCue[] = [];
 
   for (const cue of seq.cues) {
@@ -211,11 +214,31 @@ export function buildTimeline(seq: AnimationSequence, restLayout: Record<ActorId
         silences.push({ t0: cue.at, t1: cue.at + cue.ms });
         events.push(cue);
         break;
+      case 'slowmo':
+        if (cue.ms > 0 && cue.factor > 0 && cue.factor < 1) slowmos.push({ t0: cue.at, t1: cue.at + cue.ms, factor: cue.factor });
+        break;
       default:
         events.push(cue);
     }
   }
-  return { seq, actors: [...actorSet], rest, tracks, states, anims, shakes, bursts, silences, events };
+  return { seq, actors: [...actorSet], rest, tracks, states, anims, shakes, bursts, silences, slowmos, events };
+}
+
+/** Vitesse du temps de séquence à l'instant t (1 hors ralenti ; le plus lent si deux ralentis se chevauchent). */
+export function rateAt(tl: Timeline, t: number): number {
+  let rate = 1;
+  for (const s of tl.slowmos) if (t >= s.t0 && t < s.t1) rate = Math.min(rate, s.factor);
+  return rate;
+}
+
+/** Prochain instant (strictement après t) où la vitesse du temps peut changer. */
+export function nextRateChange(tl: Timeline, t: number): number {
+  let next = Number.POSITIVE_INFINITY;
+  for (const s of tl.slowmos) {
+    if (s.t0 > t) next = Math.min(next, s.t0);
+    if (s.t1 > t) next = Math.min(next, s.t1);
+  }
+  return next;
 }
 
 export interface HoldInfo {

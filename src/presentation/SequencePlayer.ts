@@ -4,15 +4,17 @@
  *
  * - L'image est TOUJOURS evaluate(timeline, t) : aucune accumulation d'état visuel.
  * - Hit stop (freeze) : le temps de séquence s'arrête pendant `wallMs` de temps réel.
+ * - Ralenti (slowmo) : le temps de séquence avance moins vite que le temps réel (l'image reste evaluate(t)).
  * - Attente (séquence « ouverte ») : à D1, sans résultat, le temps s'arrête ; les poses continuent de vivre.
  * - seek / skipToReveal : les signaux franchis sont émis (une seule fois), les sons ne sont pas joués.
  */
-import { buildTimeline, createFrame, evaluate, type FrameState, type Timeline } from './timeline';
+import { buildTimeline, createFrame, evaluate, nextRateChange, rateAt, type FrameState, type Timeline } from './timeline';
 import type { ActorId, ActorRest, AnimationSequence, GadgetDef, ScheduledCue, Signal, SoundId } from './types';
 
 export interface PlayerSinks {
   frame(frame: FrameState): void;
-  sound(sound: SoundId, pitch: number): void;
+  /** `seed` : variante déterministe du son (même book, même variante). */
+  sound(sound: SoundId, pitch: number, seed?: number): void;
   silence(ms: number): void;
   signal(signal: Signal, value: number | undefined, t: number): void;
 }
@@ -108,7 +110,16 @@ export class SequencePlayer {
         continue;
       }
       const d1 = this.tl.seq.markers.d1;
-      let target = this.t + dt;
+      // Ralenti : le temps de séquence avance à `rate` × le temps réel, jusqu'au prochain changement de vitesse.
+      // Séquence ouverte (tronc) : jamais de ralenti, l'attente reste en temps réel.
+      const rate = this.open ? 1 : rateAt(this.tl, this.t);
+      const boundary = this.open ? Number.POSITIVE_INFINITY : nextRateChange(this.tl, this.t);
+      let target = this.t + dt * rate;
+      let wallUsed = dt;
+      if (target > boundary) {
+        target = boundary;
+        wallUsed = (boundary - this.t) / rate;
+      }
       let overflow = 0;
       if (this.open && target > d1) {
         overflow = target - Math.max(this.t, d1);
@@ -117,12 +128,12 @@ export class SequencePlayer {
       const frozeAt = this.advanceTo(target, true);
       if (frozeAt !== null) {
         // Gel (hit stop) : on consomme le temps jusqu'au gel, puis le gel lui-même au tour suivant.
-        dt -= Math.max(0, frozeAt - this.t);
+        dt -= Math.max(0, frozeAt - this.t) / rate;
         this.t = frozeAt;
         continue;
       }
       this.t = target;
-      dt = 0;
+      dt = overflow > 0 ? 0 : Math.max(0, dt - wallUsed);
       if (overflow > 0) this.hold(overflow);
     }
     this.render();
@@ -181,7 +192,7 @@ export class SequencePlayer {
       this.nextEvent++;
       switch (ev.kind) {
         case 'sound':
-          if (audible) this.sinks.sound(ev.sound, ev.pitch ?? 1);
+          if (audible) this.sinks.sound(ev.sound, ev.pitch ?? 1, ev.seed);
           break;
         case 'silence':
           if (audible) this.sinks.silence(ev.ms);

@@ -7,9 +7,8 @@
  * Tout reste une fonction du FrameState : replay, reprise et seek donnent la même image.
  */
 import { Application, Container, Graphics, Point, Sprite, Texture } from 'pixi.js';
-import { ALL_GADGET_PROPS } from '../content/gadgets';
-import { ESP, STATION } from '../content/gadgets/poc/stations';
-import type { PlanSlot } from '../domain/plans';
+import { ALL_GADGET_PROPS, planGadgets } from '../content/gadgets';
+import { PLAN_SLOTS, type PlanSlot } from '../domain/plans';
 import type { RageLevelId } from '../domain/types';
 import type { CharacterAnimator, PoseContext } from '../presentation/characterAnimator';
 import type { VfxId } from '../presentation/types';
@@ -64,18 +63,12 @@ export interface PlanRect {
   h: number;
 }
 
-/** Boîtes des trois plans (unités du monde) : gadget entier, un peu de marge pour le doigt. */
-const PLAN_BOXES: Record<PlanSlot, { x: number; y: number; w: number; h: number }> = {
-  A: { x: STATION.A.x - 55, y: STATION.A.y - 160, w: 110, h: 172 },
-  B: { x: STATION.B.x - 62, y: STATION.B.y - 166, w: 142, h: 172 },
-  C: { x: STATION.C.x - 76, y: STATION.C.y - 156, w: 156, h: 162 },
-};
-
 /**
- * POC « 3 PLANS », paysage : cadrage un peu plus haut et plus large, pour que les plans B et C (au premier plan)
- * restent entiers au-dessus du bureau du joueur. Rendu seulement, identique au repos et pendant la manche.
+ * PRODUCTION 3 GADGETS, paysage : cadrage un peu plus bas et plus haut, pour que les appareils posés sur le bureau
+ * du joueur restent entiers SOUS la ligne du sol de la pièce (ils ne cachent plus B.B. ni son bureau).
+ * Rendu seulement, identique au repos et pendant la manche.
  */
-const POC_LANDSCAPE = { width: 920, height: 700, dy: 36, fgY: -4 };
+const PLANS_LANDSCAPE = { width: 920, height: 740, dy: 56, fgY: -4 };
 
 /** Fondu des plans non choisis au tir (ms de temps de séquence). */
 const PLAN_FADE_MS = 260;
@@ -117,6 +110,8 @@ const FX_ART: Record<VfxId, { tex: string; tint: boolean; grow?: number }> = {
   leaves: { tex: 'fx_leaf', tint: false },
   steam: { tex: 'fx_puff', tint: true, grow: 0.9 },
   coffee: { tex: 'fx_puff', tint: true, grow: 0.2 },
+  water: { tex: 'fx_bubble', tint: true, grow: 0.1 },
+  swirl: { tex: 'fx_strand', tint: true, grow: 0.6 },
 };
 
 /** Habillage des mondes RAGE (ART BIBLE §9) : teintes d'étalonnage et accessoires. Rendu seulement. */
@@ -152,21 +147,27 @@ export class PixiStage implements SceneSink {
   private readonly speed = new Container();
   private readonly cast = new Container();
   private readonly front = new Container();
-  /** POC « 3 PLANS » : plans B et C posés au premier plan (devant le sol avant qui masque la trappe). */
+  /** Appareils posés sur le bureau du joueur (calque du premier plan : même parallaxe que le bureau). */
   private readonly plansLayer = new Container();
+  /** Halo de sélection dans la pièce (sous les gadgets) et sur le bureau du joueur. */
+  private readonly spotRoom = new Container();
   private planSpot: Sprite | null = null;
   private planSteam: Sprite | null = null;
   private planUi: PlanUi = { selected: null, hover: null };
   private pickerActive = false;
+  /** Les trois gadgets du choix en cours (null hors choix). */
+  private pickSet: readonly GadgetDef[] | null = null;
   private readonly fading = new Map<ActorId, number | null>();
   private copierScreen: Graphics | null = null;
-  /** Cadrage paysage du POC (actif si les plans sont chargés). */
+  /** Cadrage « plans » (actif si les plans sont chargés). */
   private planFraming = false;
   /** Fondu d'apparition de l'élastique quand le plan A est choisi (temps de séquence, null = à démarrer). */
   private elasticFadeFrom: number | null | undefined = undefined;
   private readonly light = new Container();
   private readonly ceiling = new Container();
   private readonly fg = new Container();
+  /** Objets qui volent DEVANT la pièce (gobelet, ramette, bonbonne) : au-dessus de B.B. et du bureau du joueur. */
+  private readonly frontWorld = new Container();
   private readonly particleLayer = new Container();
   private readonly screen = new Container();
   private readonly updaters = new Map<ActorId, Updater>();
@@ -297,7 +298,7 @@ export class PixiStage implements SceneSink {
   private build(kit: ArtKit): void {
     const w = this.world;
     this.app.stage.addChild(w, this.screen);
-    this.action.addChild(this.room, this.overlays, this.gadget, this.shadows, this.impactPlane, this.speed, this.cast, this.front, this.plansLayer, this.light);
+    this.action.addChild(this.room, this.overlays, this.spotRoom, this.gadget, this.shadows, this.impactPlane, this.speed, this.cast, this.front, this.light);
     w.addChild(this.bg, this.action, this.ceiling, this.fg);
 
     // ---------------------------------------------------------------- fond (parallaxe lente)
@@ -373,18 +374,7 @@ export class PixiStage implements SceneSink {
     this.gadget.addChild(this.elastic);
     this.pouch = kit.sprite('sling_pouch');
     this.gadget.addChild(this.pouch);
-    const trap = office.drawTrapdoor();
-    this.trapView = trap.view;
-    this.add('trapdoor', trap.view, (f) => {
-      trap.closed.visible = f.states.main !== 'open';
-      trap.open.visible = f.states.main === 'open';
-      trap.jammed.visible = f.states.main === 'jammed';
-    }, this.gadget);
-    const lever = office.drawLever();
-    this.add('lever', lever.view, (f) => {
-      lever.view.rotation = 0;
-      lever.stick.rotation = f.transform.rot;
-    }, this.gadget);
+    this.buildTrapdoor(kit);
     this.gadget.addChild(this.fuseLine);
     this.add('fuse', new Container(), (f, all) => this.drawFuse(f, all), this.gadget);
     const spark = kit.sprite('fx_spark');
@@ -401,6 +391,12 @@ export class PixiStage implements SceneSink {
       kit.swap(rocketTex, this.look.rocket === 'retro' ? 'bb_rocket_retro' : 'bb_rocket');
     }, this.gadget);
 
+    // FURIOUS : classeurs-dominos (pivot au coin inférieur droit) et tiroir qui jaillit.
+    if (kit.has('dom_cab1')) {
+      for (const n of [1, 2, 3] as const) this.add(`dom${n}`, kit.sprite(`dom_cab${n}`), undefined, this.gadget);
+      this.add('domDrawer', kit.sprite('dom_drawer'), undefined, this.gadget);
+    }
+
     // Mug échappé (reste suspendu, tombe) : même taille que dans la main de B.B.
     const mugProp = kit.sprite('bb_mug');
     mugProp.scale.set(1.22);
@@ -408,10 +404,14 @@ export class PixiStage implements SceneSink {
     // Câble de l'écran (réaction en chaîne) : tendu ou détendu, de l'écran jusqu'au pot de la plante.
     this.gadget.addChild(this.cable);
 
-    // POC « 3 PLANS » : prototypes B (ESPRESSO BLASTER) et C (COPIER CATAPULT), seulement si leur atlas est chargé.
+    // PRODUCTION 3 GADGETS : appareils des plans B et C, seulement si leur atlas est chargé.
     if (kit.has('esp_body')) {
-      this.buildPlans(kit);
       this.planFraming = true;
+      this.buildPlans(kit);
+    }
+    if (kit.has('cool_ramp')) {
+      this.add('coolRamp', kit.sprite('cool_ramp'), undefined, this.plansLayer);
+      this.add('jug', kit.sprite('cool_jug'), undefined, this.frontWorld);
     }
 
     // Ombres de contact (personnages).
@@ -473,11 +473,13 @@ export class PixiStage implements SceneSink {
     this.add('ceiling', this.wrap(hole).outer, (f) => (hole.visible = f.states.main === 'hole'), this.ceiling);
 
     // ---------------------------------------------------------------- premier plan
-    const desk2 = drawPlayerDesk(kit);
+    const desk2 = drawPlayerDesk(kit, this.planFraming);
     this.fgTall = desk2.tall;
     this.duck = desk2.duck;
     this.duck.visible = this.look.duck;
-    this.fg.addChild(desk2.view);
+    // Les appareils des plans sont posés SUR le bureau du joueur (même calque, même parallaxe).
+    this.fg.addChild(desk2.view, this.plansLayer);
+    w.addChild(this.frontWorld);
 
     const projectiles = office.drawProjectiles();
     const proj = new Container();
@@ -574,13 +576,49 @@ export class PixiStage implements SceneSink {
     }
   }
 
+  /** TRAPDOOR EXPRESS : trappe (fermée, ouverte, coincée) et levier au sol ; formes placeholder si l'art manque. */
+  private buildTrapdoor(kit: ArtKit): void {
+    if (!kit.has('trap_closed')) {
+      const trap = office.drawTrapdoor();
+      this.trapView = trap.view;
+      this.add('trapdoor', trap.view, (f) => {
+        trap.closed.visible = f.states.main !== 'open';
+        trap.open.visible = f.states.main === 'open';
+        trap.jammed.visible = f.states.main === 'jammed';
+      }, this.gadget);
+      const lever = office.drawLever();
+      this.add('lever', lever.view, (f) => {
+        lever.view.rotation = 0;
+        lever.stick.rotation = f.transform.rot;
+      }, this.gadget);
+      return;
+    }
+    const trap = new Container();
+    const closed = kit.sprite('trap_closed');
+    const open = kit.sprite('trap_open');
+    const jam = kit.sprite('trap_jam');
+    trap.addChild(open, closed, jam);
+    this.trapView = trap;
+    this.add('trapdoor', trap, (f) => {
+      open.visible = f.states.main === 'open';
+      closed.visible = f.states.main !== 'open';
+      jam.visible = f.states.main === 'jammed';
+    }, this.gadget);
+    const lever = new Container();
+    const stick = kit.sprite('lever_stick', 0, -26);
+    lever.addChild(stick, kit.sprite('lever_base'));
+    this.add('lever', lever, (f) => {
+      lever.rotation = 0;
+      stick.rotation = f.transform.rot;
+    }, this.gadget);
+  }
+
   private buildPlans(kit: ArtKit): void {
     const L = this.plansLayer;
     const spot = kit.sprite('plan_spot');
     spot.visible = false;
     spot.blendMode = 'add';
     this.planSpot = spot;
-    // Le halo du plan A est au sol du fond : il va dans la couche des gadgets ; ceux de B et C, devant.
     L.addChild(spot);
     const steam = kit.sprite('fx_puff');
     steam.tint = hex('paper');
@@ -589,10 +627,7 @@ export class PixiStage implements SceneSink {
     const esp = new Container();
     esp.addChild(kit.sprite('esp_body'));
     this.add('espresso', esp, undefined, L);
-    this.add('espNeedle', kit.sprite('esp_needle'), (f, all) => {
-      // Survol / sélection (READY) : l'aiguille frémit. Fonction de l'horloge de présentation.
-      if (this.planActive('B')) this.views.get('espNeedle')!.rotation = f.transform.rot + 0.12 * Math.sin(all.clock / 70);
-    }, L);
+    this.add('espNeedle', kit.sprite('esp_needle'), undefined, L);
     this.add('espBarrel', kit.sprite('esp_barrel'), undefined, L);
     L.addChild(steam);
     const copier = new Container();
@@ -606,18 +641,41 @@ export class PixiStage implements SceneSink {
       screen.tint = st === 'jam' || st === 'berserk' ? hex('alarm') : 0xffffff;
       screen.alpha = st === 'berserk' ? (Math.sin(all.clock / 60) > 0 ? 0.9 : 0.25) : st === 'scan' ? 0.55 + 0.4 * Math.sin(all.clock / 90) : 0.7;
     }, L);
-    this.add('copSheet', kit.sprite('cop_sheet'), (f, all) => {
-      // Survol / sélection (READY) : une feuille sort légèrement du bac.
-      if (this.planActive('C')) this.views.get('copSheet')!.x = f.transform.x - 14 * (0.5 + 0.5 * Math.sin(all.clock / 260));
-    }, L);
+    this.add('copSheet', kit.sprite('cop_sheet'), undefined, L);
     this.add('copLid', kit.sprite('cop_lid'), undefined, L);
-    this.add('ream', kit.sprite('cop_ream'), undefined, L);
-    this.add('espCup', kit.sprite('esp_cup'), undefined, L);
+    // Projectiles : ils volent dans la PIÈCE (coordonnées du monde), devant B.B. (calque avant du monde).
+    this.add('ream', kit.sprite('cop_ream'), undefined, this.frontWorld);
+    this.add('espCup', kit.sprite('esp_cup'), undefined, this.frontWorld);
   }
 
-  /** POC : animation d'attente du plan survolé ou choisi, seulement pendant le choix (READY). */
+  /** Animation d'attente du plan survolé ou choisi, seulement pendant le choix (READY). */
   private planActive(slot: PlanSlot): boolean {
     return this.pickerActive && (this.planUi.hover === slot || this.planUi.selected === slot);
+  }
+
+  /** Gadget d'un plan du choix en cours. */
+  private pickGadget(slot: PlanSlot): GadgetDef | null {
+    return this.pickSet?.[PLAN_SLOTS.indexOf(slot)] ?? null;
+  }
+
+  /** Vie d'attente (survol / sélection) : petites oscillations déclarées par chaque gadget (rendu seulement). */
+  private applyPickIdle(frame: FrameState): void {
+    if (!this.pickerActive || !this.pickSet) return;
+    for (const slot of PLAN_SLOTS) {
+      if (!this.planActive(slot)) continue;
+      const pick = this.pickGadget(slot)?.pick;
+      if (!pick) continue;
+      for (const idle of pick.idle) {
+        const v = this.views.get(idle.actor);
+        if (!v?.visible) continue;
+        const k = idle.amp * Math.sin((frame.clock / idle.periodMs) * Math.PI * 2);
+        if (idle.prop === 'x') v.x += k;
+        else if (idle.prop === 'y') v.y += k;
+        else if (idle.prop === 'rot') v.rotation += k;
+        else if (idle.prop === 'sx') v.scale.x *= 1 + k;
+        else v.scale.y *= 1 + k;
+      }
+    }
   }
 
   /** POC « 3 PLANS » : plan survolé / choisi (rendu seulement, jamais une entrée de la manche). */
@@ -625,13 +683,17 @@ export class PixiStage implements SceneSink {
     this.planUi = ui;
   }
 
-  /** POC : zones des trois plans à l'écran (pixels CSS du canevas), pour les cibles tactiles HTML. */
+  /** Zones des trois plans à l'écran (pixels CSS du canevas), pour les cibles tactiles HTML. */
   planRects(): PlanRect[] {
     const out: PlanRect[] = [];
-    for (const slot of ['A', 'B', 'C'] as const) {
-      const b = PLAN_BOXES[slot];
-      const p0 = this.world.toGlobal(new Point(b.x, b.y));
-      const p1 = this.world.toGlobal(new Point(b.x + b.w, b.y + b.h));
+    if (!this.pickSet) return out;
+    for (const slot of PLAN_SLOTS) {
+      const pick = this.pickGadget(slot)?.pick;
+      if (!pick) continue;
+      const b = pick.box;
+      const layer = pick.layer === 'front' ? this.fg : this.world;
+      const p0 = layer.toGlobal(new Point(b.x, b.y));
+      const p1 = layer.toGlobal(new Point(b.x + b.w, b.y + b.h));
       out.push({ slot, x: Math.min(p0.x, p1.x), y: Math.min(p0.y, p1.y), w: Math.abs(p1.x - p0.x), h: Math.abs(p1.y - p0.y) });
     }
     return out;
@@ -642,23 +704,26 @@ export class PixiStage implements SceneSink {
     const steam = this.planSteam;
     if (!spot || !steam) return;
     const sel = this.pickerActive ? this.planUi.selected : null;
-    spot.visible = sel !== null;
-    if (sel) {
-      const st = STATION[sel];
-      // Halo au sol, respiration lente (lumière douce, jamais l'or d'un gain).
-      spot.position.set(st.x, st.y - 4);
+    const pick = sel ? this.pickGadget(sel)?.pick : null;
+    spot.visible = !!pick;
+    if (pick) {
+      // Halo, respiration lente (lumière douce, jamais l'or d'un gain) : au sol de la pièce ou sur le bureau.
+      spot.position.set(pick.spot.x, pick.spot.y);
       const k = 1 + 0.04 * Math.sin(frame.clock / 400);
-      spot.scale.set(sel === 'A' ? 0.8 * k : 1.05 * k, k);
+      spot.scale.set(pick.spot.sx * k, (pick.spot.sy ?? 1) * k);
       spot.alpha = 0.75;
-      // Le halo de A est derrière le sol avant : on le dessine juste sous le lance-pierre.
-      const layer = sel === 'A' ? this.gadget : this.plansLayer;
+      const layer = pick.layer === 'front' ? this.plansLayer : this.spotRoom;
       if (spot.parent !== layer) layer.addChildAt(spot, 0);
     }
-    const steamOn = this.planActive('B');
-    steam.visible = steamOn;
-    if (steamOn) {
+    // Bouffée d'attente (vapeur, fumée) du plan survolé ou choisi, si le gadget en déclare une.
+    const puffSlot = PLAN_SLOTS.find((s) => this.planActive(s) && this.pickGadget(s)?.pick?.puff);
+    const puffPick = puffSlot ? this.pickGadget(puffSlot)?.pick : null;
+    steam.visible = !!puffPick?.puff;
+    if (puffPick?.puff) {
+      const layer = puffPick.layer === 'front' ? this.plansLayer : this.spotRoom;
+      if (steam.parent !== layer) layer.addChild(steam);
       const k = (frame.clock % 900) / 900;
-      steam.position.set(ESP.steam.x - 6 + 8 * Math.sin(frame.clock / 300), ESP.steam.y - 10 - 46 * k);
+      steam.position.set(puffPick.puff.x - 6 + 8 * Math.sin(frame.clock / 300), puffPick.puff.y - 10 - 46 * k);
       steam.scale.set(0.5 + 0.5 * k);
       steam.alpha = 0.7 * Math.sin(Math.PI * k);
     }
@@ -725,9 +790,10 @@ export class PixiStage implements SceneSink {
   }
 
   setGadget(gadget: GadgetDef): void {
-    // POC « 3 PLANS » : au tir, les plans non choisis s'effacent en fondu (au lieu de disparaître d'un coup).
+    // Au tir, les plans non choisis s'effacent en fondu (au lieu de disparaître d'un coup).
     const wasPicker = this.pickerActive;
     this.pickerActive = gadget.id === 'plan-picker';
+    this.pickSet = this.pickerActive ? planGadgets(gadget.rageLevel) : null;
     this.fading.clear();
     if (wasPicker && !this.pickerActive) {
       for (const id of this.gadgetProps) if (!gadget.props.includes(id)) this.fading.set(id, null);
@@ -783,6 +849,7 @@ export class PixiStage implements SceneSink {
       update(f, frame);
     }
     this.drawCable(frame);
+    this.applyPickIdle(frame);
     this.drawPlanPicker(frame);
     this.drawShadows(frame);
     this.drawSpeed(frame);
@@ -805,8 +872,8 @@ export class PixiStage implements SceneSink {
         camX = cam.x + PORTRAIT.follow * w * (boss.x - cam.x);
       }
     } else if (this.planFraming) {
-      base = Math.min(this.width / POC_LANDSCAPE.width, this.height / POC_LANDSCAPE.height);
-      camY = cam.y + POC_LANDSCAPE.dy;
+      base = Math.min(this.width / PLANS_LANDSCAPE.width, this.height / PLANS_LANDSCAPE.height);
+      camY = cam.y + PLANS_LANDSCAPE.dy;
     } else {
       base = Math.min(this.width / SAFE_LANDSCAPE.width, this.height / SAFE_LANDSCAPE.height);
     }
@@ -815,7 +882,7 @@ export class PixiStage implements SceneSink {
     this.bg.x = (1 - PARALLAX.bg) * d;
     this.ceiling.x = (1 - PARALLAX.bg) * d;
     this.fg.x = (1 - PARALLAX.fg) * d;
-    this.fg.y = portrait ? 0 : this.planFraming ? POC_LANDSCAPE.fgY : -64;
+    this.fg.y = portrait ? 0 : this.planFraming ? PLANS_LANDSCAPE.fgY : -64;
     this.fgTall.forEach((item) => (item.visible = portrait));
     this.windowView?.setParallax((PARALLAX.bg - PARALLAX.sky) * d);
 
@@ -959,6 +1026,7 @@ export class PixiStage implements SceneSink {
     const tint = on ? INK : WORLDS[this.worldLevel].cast;
     this.cast.tint = tint;
     this.gadget.tint = on ? INK : WORLDS[this.worldLevel].room;
+    this.frontWorld.tint = on ? INK : WORLDS[this.worldLevel].cast;
     for (const layer of [this.room, this.bg, this.ceiling, this.fg, this.light, this.front]) layer.visible = !on;
     this.screen.visible = !on;
   }

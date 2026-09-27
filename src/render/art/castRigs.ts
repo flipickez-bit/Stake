@@ -114,6 +114,28 @@ export class WendellRig implements CharacterAnimator<Container> {
         armL = armR = 0.9; elbowL = elbowR = 2.2; bob = -Math.abs(sin(e / 300)) * 4; folders = false; mouth = 'w_mouth_worried'; brow = -0.6; break;
       case 'fall':
         armL = armR = 2.8; elbowL = elbowR = 0.3; lean = -0.2; legs = sin(e / 50) * 0.5; folders = false; mouth = 'w_mouth_o'; break;
+      // ---- ANIMATION KIT
+      case 'panic':
+        armL = 2.5 + sin(e / 35) * 0.4; armR = 2.5 - sin(e / 35) * 0.4; elbowL = elbowR = 0.4; legs = sin(e / 40) * 0.35;
+        bob = -Math.abs(sin(e / 70)) * 5; folders = false; mouth = 'w_mouth_o'; brow = -0.9; look = e % 400 < 200 ? -3 : 3; break;
+      case 'duck':
+        hunch = 0.5; headDy = 14; armL = armR = 2.7; elbowL = elbowR = 2.4; legs = 0.3; bob = 12; folders = false; mouth = 'w_mouth_grimace'; eyesClosed = true; break;
+      case 'dive':
+        lean = -1.2; armL = armR = 2.9; elbowL = elbowR = 0.1; legs = 0.5; folders = false; mouth = 'w_mouth_o'; brow = -0.8; break;
+      case 'look':
+        lean = 0.1; headDy = -2; look = 3; brow = -0.5; mouth = 'w_mouth_o'; armL = armR = 0.3; elbowL = elbowR = 2.2; break;
+      case 'bowl': {
+        // Lancer de bowling : élan (bras en arrière), pas glissé, bras qui accompagne vers l'avant.
+        const k = Math.min(1, e / 420);
+        armR = k < 0.5 ? 0.2 - k * 2.4 : -1 + (k - 0.5) * 5.2; elbowR = 0.2; armL = 1.2; elbowL = 0.6;
+        lean = 0.35 * Math.sin(k * Math.PI); legs = 0.5 * Math.sin(k * Math.PI); folders = false; mouth = 'w_mouth_grimace'; brow = 0.4; break;
+      }
+      case 'push':
+        lean = 0.35; armL = armR = 1.5 + sin(e / 60) * 0.08; elbowL = elbowR = 0.2; legs = 0.4; folders = false; mouth = 'w_mouth_grimace'; brow = 0.5; break;
+      case 'carry':
+        armL = armR = 1.9; elbowL = elbowR = 1.5; bob = Math.abs(sin(e / 110)) * -3; legs = sin(e / 110) * 0.3; lean = -0.08; folders = false; mouth = 'w_mouth_grimace'; break;
+      case 'dizzy':
+        lean = sin(e / 180) * 0.2; armL = 0.8 + sin(e / 150) * 0.3; armR = 0.5; elbowL = elbowR = 1; eyesClosed = e % 500 < 250; mouth = 'w_mouth_o'; folders = false; brow = -0.4; break;
       default:
         // Idle : dossiers serrés contre lui, coups d'œil nerveux.
         armL = armR = 0.25; elbowL = elbowR = 2.2;
@@ -188,6 +210,18 @@ export class CooRig implements CharacterAnimator<Container> {
         clap = true; flap = Math.abs(sin(e / 70)); bob = -Math.abs(sin(e / 140)) * 3; break;
       case 'carry':
         flap = sin(e / 25) * 1.3; bob = sin(e / 50) * 2; break;
+      // ---- ANIMATION KIT
+      case 'escape':
+        // Décollage paniqué : battements très rapides, corps penché vers l'avant.
+        flap = sin(e / 18) * 1.5; bob = sin(e / 36) * 5; spin = -0.35; break;
+      case 'land': {
+        // Atterrissage : ailes ouvertes pour freiner, petit rebond.
+        const k = Math.min(1, e / 260);
+        flap = (1 - k) * sin(e / 30) * 1.2; bob = -Math.abs(sin(k * Math.PI)) * 6; break;
+      }
+      case 'shock':
+        // Plumes hérissées : il se gonfle d'un coup.
+        flap = 0.9; bob = -4; peck = -0.3; break;
       default: {
         const k = e % 2600;
         peck = k < 300 ? sin((k / 300) * Math.PI) * 0.45 : 0;
@@ -201,6 +235,8 @@ export class CooRig implements CharacterAnimator<Container> {
     this.wingFar.rotation = clap ? -0.6 * flap : -0.3 + flap;
     this.head.rotation = peck;
     this.head.x = 12 + peck * 6;
+    // Gonflé de surprise (shock) : le corps s'arrondit.
+    this.inner.scale.set(anim === 'shock' ? 1.18 : 1, anim === 'shock' ? 1.12 : 1);
   }
 
   destroy(): void {
@@ -239,7 +275,7 @@ export class HandsRig implements CharacterAnimator<Container> {
 
   pose(anim: string, elapsedMs: number): void {
     const e = Math.max(0, elapsedMs);
-    const closed = anim === 'grab' || anim === 'strain' || anim === 'lighter';
+    const closed = anim === 'grab' || anim === 'strain' || anim === 'lighter' || anim === 'pull' || anim === 'turn';
     for (const h of [this.handL, this.handR]) this.kit.swap(h, closed ? 'hand_back_fist' : 'hand_back_open');
     this.lighter.visible = anim === 'lighter';
     this.lighter.scale.set(1, 1 + sin(e / 40) * 0.05);
@@ -249,6 +285,21 @@ export class HandsRig implements CharacterAnimator<Container> {
     this.right.position.set(36 - shake, anim === 'strain' ? 4 : 0);
     this.left.rotation = anim === 'strain' ? -0.08 : 0;
     this.right.rotation = anim === 'strain' ? 0.08 : 0;
+    // ANIMATION KIT : pousser (paumes en avant), tirer (poings qui reculent), tourner (poignet), rouler (élan).
+    if (anim === 'push') {
+      this.left.position.set(-30, -6 + sin(e / 50) * 2);
+      this.right.position.set(30, -6 - sin(e / 50) * 2);
+    } else if (anim === 'pull') {
+      const k = Math.min(1, e / 200);
+      this.left.position.set(-36, 10 * k);
+      this.right.position.set(36, 10 * k);
+    } else if (anim === 'turn') {
+      this.right.rotation = 0.9 * Math.min(1, e / 300);
+      this.left.visible = false;
+    } else if (anim === 'roll') {
+      this.left.visible = false;
+      this.right.rotation = -0.4 + 0.9 * Math.min(1, e / 260);
+    }
   }
 
   destroy(): void {

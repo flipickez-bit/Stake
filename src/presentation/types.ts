@@ -26,13 +26,18 @@ export type SoundId =
   | 'crack' | 'gold' | 'deflate' | 'giantRoar' | 'elevator' | 'cheer' | 'fall'
   | 'sip' | 'spin' | 'spray' | 'coo' | 'bonk'
   // Phase 0.6 : repères de synchronisation son/image (sons provisoires synthétisés).
-  | 'stretch' | 'snap' | 'clink' | 'paper' | 'debris';
+  | 'stretch' | 'snap' | 'clink' | 'paper' | 'debris'
+  // PRODUCTION 3 GADGETS (SOUND KIT) : carillon d'ascenseur (≠ DING de gain), couches d'impact, mécanismes, air, eau.
+  | 'bell' | 'boom' | 'rumble' | 'rattle' | 'squeak' | 'honk' | 'slide' | 'crank' | 'whirr' | 'gust' | 'gulp'
+  | 'splash' | 'roll' | 'strike' | 'chain' | 'tension' | 'brass' | 'thump' | 'room';
 
 export type VfxId =
   | 'dust' | 'sparks' | 'glass' | 'papers' | 'confetti' | 'smoke' | 'flame' | 'stars' | 'gold' | 'soot' | 'foam' | 'feathers' | 'hair'
   | 'burst' | 'debris' | 'leaves'
   // POC « 3 PLANS » : vapeur (ESPRESSO BLASTER) et éclaboussure de café.
-  | 'steam' | 'coffee';
+  | 'steam' | 'coffee'
+  // PRODUCTION : gerbe d'eau (WATER COOLER), traînées de vent (HVAC HURRICANE).
+  | 'water' | 'swirl';
 
 export type Signal = 'd1' | 'reveal' | 'bfStart' | 'bfRung' | 'bfBlocked' | 'bfKo' | 'end';
 
@@ -46,12 +51,21 @@ export type Cue =
   | { kind: 'camera'; at: number; shot: 'shake' | 'punch'; ms: number; intensity: number; seed?: number }
   /** Hit stop : le temps de la séquence s'arrête pendant wallMs (temps réel). */
   | { kind: 'freeze'; at: number; wallMs: number }
-  | { kind: 'sound'; at: number; sound: SoundId; pitch?: number }
+  /**
+   * `seed` (rempli par le compilateur) : choix DÉTERMINISTE de la variante du son (hauteur, timbre, durée) dans
+   * son pool. Même book, même variante : replay et reprise sonnent pareil. Jamais Math.random().
+   */
+  | { kind: 'sound'; at: number; sound: SoundId; pitch?: number; seed?: number }
   /** Silence dramatique : tout se tait sauf l'ambiance (un seul par manche). */
   | { kind: 'silence'; at: number; ms: number }
   /** Particules. Avec `actor`, (x, y) est un décalage par rapport à la position de l'acteur à cet instant. */
   | { kind: 'vfx'; at: number; fx: VfxId; x: number; y: number; count: number; actor?: ActorId; seed?: number }
-  | { kind: 'signal'; at: number; signal: Signal; value?: number };
+  | { kind: 'signal'; at: number; signal: Signal; value?: number }
+  /**
+   * Ralenti : pendant `ms` de temps de SÉQUENCE, le temps avance à `factor` × le temps réel (0 < factor ≤ 1).
+   * L'image reste une fonction du temps de séquence (seek, reprise, replay identiques). Ignoré en turbo.
+   */
+  | { kind: 'slowmo'; at: number; ms: number; factor: number };
 
 export type CameraCue = Extract<Cue, { kind: 'camera' }>;
 export type AudioCue = Extract<Cue, { kind: 'sound' }>;
@@ -121,8 +135,36 @@ export interface BranchDef {
 
 export type GadgetId =
   | 'swivel-slingshot' | 'trapdoor-express' | 'office-rocket'
-  // POC « 3 PLANS » (MOCK / DEV) : prototypes des plans B et C de GRUMPY, et le décor du choix (les trois plans).
-  | 'espresso-blaster' | 'copier-catapult' | 'plan-picker';
+  // PRODUCTION 3 GADGETS : les plans B et C de chaque Rage Level, et le décor du choix (les trois plans).
+  | 'espresso-blaster' | 'copier-catapult'
+  | 'cabinet-domino' | 'cooler-bowling'
+  | 'ceiling-safe' | 'hvac-hurricane'
+  | 'plan-picker';
+
+/** Vie d'attente d'un gadget pendant le choix (survol / sélection, READY seulement). Rendu seulement. */
+export interface PickIdle {
+  actor: ActorId;
+  prop: 'x' | 'y' | 'rot' | 'sx' | 'sy';
+  /** Amplitude (unités du monde, radians ou facteur d'échelle). */
+  amp: number;
+  periodMs: number;
+}
+
+/**
+ * Présence d'un gadget dans le décor du CHOIX : zone tactile, halo de sélection, étiquette, vie d'attente.
+ * Données de mise en scène uniquement : aucun effet sur le résultat, la branche ou les maths.
+ */
+export interface PickSpec {
+  /** Calque : la pièce ('room', coordonnées du monde) ou le bureau du joueur ('front', calque du premier plan). */
+  layer: 'room' | 'front';
+  /** Zone tactile (coordonnées du calque) : tout le gadget, avec de la marge pour le doigt. */
+  box: { x: number; y: number; w: number; h: number };
+  /** Halo de sélection (lumière douce, jamais l'or d'un gain). */
+  spot: { x: number; y: number; sx: number; sy?: number };
+  idle: PickIdle[];
+  /** Bouffée de vapeur / fumée d'attente (coordonnées du calque), facultative. */
+  puff?: { x: number; y: number };
+}
 
 export interface GadgetDef {
   id: GadgetId;
@@ -139,6 +181,10 @@ export interface GadgetDef {
   trunk: string[];
   /** Boucle d'attente (réseau lent) : son répété pendant que la pose de D1 continue de vivre. */
   hold: { sound: SoundId; everyMs: number };
+  /** Présence dans le décor du choix (3 gadgets par Rage Level). */
+  pick?: PickSpec;
+  /** Signature sonore (SOUND BIBLE) : famille de sons qui identifie le gadget les yeux fermés. */
+  signature?: SoundId[];
   branches: BranchDef[];
   segments: Record<string, SegmentDef>;
 }

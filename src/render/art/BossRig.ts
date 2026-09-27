@@ -634,6 +634,210 @@ export function bossPose(anim: string, e: number): BossPose {
       p.mouth = 'smirk';
       p.browUpR = 0.8;
       break;
+    // ---- ANIMATION KIT (production 3 gadgets) : anticipation, vol, atterrissage, K.O. cartoon, émotions.
+    case 'blink': {
+      // Double clignement agacé (« je t'ai vu »).
+      mugAtChest(p);
+      eyes(p, (e > 60 && e < 150) || (e > 260 && e < 340) ? 'closed' : 'heavy');
+      p.brow = 0.4;
+      p.mouth = 'flat';
+      break;
+    }
+    case 'smirk':
+      mugAtChest(p);
+      eyes(p, 'half');
+      p.mouth = 'smirk';
+      p.browUpR = smooth(seg(e, 0, 180));
+      p.headTilt = -0.06;
+      p.px = -2;
+      break;
+    case 'anticipate': {
+      // Anticipation : il se ramasse (écrasé, genoux fléchis) avant un saut, un choc, un départ.
+      const k = smooth(seg(e, 0, 140));
+      p.sy = 1 - 0.1 * k;
+      p.sx = 1 + 0.06 * k;
+      p.bob = 6 * k;
+      eyes(p, 'tight');
+      p.mouth = 'teeth';
+      p.brow = 0.6;
+      p.armL = p.armR = lerp(0.2, 0.9, k);
+      p.elbowL = p.elbowR = 1.4;
+      p.handL = p.handR = 'fist';
+      break;
+    }
+    case 'airborne': {
+      // En l'air : bras et jambes qui moulinent, étiré dans le sens du vol.
+      p.sy = 1.08;
+      p.sx = 0.94;
+      eyes(p, 'wide');
+      p.mouth = 'gasp';
+      p.armL = 2.5 + sin(e / 50) * 0.5;
+      p.armR = 2.3 - sin(e / 50) * 0.5;
+      p.elbowL = p.elbowR = 0.3;
+      p.handL = p.handR = 'open';
+      p.legL = sin(e / 45) * 0.8;
+      p.legR = -sin(e / 45) * 0.8;
+      p.meche = 1;
+      p.brow = -0.8;
+      p.tilt = sin(e / 160) * 0.1;
+      break;
+    }
+    case 'land': {
+      // Atterrissage : écrasement au contact, puis retour élastique ; il reste sonné une fraction de seconde.
+      const k = e < 30 ? 1 : settle(e - 30, 360, 0.03);
+      p.sy = 1 - 0.22 * k;
+      p.sx = 1 + 0.2 * k;
+      eyes(p, e < 220 ? 'tight' : 'open');
+      p.mouth = e < 220 ? 'teeth' : 'o';
+      p.armL = p.armR = 1.2 - 0.6 * seg(e, 0, 300);
+      p.elbowL = p.elbowR = 0.6;
+      p.handL = p.handR = 'open';
+      p.legL = 0.35 * k;
+      p.legR = -0.35 * k;
+      p.meche = 1 - seg(e, 200, 500);
+      break;
+    }
+    case 'recover': {
+      // Il se relève, époussette sa veste, rajuste la cravate : la dignité revient.
+      const k = smooth(seg(e, 0, 300));
+      p.sy = lerp(0.9, 1, k);
+      eyes(p, e < 300 ? 'heavy' : 'half');
+      p.mouth = e < 300 ? 'wavy' : 'flat';
+      p.armL = lerp(1.2, -0.3, k) + (e > 300 ? sin(e / 70) * 0.15 : 0);
+      p.elbowL = 2.2;
+      p.handL = 'open';
+      mugAtChest(p);
+      p.brow = 0.3 * k;
+      p.headTilt = 0.08 * (1 - k);
+      break;
+    }
+    case 'ko': {
+      // K.O. cartoon : à plat, yeux en X, oiseaux (les étoiles sont un effet), une jambe qui tressaute.
+      const k = e < 40 ? 1 : settle(e - 40, 500, 0.022);
+      p.sy = 0.78 + 0.1 * (1 - k);
+      p.sx = 1.18;
+      eyes(p, 'x');
+      p.mouth = 'wavy';
+      p.armL = 1.9;
+      p.armR = 1.7;
+      p.elbowL = p.elbowR = 0.2;
+      p.handL = p.handR = 'open';
+      p.legL = 0.6;
+      p.legR = -0.5 + (e % 900 < 120 ? 0.3 : 0);
+      p.tilt = -0.12;
+      p.headTilt = 0.2;
+      p.flush = 0.2;
+      break;
+    }
+    case 'panic': {
+      // Panique : tremblement rapide, regards gauche-droite, sueur.
+      eyes(p, 'wide');
+      p.mouth = e % 400 < 200 ? 'gasp' : 'wavy';
+      p.px = e % 500 < 250 ? -4 : 4;
+      p.jitter = sin(e / 12) * 2.5;
+      p.armL = 1.9 + sin(e / 40) * 0.3;
+      p.armR = 1.7 + sin(e / 40 + 2) * 0.3;
+      p.elbowL = p.elbowR = 0.8;
+      p.handL = p.handR = 'open';
+      p.brow = -0.9;
+      p.lidTilt = -0.4;
+      p.sweat = 1;
+      p.meche = 1;
+      break;
+    }
+    case 'confused':
+      mugAtChest(p);
+      eyes(p, 'open');
+      p.eyeL = 'half';
+      p.mouth = 'wavy';
+      p.headTilt = 0.16 + sin(e / 400) * 0.03;
+      p.px = 3;
+      p.py = -2;
+      p.brow = -0.3;
+      p.browUpR = 0.8;
+      p.armL = 1.4;
+      p.elbowL = 2.5;
+      p.handL = 'open';
+      break;
+    case 'relief': {
+      const k = smooth(seg(e, 0, 400));
+      eyes(p, 'closed');
+      p.mouth = 'o';
+      p.sy = 1 - 0.05 * sin(k * Math.PI);
+      p.headTilt = -0.1 * k;
+      p.armL = 0.2;
+      p.brow = -0.3;
+      mugAtChest(p);
+      p.flush = 0.1;
+      break;
+    }
+    case 'rage':
+      // RAGE : il tape du poing sur le bureau (deux fois), veine, touffe dressée.
+      eyes(p, 'open');
+      p.lidTilt = 0.5;
+      p.mouth = 'teeth';
+      p.brow = 1;
+      p.flush = 1;
+      p.vein = 1;
+      p.meche = 1;
+      p.armL = 1.2 - Math.abs(sin(e / 110)) * 1.0;
+      p.elbowL = 0.8;
+      p.handL = 'fist';
+      mugAtChest(p);
+      p.jitter = sin(e / 14) * 1.5;
+      p.bob = Math.abs(sin(e / 110)) * 3;
+      break;
+    case 'duck':
+      // Il s'aplatit : tête rentrée, bras sur la tête.
+      p.sy = 0.82;
+      p.sx = 1.1;
+      p.bob = 10;
+      eyes(p, 'tight');
+      p.mouth = 'teeth';
+      p.armL = p.armR = 2.6;
+      p.elbowL = p.elbowR = 2.2;
+      p.handL = p.handR = 'open';
+      p.headDy = 6;
+      p.sweat = 1;
+      break;
+    case 'push': {
+      // Il repousse (meuble, projectile) : bras tendus, penché, effort.
+      p.tilt = -0.12;
+      p.armL = p.armR = 1.55 + sin(e / 60) * 0.06;
+      p.elbowL = p.elbowR = 0.15;
+      p.handL = p.handR = 'open';
+      eyes(p, 'tight');
+      p.mouth = 'teeth';
+      p.brow = 0.8;
+      p.flush = 0.5;
+      p.legL = 0.3;
+      p.legR = -0.2;
+      break;
+    }
+    case 'catch':
+      // Il tend la main libre et attrape (projectile, mug) sans même regarder.
+      mugAtChest(p);
+      eyes(p, 'half');
+      p.mouth = 'smirk';
+      p.armL = 1.9;
+      p.elbowL = 0.4;
+      p.handL = 'grip';
+      p.browUpR = 0.8;
+      p.px = -3;
+      break;
+    case 'dodge': {
+      // Esquive : il se penche d'un coup (côté opposé au danger), puis reprend l'équilibre.
+      const k = e < 90 ? smooth(e / 90) : 1 - 0.3 * smooth(seg(e, 300, 600));
+      p.tilt = -0.32 * k;
+      p.headDx = -6 * k;
+      eyes(p, 'wide');
+      p.mouth = 'o';
+      mugAtChest(p);
+      p.armL = 1.6 * k;
+      p.handL = 'open';
+      p.meche = k;
+      break;
+    }
     default:
       mugAtChest(p);
       break;
@@ -649,6 +853,9 @@ function blendIn(anim: string): number {
     case 'giant-hurt':
     case 'surprised':
     case 'spin':
+    case 'land':
+    case 'ko':
+    case 'dodge':
       return 0;
     case 'scared':
     case 'braced':

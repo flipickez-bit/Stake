@@ -2,7 +2,7 @@
  * Serveur RGS simulé (phase 0). Logique synchrone, état persistant (survit au rechargement de page),
  * pour tester reprise, pannes et replay SANS vraie mise. Ne pas confondre avec le RGS Stake Engine.
  */
-import { POC_PLAN_SETS, type PlanSlot } from '../../../domain/plans';
+import { isPlanSlot, PLAN_SETS, type PlanSlot } from '../../../domain/plans';
 import type { Book } from '../../../domain/book';
 import type { InternalRound, Money } from '../../../domain/round';
 import type { RageLevelId } from '../../../domain/types';
@@ -141,8 +141,8 @@ export class MockServer {
 
   play(amount: number, mode: RageLevelId, plan?: PlanSlot | null): { balance: Money; round: InternalRound } {
     this.state.calls.play++;
-    // POC « 3 PLANS » : seul un niveau doté d'un jeu de trois plans accepte un plan (mode A2 `grumpy_a/b/c`).
-    if (plan && !POC_PLAN_SETS[mode]) {
+    // A2 (MOCK) : seul un niveau doté d'un jeu de trois plans accepte un plan (modes `<niveau>_a/b/c`), et seulement A, B ou C.
+    if (plan && (!PLAN_SETS[mode] || !isPlanSlot(plan))) {
       this.persist();
       throw new RgsError('rgs', `Unknown mode ${mode}_${plan.toLowerCase()}`, 'ERR_VAL');
     }
@@ -173,7 +173,7 @@ export class MockServer {
 
   private createRound(amount: number, mode: RageLevelId, plan: PlanSlot | null = null): InternalRound {
     let book: Book;
-    const planSet = plan ? POC_PLAN_SETS[mode] : undefined;
+    const planSet = plan ? PLAN_SETS[mode] : undefined;
     if (plan && planSet) {
       // A2 : le triple est tiré SANS connaître le plan ; le plan ne fait que choisir la composante payée.
       const forcedTriple = this.state.nextForcedTriple ?? null;

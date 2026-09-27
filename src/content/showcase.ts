@@ -82,7 +82,7 @@ export const OFFICE_MELTDOWN: readonly ShowcaseBeat[] = [
     id: 'slingshot',
     title: 'THE SLINGSHOT',
     stage: stageFor(sling),
-    segments: [s(sling, 'SLG_IN'), s(sling, 'SLG_PULL'), s(sling, 'SLG_A_LAUNCH'), s(sling, 'SLG_E_CABINET'), LIBRARY.impact('T1', 'wall'), LIBRARY.reaction('DAZED')],
+    segments: [s(sling, 'SLG_IN'), s(sling, 'SLG_PULL'), s(sling, 'SLG_A_LAUNCH'), s(sling, 'SLG_E_CABINET'), LIBRARY.impact('T1', 'wall'), LIBRARY.reaction('DAZED', 1)],
   },
   {
     id: 'trapdoor',
@@ -94,7 +94,7 @@ export const OFFICE_MELTDOWN: readonly ShowcaseBeat[] = [
     id: 'rocket',
     title: 'THE ROCKET',
     stage: stageFor(rocket),
-    segments: [s(rocket, 'RKT_IN'), s(rocket, 'RKT_FUSE'), s(rocket, 'RKT_C_UP'), s(rocket, 'RKT_E_CEILING'), LIBRARY.impact('T2', 'ceiling'), LIBRARY.reaction('WENDELL_PEEK')],
+    segments: [s(rocket, 'RKT_IN'), s(rocket, 'RKT_FUSE'), s(rocket, 'RKT_C_UP'), s(rocket, 'RKT_E_CEILING'), LIBRARY.impact('T2', 'ceiling'), LIBRARY.reaction('WENDELL_PEEK', 1)],
   },
   { id: 'finale', title: 'FINALE', stage: stageFor(sling), segments: [FINALE] },
 ];

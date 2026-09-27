@@ -198,9 +198,9 @@ describe('POC 3 PLANS : le plan est choisi AVANT Play et ne change plus ensuite 
     expect(presenter.calls[0]!.outcome.plans?.selected).toBe('B');
   });
 
-  it('le serveur refuse un plan sur un niveau sans plans ; le client Stake refuse tout plan AVANT envoi', async () => {
+  it('le serveur refuse un plan invalide ; le client Stake refuse tout plan AVANT envoi', async () => {
     const server = new MockServer((createMock(1)).store, mulberry32(2));
-    expect(() => server.play(1_000_000, 'furious', 'A')).toThrow(RgsError);
+    expect(() => server.play(1_000_000, 'furious', 'D' as never)).toThrow(RgsError);
     (globalThis as { window?: unknown }).window ??= { dispatchEvent: () => true };
     const { StakeRgsAdapter } = await import('../../src/platform/rgs/stake/StakeRgsAdapter');
     const stake = new StakeRgsAdapter('https://game.example.test/index.html?sessionID=abc&rgs_url=rgs.example.test');

@@ -5,7 +5,8 @@
 import type { Outcome } from '../domain/outcome';
 import type { ResultClass } from '../domain/types';
 import type { ContentLibrary, ImpactTier } from '../presentation/compileSequence';
-import type { BossReaction, Cue, ImpactDirection, SegmentDef } from '../presentation/types';
+import type { BossReaction, Cue, ImpactDirection, SegmentDef, SoundId } from '../presentation/types';
+import { createRng } from '../domain/seed';
 import { anim, freeze, fx, impactFrame, paced, punch, seg, segments, shake, signal, silence, sound, state, tw } from './dsl';
 import { ELEVATOR, IMPACT_POINTS } from './office';
 
@@ -18,16 +19,25 @@ interface TierSpec {
   freeze: number;
   flash: number;
   dust: number;
-  extra: Cue[];
+  /**
+   * Nombre de DING (SOUND_BIBLE §4) : la classe s'entend les yeux fermés.
+   * SCRAPE (x0,5, gain inférieur à la mise) : AUCUN DING, aucune pièce, aucun son de gain (« pfff » + petit clic).
+   * HIT 1 · BIG 2 (+ cuivres) · MEGA 3 (+ cuivres, ovation) · LEGENDARY 4 (+ cuivres, ovation).
+   */
   dings: number;
 }
 
 const TIERS: Record<ImpactTier, TierSpec> = {
-  T05: { ms: 520, shake: 3, shakeMs: 160, freeze: 0, flash: 0, dust: 6, extra: [], dings: 1 },
-  T1: { ms: 700, shake: 8, shakeMs: 300, freeze: 60, flash: 0.25, dust: 12, extra: [], dings: 1 },
-  T2: { ms: 950, shake: 14, shakeMs: 460, freeze: 90, flash: 0.45, dust: 20, extra: [], dings: 1 },
-  T3: { ms: 1250, shake: 22, shakeMs: 720, freeze: 120, flash: 0.7, dust: 30, extra: [], dings: 2 },
-  T3G: { ms: 1450, shake: 26, shakeMs: 820, freeze: 140, flash: 0.85, dust: 34, extra: [], dings: 3 },
+  T05: { ms: 520, shake: 3, shakeMs: 160, freeze: 0, flash: 0, dust: 6, dings: 0 },
+  T1: { ms: 700, shake: 8, shakeMs: 300, freeze: 60, flash: 0.25, dust: 12, dings: 1 },
+  T2: { ms: 950, shake: 14, shakeMs: 460, freeze: 90, flash: 0.45, dust: 20, dings: 2 },
+  T3: { ms: 1250, shake: 22, shakeMs: 720, freeze: 120, flash: 0.7, dust: 30, dings: 3 },
+  T3G: { ms: 1450, shake: 26, shakeMs: 820, freeze: 140, flash: 0.85, dust: 34, dings: 4 },
+};
+
+/** Couche OBJECT de l'impact selon ce qui est frappé (le décor sonne comme ce qu'il est). */
+const OBJECT_LAYER: Record<ImpactDirection, SoundId> = {
+  none: 'bonk', window: 'glass', overdesk: 'clang', ceiling: 'debris', floor: 'thump', cork: 'paper', wall: 'clang', elevator: 'clang',
 };
 
 function impactSegment(tier: ImpactTier, direction: ImpactDirection): SegmentDef {
@@ -37,36 +47,66 @@ function impactSegment(tier: ImpactTier, direction: ImpactDirection): SegmentDef
   const cues: Cue[] = [
     // Le moment de vérité : révélation au contact, gel bref, puis silence et DING.
     signal(0, 'reveal'),
-    sound(0, tier === 'T05' ? 'tink' : big ? 'crash' : 'thud'),
     shake(0, t.shakeMs, t.shake),
     fx(0, 'dust', p.x, p.y, t.dust),
     anim(0, 'boss', tier === 'T05' ? 'ouch' : 'splat'),
   ];
+  // Couches sonores (SOUND KIT) : BODY + OBJECT + LOW + DEBRIS + ROOM (+ COMEDIC pour les petits chocs).
+  if (tier === 'T05') {
+    cues.push(sound(0, 'tink'), sound(40, 'bonk', 1.3), sound(240, 'pfft', 1.2), sound(330, 'click', 0.9));
+  } else {
+    cues.push(sound(0, big ? 'crash' : 'thud'), sound(8, OBJECT_LAYER[direction]), sound(0, 'thump'));
+    if (big) cues.push(sound(0, 'boom'), sound(50, 'debris'), sound(90, 'room'));
+    else cues.push(sound(140, 'boing', 1.4));
+  }
   // Phase 0.6 : image d'impact (silhouettes, ~2 images) puis HIT STOP ; éclat d'impact au point de contact.
   if (t.freeze > 0) cues.push(...impactFrame(0, 40, Math.max(0, t.freeze - 40)), fx(0, 'burst', p.x, p.y, 1));
   if (t.flash > 0) cues.push(tw(0, 'flash', { alpha: t.flash }, 30, 'linear'), tw(40, 'flash', { alpha: 0 }, 260, 'outQuad'));
   if (tier !== 'T05') cues.push(fx(0, 'sparks', p.x, p.y, big ? 16 : 8), punch(0, 220, big ? 8 : 4));
-  if (big) cues.push(fx(60, 'papers', p.x, p.y, tier === 'T2' ? 14 : 24));
+  if (big) cues.push(fx(60, 'papers', p.x, p.y, tier === 'T2' ? 14 : 24), sound(560, 'brass'));
   if (tier === 'T3' || tier === 'T3G') {
-    cues.push(fx(280, 'confetti', 500, 260, 44), tw(120, 'portrait', { rot: 0.32 }, 380, 'outBounce'), sound(520, 'cheer'));
+    cues.push(fx(280, 'confetti', 500, 260, tier === 'T3G' ? 70 : 44), tw(120, 'portrait', { rot: 0.32 }, 380, 'outBounce'), sound(820, 'cheer'));
   }
-  if (tier === 'T3G') cues.push(fx(300, 'gold', 500, 240, 48), sound(360, 'gold'));
   // Accessoires du bureau selon la direction (le bureau est partagé par tous les gadgets).
-  if (direction === 'window') cues.push(state(0, 'window', 'broken'), fx(0, 'glass', p.x, p.y, big ? 22 : 12), sound(10, 'glass'));
+  if (direction === 'window') cues.push(state(0, 'window', 'broken'), fx(0, 'glass', p.x, p.y, big ? 22 : 12));
   if (direction === 'ceiling') cues.push(state(0, 'ceiling', 'hole'), fx(30, 'dust', p.x, p.y + 20, 14));
   if (direction === 'wall') cues.push(state(0, 'cabinet', 'dented'), tw(0, 'cabinet', { rot: -0.08 }, 90, 'outQuad'), tw(90, 'cabinet', { rot: 0 }, 400, 'outElastic'));
   if (direction === 'floor') cues.push(fx(40, 'dust', p.x, p.y - 10, t.dust), fx(80, 'smoke', p.x, p.y - 20, big ? 10 : 4));
   if (direction === 'elevator') cues.push(state(0, 'elevator', 'dent=yes'), fx(30, 'smoke', p.x, p.y - 30, big ? 12 : 6));
   cues.push(silence(0, 220));
-  for (let i = 0; i < t.dings; i++) cues.push(sound(260 + i * 170, 'ding', 1 + i * 0.12));
+  for (let i = 0; i < t.dings; i++) cues.push(sound(260 + i * 150, 'ding', 1 + i * 0.12));
   return seg(`IMP_${tier}_${direction.toUpperCase()}`, 'impact', t.ms, 'keep', cues);
 }
 
 // ------------------------------------------------------------------ REACTION
 
+/**
+ * LE SIP (ART BIBLE §5.1) : regard, montée lente, pause, SIP, sourcil levé — sons calés sur la pose.
+ * Micro-variantes DÉTERMINISTES (graine du book) : le geste, la gorgée et le CLINK ne sont jamais tous là à chaque
+ * fois ; le silence fait partie du gag. Même durée pour toutes (le rythme de la manche ne change pas).
+ */
+const SIP_VARIANTS: readonly { weight: number; seg: SegmentDef }[] = [
+  { weight: 40, seg: seg('RE_SIP', 'reaction', 1000, 'compress', [anim(0, 'boss', 'sip'), sound(440, 'sip'), sound(680, 'hmpf', 1.1)]) },
+  // Gorgée, puis le mug reposé sur le bureau : CLINK (pas de HMPF).
+  { weight: 25, seg: seg('RE_SIP_CLINK', 'reaction', 1000, 'compress', [anim(0, 'boss', 'sip'), sound(440, 'sip', 0.95), sound(860, 'clink', 0.8)]) },
+  // Grande gorgée bruyante.
+  { weight: 20, seg: seg('RE_SIP_GULP', 'reaction', 1000, 'compress', [anim(0, 'boss', 'sip'), sound(430, 'gulp'), sound(700, 'hmpf', 1.2)]) },
+  // Silence : il lève le mug… s'arrête, regarde le joueur, ne boit pas. Aucun son.
+  { weight: 15, seg: seg('RE_SIP_SILENT', 'reaction', 1000, 'compress', [anim(0, 'boss', 'sip'), anim(360, 'boss', 'smirk'), silence(0, 900)]) },
+];
+
+function sipVariant(seed: number): SegmentDef {
+  const total = SIP_VARIANTS.reduce((a, v) => a + v.weight, 0);
+  let u = createRng(seed, 'sip').next() * total;
+  for (const v of SIP_VARIANTS) {
+    u -= v.weight;
+    if (u < 0) return v.seg;
+  }
+  return SIP_VARIANTS[0]!.seg;
+}
+
 const REACTION_LIST: SegmentDef[] = [
-  // LE SIP (ART BIBLE §5.1) : regard, montée lente, pause, SIP, sourcil levé — sons calés sur la pose.
-  seg('RE_SIP', 'reaction', 1000, 'compress', [anim(0, 'boss', 'sip'), sound(440, 'sip'), sound(680, 'hmpf', 1.1)]),
+  SIP_VARIANTS[0]!.seg,
   seg('RE_LAUGH', 'reaction', 1000, 'compress', [anim(0, 'boss', 'laugh'), sound(0, 'laugh')]),
   seg('RE_FLEX', 'reaction', 1000, 'compress', [anim(0, 'boss', 'flex'), sound(150, 'hmpf', 0.8)]),
   seg('RE_SULK', 'reaction', 900, 'compress', [anim(0, 'boss', 'sulk'), sound(80, 'deflate')]),
@@ -80,6 +120,11 @@ const REACTION_LIST: SegmentDef[] = [
 ];
 
 const REACTIONS = Object.fromEntries(REACTION_LIST.map((s) => [s.id.slice(3), s])) as Record<BossReaction, SegmentDef>;
+
+/** Réaction jouée : LE SIP a ses micro-variantes (graine du book) ; les autres réactions sont uniques. */
+function reactionFor(r: BossReaction, seed: number): SegmentDef {
+  return r === 'SIP' ? sipVariant(seed) : REACTIONS[r];
+}
 
 const REACTION_POOLS: Record<ResultClass, readonly BossReaction[]> = {
   MISS: ['SIP', 'LAUGH', 'FLEX'],
@@ -185,7 +230,8 @@ const ELEV_WAIT = paced(0.75, seg('ELEV_WAIT', 'twist', 1000, 'compress', [
   tw(0, 'camera', { x: 800, y: 350, sx: 1.1 }, 420, 'inOutQuad'),
   silence(0, 800), state(100, 'elevator', 'moving'),
   sound(260, 'elevator', 1.3), sound(460, 'elevator', 1.15), sound(660, 'elevator', 1.0),
-  state(860, 'elevator', 'arrived'), sound(880, 'ding', 0.8),
+  // Carillon d'arrivée (`bell`) : ce n'est PAS le DING de gain (il sonne aussi quand B.B. sort intact).
+  state(860, 'elevator', 'arrived'), sound(880, 'bell'),
 ]));
 
 const ELEV_SAFE = paced(0.82, seg('ELEV_SAFE', 'action', 1100, 'compress', [
@@ -211,6 +257,12 @@ const ELEV_GOLD = seg('ELEV_GOLD', 'twist', 700, 'compress', [
 // ------------------------------------------------------------------ RUNNING GAG : LE SIP (ne veut PAS dire « perdu »)
 
 const SIP_BEAT = paced(0.6, seg('SIP_BEAT', 'twist', 900, 'compress', [anim(0, 'boss', 'sip'), sound(720, 'sip')]));
+/** Variantes du temps mort « LE SIP » (même durée, même pose ; seuls les sons changent — jamais un indice). */
+const SIP_BEAT_VARIANTS: readonly SegmentDef[] = [
+  SIP_BEAT,
+  paced(0.6, seg('SIP_BEAT', 'twist', 900, 'compress', [anim(0, 'boss', 'sip'), sound(720, 'sip', 1.05), sound(880, 'clink', 0.8)])),
+  paced(0.6, seg('SIP_BEAT', 'twist', 900, 'compress', [anim(0, 'boss', 'sip'), silence(0, 900)])),
+];
 /** Le mug est vide. Il regarde dedans… (la suite peut être un gain comme une perte). */
 const SIP_EMPTY = paced(0.7, seg('SIP_EMPTY', 'twist', 650, 'compress', [
   state(0, 'boss', 'mug=empty'), anim(0, 'boss', 'mugcheck'), sound(180, 'hmpf', 1.35), silence(0, 500),
@@ -222,7 +274,8 @@ const SIP_SMUG = seg('SIP_SMUG', 'action', 700, 'compress', [
 export const LIBRARY: ContentLibrary = {
   segments: segments([...REACTION_LIST, COO_CAMEO, BF_ENTRY_MUG, BF_ARENA, ELEV_WAIT, ELEV_SAFE, ELEV_WRECK, ELEV_MEGA, ELEV_GOLD, SIP_BEAT, SIP_EMPTY, SIP_SMUG]),
   impact: impactSegment,
-  reaction: (r) => REACTIONS[r],
+  reaction: reactionFor,
+  variant: (id, seed) => (id === 'SIP_BEAT' ? SIP_BEAT_VARIANTS[createRng(seed, 'sipbeat').int(SIP_BEAT_VARIANTS.length)] ?? null : null),
   reactionPool: (c) => REACTION_POOLS[c],
   awayPool: AWAY_POOL,
   bossFight: bossFightSegments,
