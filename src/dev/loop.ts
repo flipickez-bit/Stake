@@ -6,7 +6,8 @@ import type { GameFlow } from '../flow/GameFlow';
 import { RAGE_LEVEL_IDS, type RageLevelId } from '../domain/types';
 import type { Presenter } from '../presenter/Presenter';
 import { cryptoRandom, type ForcedOutcome, type RandomSource } from '../platform/rgs/mock/mockMath';
-import { makeDevRound } from './devOutcomes';
+import { PLAN_SLOTS } from '../domain/plans';
+import { makeDevPlanRound, makeDevRound } from './devOutcomes';
 import type { PerfMeter } from './perf';
 
 export interface LoopOptions {
@@ -18,6 +19,11 @@ export interface LoopOptions {
   shouldStop?: () => boolean;
   /** Relevé mémoire toutes les N manches (0 = aucun). Force un GC si le navigateur l'expose (--js-flags=--expose-gc). */
   sampleEvery?: number;
+  /**
+   * PRODUCTION 3 GADGETS : manches A2 (triple + plan), plans A → B → C à tour de rôle pour chaque Rage Level.
+   * Ignoré si `forced` est donné (résultat imposé : mode classique).
+   */
+  plans?: boolean;
   /** Compteurs de la scène (nœuds, textures) pour les relevés. */
   sceneStats?: () => { displayObjects: number; textures: number };
 }
@@ -105,7 +111,11 @@ export async function runLoop(
       break;
     }
     try {
-      const round = makeDevRound(level, options.forced, rnd, `LOOP-${String(i + 1).padStart(3, '0')}`);
+      const id = `LOOP-${String(i + 1).padStart(3, '0')}`;
+      const perLevel = options.level === 'all' ? Math.floor(i / RAGE_LEVEL_IDS.length) : i;
+      const round = options.plans && !options.forced
+        ? makeDevPlanRound(level, PLAN_SLOTS[perLevel % PLAN_SLOTS.length]!, rnd, id)
+        : makeDevRound(level, options.forced, rnd, id);
       await flow.replayRound(round);
       const snap = flow.snapshot;
       if (snap.revealed?.roundId === round.roundId) revealed++;

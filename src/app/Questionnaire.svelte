@@ -1,12 +1,16 @@
 <script lang="ts">
-  import { PLAYTEST_FREE_QUESTION, PLAYTEST_NA_LABEL, PLAYTEST_QUESTIONS, PLAYTEST_WISH_QUESTION, type PlaytestAnswers } from '../dev/playtest';
+  import { PLAYTEST3_FAVORITE_QUESTION, PLAYTEST_FREE_QUESTION, PLAYTEST_NA_LABEL, PLAYTEST_QUESTIONS, PLAYTEST_WISH_QUESTION, type PlaytestAnswers } from '../dev/playtest';
 
-  let { onSubmit }: { onSubmit: (answers: PlaytestAnswers | null) => void } = $props();
+  // PLAYTEST #3 : `questions` = les 8 du protocole + 3 sur les gadgets (mode 3 gadgets) ; `plans` ajoute la question libre du gadget préféré.
+  let { onSubmit, questions = PLAYTEST_QUESTIONS, plans = false }: { onSubmit: (answers: PlaytestAnswers | null) => void; questions?: readonly string[]; plans?: boolean } = $props();
 
-  let scores = $state<(number | null)[]>(PLAYTEST_QUESTIONS.map(() => null));
-  let notSeen = $state<boolean[]>(PLAYTEST_QUESTIONS.map(() => false));
+  // svelte-ignore state_referenced_locally
+  let scores = $state<(number | null)[]>(questions.map(() => null));
+  // svelte-ignore state_referenced_locally
+  let notSeen = $state<boolean[]>(questions.map(() => false));
   let memorable = $state('');
   let wish = $state('');
+  let favorite = $state('');
   const complete = $derived(scores.every((s, i) => s !== null || notSeen[i]));
 </script>
 
@@ -15,13 +19,13 @@
     class="panel"
     onsubmit={(e) => {
       e.preventDefault();
-      if (complete) onSubmit({ scores: scores.map((x, i) => (notSeen[i] ? null : x)), memorable, wish });
+      if (complete) onSubmit({ scores: scores.map((x, i) => (notSeen[i] ? null : x)), memorable, wish, ...(plans ? { favorite } : {}) });
     }}
   >
     <h2 id="pt-q-title">Session terminée</h2>
-    <p class="intro">{PLAYTEST_QUESTIONS.length} affirmations. Note chacune selon ce que tu as ressenti pendant ces 50 manches.</p>
+    <p class="intro">{questions.length} affirmations. Note chacune selon ce que tu as ressenti pendant ces 50 manches.</p>
     <p class="scale"><span>1 = pas du tout d'accord</span><span>5 = tout à fait d'accord</span></p>
-    {#each PLAYTEST_QUESTIONS as q, i (i)}
+    {#each questions as q, i (i)}
       <fieldset>
         <legend>{i + 1}. {q}</legend>
         <div class="scores">
@@ -41,6 +45,10 @@
     <textarea id="pt-memorable" bind:value={memorable} maxlength="1000" rows="3" data-testid="q-memorable"></textarea>
     <label class="free" for="pt-wish">{PLAYTEST_WISH_QUESTION} <small>(facultatif)</small></label>
     <textarea id="pt-wish" bind:value={wish} maxlength="1000" rows="2" data-testid="q-wish"></textarea>
+    {#if plans}
+      <label class="free" for="pt-favorite">{PLAYTEST3_FAVORITE_QUESTION} <small>(facultatif)</small></label>
+      <textarea id="pt-favorite" bind:value={favorite} maxlength="1000" rows="2" data-testid="q-favorite"></textarea>
+    {/if}
     <div class="buttons">
       <button type="submit" class="primary" disabled={!complete} data-testid="q-submit">Enregistrer les réponses</button>
       <button type="button" onclick={() => onSubmit(null)} data-testid="q-skip">Passer</button>

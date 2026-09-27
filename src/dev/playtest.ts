@@ -1,5 +1,7 @@
 /**
- * PLAYTEST 50 — LOCAL DEV ONLY.
+ * PLAYTEST 50 — LOCAL DEV ONLY. (PLAYTEST #3 : même protocole ; en mode « 3 gadgets », le plan et le gadget de chaque
+ * manche, les changements de gadget et l'usage de REVEAL OTHER PLANS sont mesurés, et 3 affirmations + 1 question
+ * libre s'ajoutent à la fin. En mode classique, rien ne change : les sessions restent comparables aux PLAYTEST #1/#2.)
  * Enregistre localement (localStorage de CE navigateur) des sessions de 50 manches jouées avec le Mock RGS,
  * puis un questionnaire (8 affirmations + 2 champs libres) À LA FIN uniquement. Rien n'est envoyé nulle part : l'export
  * (copier / fichier) est un geste volontaire. Toute collecte future auprès de vrais joueurs devra être
@@ -7,6 +9,7 @@
  */
 import { meltdownProgress } from '../collection/rewards';
 import type { Progress, SectionId } from '../collection/types';
+import type { PlanSlot } from '../domain/plans';
 import type { RageLevelId, ResultClass, Speed } from '../domain/types';
 import type { RoundRecord } from '../flow/GameFlow';
 import type { KeyValueStore } from '../platform/storage';
@@ -34,6 +37,23 @@ export const PLAYTEST_NA_LABEL: Readonly<Record<number, string>> = {
   7: "Je n'ai pas ouvert la collection",
 };
 export const PLAYTEST_NA_ALLOWED: readonly number[] = Object.keys(PLAYTEST_NA_LABEL).map(Number);
+
+/**
+ * PLAYTEST #3 (mode « 3 gadgets » seulement) : affirmations ajoutées après les 8 premières (mêmes notes de 1 à 5).
+ * La 11e mesure une IMPRESSION (les maths A2 sont symétriques : aucun gadget ne rapporte plus) ; une note basse est
+ * le résultat attendu. Formulations neutres : aucune promesse, aucun vocabulaire de chance.
+ */
+export const PLAYTEST3_QUESTIONS = [
+  "Les trois gadgets d'un même Rage Level m'ont semblé aussi intéressants les uns que les autres.",
+  "J'ai aimé choisir mon gadget avant chaque tir.",
+  "J'ai eu l'impression qu'un des gadgets rapportait plus que les autres.",
+] as const;
+export const PLAYTEST3_FAVORITE_QUESTION = 'Quel gadget as-tu préféré, et pourquoi ?';
+
+/** Affirmations d'une session : les 8 du protocole, plus celles du PLAYTEST #3 si la session se jouait avec les plans. */
+export function questionsFor(session: Pick<PlaytestSession, 'plans'> | null): readonly string[] {
+  return session?.plans ? [...PLAYTEST_QUESTIONS, ...PLAYTEST3_QUESTIONS] : PLAYTEST_QUESTIONS;
+}
 export const PLAYTEST_FREE_QUESTION = 'Quel moment t\'a le plus marqué ?';
 export const PLAYTEST_WISH_QUESTION = 'Quel élément voudrais-tu débloquer en complétant une collection ?';
 
@@ -70,6 +90,8 @@ export interface PlaytestRound {
   newVariant?: boolean;
   /** COLLECTION BOOK : cette manche a ajouté une carte (badge NEW). Absent avant la Phase 0.5C. */
   discovered?: boolean;
+  /** PLAYTEST #3 : plan payé (A / B / C) selon le serveur ; absent en mode classique. */
+  plan?: PlanSlot | null;
 }
 
 /**
@@ -126,6 +148,8 @@ export interface PlaytestAnswers {
   memorable: string;
   /** « Quel élément voudrais-tu débloquer… » (facultatif). Absent avant la Phase 0.5C. */
   wish?: string;
+  /** PLAYTEST #3 : « Quel gadget as-tu préféré, et pourquoi ? » (facultatif, mode 3 gadgets). */
+  favorite?: string;
 }
 
 export interface PlaytestSession {
@@ -144,6 +168,10 @@ export interface PlaytestSession {
   /** Manches jouées volontairement après la 50e, sans aucune incitation (même navigateur). */
   extraRounds: number;
   collection?: PlaytestCollectionStats;
+  /** PLAYTEST #3 : la session se joue en choisissant un gadget parmi 3 (Mock). Absent avant le PLAYTEST #3. */
+  plans?: boolean;
+  /** PLAYTEST #3 : ouvertures de REVEAL OTHER PLANS pendant les 50 manches (jamais proposé en PRIVATE). */
+  otherPlans?: { opens: number; afterLoss: number; afterWin: number };
 }
 
 export interface PlaytestState {
@@ -198,7 +226,7 @@ export class PlaytestRecorder {
     return () => this.listeners.delete(fn);
   }
 
-  start(device: PlaytestSession['device'], collection: Progress | null = null): void {
+  start(device: PlaytestSession['device'], collection: Progress | null = null, options: { plans?: boolean } = {}): void {
     const session: PlaytestSession = {
       id: `PT-${this.now().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}`,
       contentVersion: this.contentVersion,
@@ -211,6 +239,7 @@ export class PlaytestRecorder {
       answers: null,
       questionnaireSkipped: false,
       extraRounds: 0,
+      ...(options.plans ? { plans: true, otherPlans: { opens: 0, afterLoss: 0, afterWin: 0 } } : {}),
       ...(collection
         ? {
             collection: {
@@ -278,6 +307,15 @@ export class PlaytestRecorder {
         },
       },
     };
+    this.save();
+  }
+
+  /** PLAYTEST #3 : REVEAL OTHER PLANS ouvert (après une perte ou un gain) pendant les 50 manches. Aucune autre conséquence. */
+  markOtherPlansOpened(win: boolean): void {
+    const s = this.state.current;
+    if (s?.status !== 'playing' || !s.otherPlans) return;
+    const o = s.otherPlans;
+    this.state = { ...this.state, current: { ...s, otherPlans: { opens: o.opens + 1, afterLoss: o.afterLoss + (win ? 0 : 1), afterWin: o.afterWin + (win ? 1 : 0) } } };
     this.save();
   }
 
@@ -364,6 +402,7 @@ export class PlaytestRecorder {
       newBranch: branch !== null && !s.rounds.some((x) => x.branch === branch),
       newVariant: variant !== null && !s.rounds.some((x) => (x.variant ?? x.branch) === variant),
       ...(s.collection ? { discovered: this.state.pendingDiscovery === true } : {}),
+      ...(s.plans ? { plan: r.plans?.selected ?? null } : {}),
     };
     const rounds = [...s.rounds, round];
     const full = rounds.length >= PLAYTEST_TARGET;
@@ -386,7 +425,7 @@ export class PlaytestRecorder {
       status: 'done',
       answers: answers
         ? {
-            scores: PLAYTEST_QUESTIONS.map((_q, i) => {
+            scores: questionsFor(s).map((_q, i) => {
               const x = answers.scores[i];
               // Jamais de note inventée : une réponse absente reste absente (l'UI ne permet « pas rencontré » que pour Q5).
               if (x === null || x === undefined) return null;
@@ -394,6 +433,7 @@ export class PlaytestRecorder {
             }),
             memorable: answers.memorable.trim().slice(0, 1000),
             wish: (answers.wish ?? '').trim().slice(0, 1000),
+            ...(s.plans ? { favorite: (answers.favorite ?? '').trim().slice(0, 1000) } : {}),
           }
         : null,
       questionnaireSkipped: answers === null,
@@ -409,6 +449,8 @@ export class PlaytestRecorder {
         questions: PLAYTEST_QUESTIONS,
         freeQuestion: PLAYTEST_FREE_QUESTION,
         wishQuestion: PLAYTEST_WISH_QUESTION,
+        playtest3Questions: PLAYTEST3_QUESTIONS,
+        favoriteQuestion: PLAYTEST3_FAVORITE_QUESTION,
         sessions,
         summaries: sessions.map((x) => ({ id: x.id, ...summarize(x) })),
       },
@@ -464,6 +506,18 @@ export interface PlaytestSummary {
   /** Ouvertures de l'album suivies d'une manche, et combien de fois cette manche a changé de Rage Level. */
   levelChangesAfterOpen: { opens: number; changed: number } | null;
   extraRounds: number;
+  /** PLAYTEST #3 (null en mode classique) : manches par gadget, changements de gadget dans un même niveau, REVEAL OTHER PLANS. */
+  gadgets: {
+    byGadget: Record<string, number>;
+    byPlan: Record<string, number>;
+    /** Gadgets différents joués (sur 9). */
+    distinct: number;
+    /** Manche suivante au même Rage Level avec un autre gadget. */
+    switchesSameLevel: number;
+    /** Manche suivante au même Rage Level avec le même gadget (rejouer = un geste). */
+    repeatsSameLevel: number;
+    otherPlans: { opens: number; afterLoss: number; afterWin: number };
+  } | null;
 }
 
 const median = (xs: number[]): number | null => {
@@ -531,5 +585,32 @@ export function summarize(session: PlaytestSession): PlaytestSummary {
         )
       : null,
     extraRounds: session.extraRounds,
+    gadgets: session.plans ? gadgetStats(session) : null,
+  };
+}
+
+function gadgetStats(session: PlaytestSession): NonNullable<PlaytestSummary['gadgets']> {
+  const byGadget: Record<string, number> = {};
+  const byPlan: Record<string, number> = {};
+  let switches = 0;
+  let repeats = 0;
+  session.rounds.forEach((r, i) => {
+    const g = r.gadget ?? '—';
+    byGadget[g] = (byGadget[g] ?? 0) + 1;
+    const plan = r.plan ?? '—';
+    byPlan[plan] = (byPlan[plan] ?? 0) + 1;
+    const prev = session.rounds[i - 1];
+    if (prev && prev.level === r.level) {
+      if (prev.gadget !== r.gadget) switches++;
+      else repeats++;
+    }
+  });
+  return {
+    byGadget,
+    byPlan,
+    distinct: Object.keys(byGadget).filter((g) => g !== '—').length,
+    switchesSameLevel: switches,
+    repeatsSameLevel: repeats,
+    otherPlans: session.otherPlans ?? { opens: 0, afterLoss: 0, afterWin: 0 },
   };
 }

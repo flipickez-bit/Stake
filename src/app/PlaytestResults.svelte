@@ -1,6 +1,6 @@
 <script lang="ts">
   import { copyText, saveTextFile } from '../dev/exportFile';
-  import { PLAYTEST_QUESTIONS, summarize, type PlaytestRecorder, type PlaytestSession } from '../dev/playtest';
+  import { questionsFor, summarize, type PlaytestRecorder, type PlaytestSession } from '../dev/playtest';
 
   let { recorder, session, onClose, onPreviewBossFight }: { recorder: PlaytestRecorder; session: PlaytestSession; onClose: () => void; onPreviewBossFight: () => void } = $props();
 
@@ -45,8 +45,15 @@
           <tr><td>Nouvelles animations découvertes</td><td>{summary.collection.discoveries}</td></tr>
           <tr><td>Ouvertures de la collection</td><td>{summary.collection.opens}</td></tr>
         {/if}
+        {#if summary.gadgets}
+          <!-- PLAYTEST #3 : gadgets joués, changements, REVEAL OTHER PLANS. -->
+          <tr><td>Gadgets joués (sur 9)</td><td data-testid="pt-gadgets">{summary.gadgets.distinct}</td></tr>
+          <tr><td>Plans A / B / C</td><td>{summary.gadgets.byPlan.A ?? 0} / {summary.gadgets.byPlan.B ?? 0} / {summary.gadgets.byPlan.C ?? 0}</td></tr>
+          <tr><td>Même niveau : autre gadget / même gadget</td><td>{summary.gadgets.switchesSameLevel} / {summary.gadgets.repeatsSameLevel}</td></tr>
+          <tr><td>REVEAL OTHER PLANS (après perte / gain)</td><td data-testid="pt-otherplans">{summary.gadgets.otherPlans.opens} ({summary.gadgets.otherPlans.afterLoss} / {summary.gadgets.otherPlans.afterWin})</td></tr>
+        {/if}
         {#if session.answers}
-          {#each PLAYTEST_QUESTIONS as q, i (i)}<tr><td>Q{i + 1}</td><td>{session.answers.scores[i] === null ? (i === 7 ? 'collection non ouverte' : 'pas rencontré') : `${session.answers.scores[i]} / 5`}</td></tr>{/each}
+          {#each questionsFor(session) as q, i (i)}<tr><td>Q{i + 1}</td><td>{session.answers.scores[i] === null ? (i === 7 ? 'collection non ouverte' : 'pas rencontré') : `${session.answers.scores[i]} / 5`}</td></tr>{/each}
         {:else}
           <tr><td>Questionnaire</td><td>passé</td></tr>
         {/if}

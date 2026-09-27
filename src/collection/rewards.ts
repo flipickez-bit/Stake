@@ -7,6 +7,7 @@
 import { gadgetById } from '../content/gadgets';
 import { PLAN_SETS } from '../domain/plans';
 import { RAGE_LEVEL_IDS } from '../domain/types';
+import type { GadgetDef } from '../presentation/types';
 import type { Catalog, CollectionState, CosmeticDef, CosmeticId, CosmeticSlot, MilestoneDef, MilestoneRule, Progress, SectionId } from './types';
 
 export const COSMETICS: readonly CosmeticDef[] = [
@@ -40,8 +41,17 @@ export const MELTDOWN_GADGETS: readonly { gadgetId: string; level: (typeof RAGE_
 );
 export const MELTDOWN_RULE = { kind: 'perGadget', gadgets: MELTDOWN_GADGETS, n: MELTDOWN_PER_GADGET } as const satisfies MilestoneRule;
 
-/** Ancienne règle (P05-C, 3 gadgets) : ≥ 8 découvertes dans chaque Rage Level. Conservée pour les rapports. */
+/**
+ * Règle historique (P05-C) : ≥ 8 découvertes dans chaque Rage Level. C'est la règle du MODE CLASSIQUE (un gadget par
+ * niveau : Stake tant qu'A2 n'est pas confirmée, ou ?plans=off), où les 9 gadgets n'existent pas.
+ */
 export const LEGACY_MELTDOWN_RULE = { kind: 'perSection', sections: ['grumpy', 'furious', 'unhinged'], n: 8 } as const satisfies MilestoneRule;
+
+/** Règle d'OFFICE MELTDOWN pour un ensemble de gadgets jouables : les 9 → règle par gadget ; sinon règle historique. */
+export function meltdownRuleFor(gadgets: readonly Pick<GadgetDef, 'id'>[]): MilestoneRule {
+  const ids = new Set(gadgets.map((g) => g.id));
+  return MELTDOWN_GADGETS.every((g) => ids.has(g.gadgetId as GadgetDef['id'])) ? MELTDOWN_RULE : LEGACY_MELTDOWN_RULE;
+}
 
 /**
  * Jalons. OFFICE MELTDOWN : ≥ 3 découvertes avec chacun des 9 gadgets (les cartes BOSS FIGHT ne sont pas requises).
@@ -61,6 +71,11 @@ export const MILESTONES: readonly MilestoneDef[] = [
   { id: 'full-mvp', label: '100 % COLLECTION', rule: { kind: 'all' }, rewards: ['trophy.collector', 'album.hallofshame'] },
 ];
 
+/** Jalons avec la règle d'OFFICE MELTDOWN du catalogue (mêmes identifiants, mêmes récompenses). */
+export function milestonesFor(meltdown: MilestoneRule): readonly MilestoneDef[] {
+  return meltdown === MELTDOWN_RULE ? MILESTONES : MILESTONES.map((m) => (m.id === 'explorer' ? { ...m, rule: meltdown } : m));
+}
+
 export function progress(state: CollectionState, catalog: Catalog): Progress {
   const bySection = {} as Progress['bySection'];
   const byGadget: Progress['byGadget'] = {};
@@ -77,7 +92,7 @@ export function progress(state: CollectionState, catalog: Catalog): Progress {
       if (s) s.discovered++;
     }
   }
-  return { discovered, total: catalog.cards.length, bySection, byGadget };
+  return { discovered, total: catalog.cards.length, bySection, byGadget, meltdown: catalog.meltdown };
 }
 
 /** Compteur d'un jalon, pour l'affichage : un fait (« 23 / 25 »), jamais une promesse. */
@@ -120,12 +135,24 @@ export function gadgetCounters(rule: Extract<MilestoneRule, { kind: 'perGadget' 
 
 /** Progression vers OFFICE MELTDOWN (affichage REWARDS, mesures du PLAYTEST). */
 export function meltdownProgress(p: Progress) {
-  const byGadget = gadgetCounters(MELTDOWN_RULE, p);
+  const rule = p.meltdown;
+  const { current, target } = milestoneCounter(rule, p);
+  if (rule.kind === 'perSection') {
+    // Mode classique : une ligne par Rage Level (« GRUMPY 6 / 8 »).
+    const bySection = sectionCounters(rule, p);
+    const count = (id: SectionId) => bySection.find((c) => c.section === id)?.current ?? 0;
+    return {
+      grumpy: count('grumpy'), furious: count('furious'), unhinged: count('unhinged'),
+      current, required: target, unlocked: bySection.every((c) => c.done), byGadget: [] as ReturnType<typeof gadgetCounters>, bySection,
+      gadgetsDone: 0,
+    };
+  }
+  const perGadget = rule.kind === 'perGadget' ? rule : MELTDOWN_RULE;
+  const byGadget = gadgetCounters(perGadget, p);
   const count = (id: SectionId) => byGadget.filter((c) => c.level === id).reduce((a, c) => a + c.current, 0);
-  const { current, target } = milestoneCounter(MELTDOWN_RULE, p);
   return {
     grumpy: count('grumpy'), furious: count('furious'), unhinged: count('unhinged'),
-    current, required: target, unlocked: byGadget.every((c) => c.done), byGadget,
+    current, required: target, unlocked: byGadget.every((c) => c.done), byGadget, bySection: [] as ReturnType<typeof sectionCounters>,
     gadgetsDone: byGadget.filter((c) => c.done).length,
   };
 }
@@ -140,7 +167,7 @@ export function ruleMet(rule: MilestoneRule, p: Progress): boolean {
 /** Jalons atteints avec cet état et pas encore enregistrés. */
 export function newlyReached(state: CollectionState, catalog: Catalog): MilestoneDef[] {
   const p = progress(state, catalog);
-  return MILESTONES.filter((m) => state.milestones[m.id] === undefined && ruleMet(m.rule, p));
+  return milestonesFor(catalog.meltdown).filter((m) => state.milestones[m.id] === undefined && ruleMet(m.rule, p));
 }
 
 export function unlockedCosmetics(state: CollectionState): CosmeticDef[] {

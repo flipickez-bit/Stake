@@ -17,7 +17,7 @@ import type { ActorFrame, FrameState } from '../presentation/timeline';
 import type { ActorId, GadgetDef } from '../presentation/types';
 import type { SceneSink } from '../presenter/Presenter';
 import { loadTextures } from './art/atlas';
-import { PLAN_BOOK, scaledBooks } from './art/books';
+import { DEFERRED_BOOKS, PLAN_BOOK, scaledBooks } from './art/books';
 import { BossRig, CHAIR_SCALE } from './art/BossRig';
 import { CooRig, HandsRig, WendellRig } from './art/castRigs';
 import { ArtKit } from './art/kit';
@@ -212,14 +212,27 @@ export class PixiStage implements SceneSink {
   private trapView: Container | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private worldLevel: RageLevelId = 'grumpy';
+  /**
+   * Transition de monde (rendu seulement, 500 ms d'horloge de présentation) : GRUMPY→FURIOUS dégradation,
+   * →UNHINGED chaos, retour vers un niveau plus calme : nettoyage cartoon. Le nouvel habillage s'applique à mi-course.
+   */
+  private transition: { kind: 'degrade' | 'chaos' | 'cleanup'; to: RageLevelId; start: number | null; applied: boolean } | null = null;
+  private readonly transitionFx = new Graphics();
+  private readonly transitionPapers: Sprite[] = [];
+  private started = false;
+  /** Scène hors écran (vignettes) : jamais de transition (chaque vignette doit montrer son monde tout de suite). */
+  private offscreen = false;
   /** DEV (concepts, captures) : impose l'habillage d'un monde, quel que soit le gadget. */
   worldOverride: RageLevelId | null = null;
+  /** Livres différés (FURIOUS, UNHINGED, plans B/C) arrivés : attendu avant la première manche. */
+  artReady: Promise<void> = Promise.resolve();
 
   /**
    * `offscreen` : scène secondaire (vignettes du COLLECTION BOOK) — tampon conservé pour la lecture des pixels,
    * résolution 1, pas d'identifiant de test.
    */
   async init(host: HTMLElement, options: { offscreen?: boolean; plans?: boolean } = {}): Promise<void> {
+    this.offscreen = options.offscreen === true;
     await this.app.init({
       background: hex('ink'),
       antialias: true,
@@ -234,11 +247,18 @@ export class PixiStage implements SceneSink {
     host.appendChild(this.app.canvas);
     if (!options.offscreen) this.app.canvas.setAttribute('data-testid', 'stage');
     // Vignettes (hors écran) : atlas à demi-densité, largement suffisants pour une carte de 320 px.
-    // POC « 3 PLANS » : petite page d'atlas des prototypes B et C, chargée seulement dans ce mode.
+    // Plans B/C : petite page d'atlas des gadgets posés sur le bureau du joueur, chargée seulement dans ce mode.
     const books = scaledBooks(options.offscreen ? 0.5 : 1);
-    const { textures } = await loadTextures(options.plans ? [...books, PLAN_BOOK] : books);
-    this.kit = new ArtKit(textures);
+    const all = options.plans ? [...books, PLAN_BOOK] : [...books];
+    // LOT 6 (perf) : la scène de jeu se construit avec les livres de base (bureau, personnages, décor) ; les livres
+    // d'un Rage Level (FURIOUS, UNHINGED) et des plans B/C arrivent juste après, en arrière-plan (`artReady`).
+    // Les vignettes chargent tout d'un coup (elles photographient n'importe quel monde tout de suite).
+    const deferred = options.offscreen ? [] : all.filter((b) => DEFERRED_BOOKS.has(b.id));
+    const { textures } = await loadTextures(all.filter((b) => !deferred.includes(b)));
+    this.kit = new ArtKit(textures, deferred.flatMap((b) => b.parts));
     this.build(this.kit);
+    const kit = this.kit;
+    this.artReady = deferred.length ? loadTextures(deferred).then(({ textures: more }) => kit.provide(more)) : Promise.resolve();
     this.resize();
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(host);
@@ -514,7 +534,13 @@ export class PixiStage implements SceneSink {
     this.alarm = new Graphics().rect(0, 0, 16, 16).fill(hex('alarm'));
     this.alarm.blendMode = 'add';
     this.alarm.visible = false;
-    this.screen.addChild(this.alarm, this.vignette);
+    this.screen.addChild(this.alarm, this.vignette, this.transitionFx);
+    for (let i = 0; i < 10; i++) {
+      const p = kit.sprite('fx_paper');
+      p.visible = false;
+      this.screen.addChild(p);
+      this.transitionPapers.push(p);
+    }
     this.applyWorld('grumpy');
   }
 
@@ -868,7 +894,64 @@ export class PixiStage implements SceneSink {
       if (v) v.visible = this.gadgetProps.has(id);
     }
     const level = this.worldOverride ?? gadget.rageLevel;
-    if (level !== this.worldLevel) this.applyWorld(level);
+    const target = this.transition?.to ?? this.worldLevel;
+    if (level !== target) {
+      if (!this.started || this.worldOverride || this.offscreen) this.applyWorld(level);
+      else {
+        const order: RageLevelId[] = ['grumpy', 'furious', 'unhinged'];
+        const up = order.indexOf(level) > order.indexOf(target);
+        this.transition = { kind: !up ? 'cleanup' : level === 'unhinged' ? 'chaos' : 'degrade', to: level, start: null, applied: false };
+      }
+    }
+  }
+
+  /** Transition de monde en cours (rendu seulement ; fonction de l'horloge de présentation). */
+  private drawTransition(frame: FrameState): { dx: number; dy: number; rot: number } {
+    const tr = this.transition;
+    const g = this.transitionFx;
+    g.clear();
+    for (const p of this.transitionPapers) p.visible = false;
+    if (!tr) return { dx: 0, dy: 0, rot: 0 };
+    if (tr.start === null || frame.clock < tr.start) tr.start = frame.clock;
+    const k = Math.min(1, (frame.clock - tr.start) / 500);
+    if (!tr.applied && k >= 0.5) {
+      tr.applied = true;
+      this.applyWorld(tr.to);
+    }
+    const w = this.width;
+    const h = this.height;
+    const bump = Math.sin(Math.PI * k);
+    let dx = 0;
+    let dy = 0;
+    let rot = 0;
+    if (tr.kind === 'degrade') {
+      // Dégradation : bouffée chaude, papiers qui tombent, secousse.
+      g.rect(0, 0, w, h).fill({ color: hex('dusk'), alpha: 0.45 * bump });
+      this.transitionPapers.forEach((p, i) => {
+        p.visible = true;
+        p.position.set(((i * 97) % 10) * (w / 10) + 20, -40 + k * (h + 80) * (0.6 + ((i * 37) % 5) / 10));
+        p.rotation = k * 6 + i;
+        p.alpha = bump;
+        p.scale.set(1.4);
+      });
+      dx = Math.sin(frame.clock / 18) * 6 * bump;
+      rot = 0.012 * Math.sin(frame.clock / 40) * bump;
+    } else if (tr.kind === 'chaos') {
+      // Chaos : deux coupures de courant (≤ 3 Hz), alarme rouge, secousse sèche.
+      const dark = (k > 0.18 && k < 0.3) || (k > 0.5 && k < 0.62) ? 0.7 : 0;
+      g.rect(0, 0, w, h).fill({ color: hex('nightDeep'), alpha: dark });
+      g.rect(0, 0, w, h).fill({ color: hex('alarm'), alpha: 0.28 * bump });
+      dy = Math.sin(frame.clock / 14) * 8 * bump;
+      rot = -0.018 * bump;
+    } else {
+      // Nettoyage cartoon : une bande « papier » balaie l'écran de gauche à droite, avec des éclats.
+      const x = -w * 0.3 + k * w * 1.6;
+      g.rect(x - w * 0.18, 0, w * 0.18, h).fill({ color: hex('paper'), alpha: 0.85 * bump });
+      g.rect(x - w * 0.24, 0, w * 0.05, h).fill({ color: hex('paper'), alpha: 0.4 * bump });
+      for (let i = 0; i < 6; i++) g.star(x + 6, (h / 6) * i + 30, 4, 8, 3).fill({ color: hex('skyLight'), alpha: bump });
+    }
+    if (k >= 1) this.transition = null;
+    return { dx, dy, rot };
   }
 
   /** DEV : habillage imposé (concepts). null : suit le gadget. */
@@ -919,6 +1002,8 @@ export class PixiStage implements SceneSink {
     this.drawParticles(frame);
     this.drawAmbient(frame);
     this.drawImpactFrame(frame);
+    this.started = true;
+    const jolt = this.drawTransition(frame);
 
     const cam = frame.camera;
     let base: number;
@@ -952,8 +1037,8 @@ export class PixiStage implements SceneSink {
     const s = base * cam.zoom;
     this.world.scale.set(s);
     this.world.pivot.set(camX, camY);
-    this.world.rotation = cam.rot;
-    this.world.position.set(this.width / 2 + cam.shakeX * base, this.height / 2 + cam.shakeY * base);
+    this.world.rotation = cam.rot + jolt.rot;
+    this.world.position.set(this.width / 2 + cam.shakeX * base + jolt.dx, this.height / 2 + cam.shakeY * base + jolt.dy);
   }
 
   private drawCable(frame: FrameState): void {

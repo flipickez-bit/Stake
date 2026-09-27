@@ -1,6 +1,7 @@
+import { MELTDOWN_RULE } from '../../src/collection/rewards';
 import { PLAN_SETS } from '../../src/domain/plans';
 import { describe, expect, it } from 'vitest';
-import { PLAYTEST_NA_ALLOWED, PLAYTEST_QUESTIONS, PLAYTEST_TARGET, PlaytestRecorder, outcomeOf, summarize } from '../../src/dev/playtest';
+import { PLAYTEST3_QUESTIONS, PLAYTEST_NA_ALLOWED, PLAYTEST_QUESTIONS, PLAYTEST_TARGET, PlaytestRecorder, outcomeOf, questionsFor, summarize } from '../../src/dev/playtest';
 import type { Progress } from '../../src/collection/types';
 import type { RoundRecord } from '../../src/flow/GameFlow';
 import { createMemoryStore } from '../../src/platform/storage';
@@ -22,6 +23,7 @@ const PG = (counts: readonly number[], b = 0): Progress => {
     total: 147,
     bySection: { grumpy: { discovered: lv.grumpy!, total: 46 }, furious: { discovered: lv.furious!, total: 41 }, unhinged: { discovered: lv.unhinged!, total: 42 }, bossfight: { discovered: b, total: 18 } },
     byGadget,
+    meltdown: MELTDOWN_RULE,
   };
 };
 const P = (g: number, f: number, u: number, b = 0): Progress => PG([g, 0, 0, f, 0, 0, u, 0, 0], b);
@@ -203,3 +205,53 @@ describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
     expect(summarize(p.current!).levelChangesAfterOpen).toBeNull();
   });
 });
+
+describe('PLAYTEST #3 (3 gadgets par Rage Level, LOCAL DEV ONLY)', () => {
+  const plansOf = (slot: 'A' | 'B' | 'C') => ({ selected: slot, selectedGadget: 'x', triple: [] }) as unknown as RoundRecord['plans'];
+
+  it('mode classique : protocole inchangé (8 affirmations, aucune donnée de gadget)', () => {
+    const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
+    p.start(DEVICE);
+    expect(questionsFor(p.current)).toEqual(PLAYTEST_QUESTIONS);
+    p.onRoundComplete(rec(1));
+    expect(p.current!.rounds[0]).not.toHaveProperty('plan');
+    expect(summarize(p.current!).gadgets).toBeNull();
+  });
+
+  it('mode 3 gadgets : 11 affirmations, plan par manche, changements de gadget, REVEAL OTHER PLANS, gadget préféré', () => {
+    const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
+    p.start(DEVICE, null, { plans: true });
+    expect(questionsFor(p.current)).toEqual([...PLAYTEST_QUESTIONS, ...PLAYTEST3_QUESTIONS]);
+    // GRUMPY : A, A, B ; puis FURIOUS : C.
+    p.onRoundComplete(rec(1, { level: 'grumpy', gadgetId: 'swivel-slingshot', plans: plansOf('A') }));
+    p.onRoundComplete(rec(2, { level: 'grumpy', gadgetId: 'swivel-slingshot', plans: plansOf('A') }));
+    p.onRoundComplete(rec(3, { level: 'grumpy', gadgetId: 'espresso-blaster', plans: plansOf('B') }));
+    p.markOtherPlansOpened(false);
+    p.markOtherPlansOpened(true);
+    p.onRoundComplete(rec(4, { level: 'furious', gadgetId: 'cooler-bowling', plans: plansOf('C') }));
+    expect(p.current!.rounds.map((r) => r.plan)).toEqual(['A', 'A', 'B', 'C']);
+    const g = summarize(p.current!).gadgets!;
+    expect(g.distinct).toBe(3);
+    expect(g.byPlan).toEqual({ A: 2, B: 1, C: 1 });
+    expect(g.repeatsSameLevel).toBe(1);
+    expect(g.switchesSameLevel).toBe(1);
+    expect(g.otherPlans).toEqual({ opens: 2, afterLoss: 1, afterWin: 1 });
+    for (let i = 5; i <= PLAYTEST_TARGET; i++) p.onRoundComplete(rec(i));
+    expect(p.current!.status).toBe('questionnaire');
+    // Hors session de jeu : REVEAL OTHER PLANS n'est plus compté.
+    p.markOtherPlansOpened(true);
+    expect(p.current!.otherPlans!.opens).toBe(2);
+    p.submitAnswers({ scores: Array.from({ length: 11 }, (_x, i) => (i % 5) + 1), memorable: ' Le coffre. ', wish: '', favorite: ' La bonbonne ! ' });
+    const done = p.snapshot.sessions[0]!;
+    expect(done.answers!.scores).toHaveLength(11);
+    expect(done.answers!.favorite).toBe('La bonbonne !');
+    const exported = JSON.parse(p.exportJson());
+    expect(exported.playtest3Questions).toHaveLength(3);
+    expect(exported.summaries[0].gadgets.distinct).toBeGreaterThanOrEqual(3);
+  });
+
+  it('formulations neutres : aucune promesse ni vocabulaire de chance dans les affirmations', () => {
+    for (const q of PLAYTEST3_QUESTIONS) expect(q).not.toMatch(/chance|lucky|jackpot|presque|almost/i);
+  });
+});
+

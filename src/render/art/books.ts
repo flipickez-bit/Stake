@@ -47,6 +47,12 @@ export const ART_BOOKS: readonly AtlasBook[] = [CHARACTER_BOOK, PROPS_BOOK, DECO
  */
 export const PLAN_BOOK: AtlasBook = { id: 'plans', scale: 1.5, maxPx: 1024, parts: PLAN_PARTS };
 
+/**
+ * LOT 6 (perf) : livres chargés APRÈS la construction de la scène de jeu (préchargement en arrière-plan, en
+ * parallèle de la connexion au RGS). La base (personnages, accessoires, décor, art doux) reste immédiate.
+ */
+export const DEFERRED_BOOKS: ReadonlySet<string> = new Set([FURIOUS_BOOK.id, UNHINGED_BOOK.id, PLAN_BOOK.id]);
+
 /** Même art à une autre densité (vignettes du COLLECTION BOOK : leur propre contexte WebGL, peu de pixels). */
 export function scaledBooks(k: number): readonly AtlasBook[] {
   return k === 1 ? ART_BOOKS : ART_BOOKS.map((b) => ({ ...b, id: `${b.id}@${k}`, scale: b.scale * k }));

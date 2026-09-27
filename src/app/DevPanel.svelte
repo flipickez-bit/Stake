@@ -3,7 +3,8 @@
   import { PLAN_SETS, planGadgetId } from '../domain/plans';
   /** DEV : tous les gadgets à N découvertes sauf le plan A de GRUMPY (N − 1) — le prochain pas débloque OFFICE MELTDOWN. */
   const meltdownMinusOne = () => Object.fromEntries(MELTDOWN_GADGETS.map((g, i) => [g.gadgetId, i === 0 ? MELTDOWN_PER_GADGET - 1 : MELTDOWN_PER_GADGET]));
-  import { GADGETS, gadgetFor } from '../content/gadgets';
+  import { GADGETS, gadgetFor, gadgetForPlan } from '../content/gadgets';
+  import { PLAN_SLOTS } from '../domain/plans';
   import { classify } from '../domain/resultClass';
   import { getRageLevel } from '../domain/rageLevels';
   import { RAGE_LEVEL_IDS, type RageLevelId, type Speed } from '../domain/types';
@@ -16,6 +17,7 @@
   import type { BranchDef } from '../presentation/types';
   import type { GameContext } from './bootstrap';
   import PocDevSection from './poc/PocDevSection.svelte';
+  import BranchFinder from './BranchFinder.svelte';
   import { formatBalance, formatX } from './format';
 
   let {
@@ -25,6 +27,7 @@
     onShowSession,
     onPreviewBossFight,
     onOpenCollection,
+    onOpenPocStudy,
   }: {
     ctx: GameContext;
     snap: FlowSnapshot;
@@ -32,6 +35,8 @@
     onShowSession: (id: string) => void;
     onPreviewBossFight: () => void;
     onOpenCollection: () => void;
+    /** Étude A/B du POC (PRIVATE vs ON-DEMAND, 2 × 30 manches) : outil DEV ; le bouton PLAYTEST lance le PLAYTEST #3. */
+    onOpenPocStudy?: () => void;
   } = $props();
   const { flow, presenter, mock, perf, stage, playtest } = $derived(ctx);
 
@@ -54,7 +59,8 @@
   let note = $state('');
 
   const level = $derived(snap.level);
-  const gadget = $derived(gadgetFor(level));
+  // Mode 3 gadgets : le gadget est celui du plan choisi (plan A par défaut) ; sinon le gadget classique du niveau.
+  const gadget = $derived(snap.plansEnabled ? gadgetForPlan(level, snap.plan ?? 'A') : gadgetFor(level));
   const ladder = $derived(getRageLevel(level).bossFightLadder);
   const multipliers = $derived(kind === 'RANDOM' || kind === 'BOSS_FIGHT' ? [] : forcibleMultipliers(level, kind));
   const targetClass = $derived(kind === 'BOSS_FIGHT' ? classify((ladder[rung] ?? 5) * 100) : kind === 'RANDOM' ? null : classify(Math.round(multiplier * 100)));
@@ -191,6 +197,8 @@
       count: loopCount,
       level: loopAll ? 'all' : level,
       forced: loopForced ? forced() : null,
+      // PRODUCTION 3 GADGETS : les 3 gadgets de chaque niveau à tour de rôle (A → B → C).
+      plans: snap.plansEnabled,
       onProgress: (d, n) => (loopProgress = `${d}/${n}`),
       shouldStop: () => loopStop,
       sampleEvery: loopCount >= 100 ? 50 : 0,
@@ -222,7 +230,14 @@
     <button class="x" onclick={onClose} aria-label="Close dev panel">✕</button>
   </header>
   {#if note}<p class="note">{note}</p>{/if}
+  {#if ctx.poc && mock}<BranchFinder {ctx} ready={snap.state === 'READY'} onArmed={(m) => (note = m)} />{/if}
   {#if ctx.poc && mock}<PocDevSection {ctx} />{/if}
+  {#if ctx.poc && mock && onOpenPocStudy}
+    <section>
+      <h3>POC A/B STUDY (PRIVATE vs ON-DEMAND)</h3>
+      <button onclick={onOpenPocStudy} disabled={snap.state !== 'READY'} data-testid="dev-poc-study">START A/B STUDY (2 × 30)</button>
+    </section>
+  {/if}
 
   <section>
     <h3>FORCE</h3>
@@ -232,7 +247,7 @@
       </select>
     </label>
     <label>GADGET
-      <select value={gadget.id} onchange={(e) => { const g = GADGETS.find((x) => x.id === (e.currentTarget as HTMLSelectElement).value); if (g) flow.setLevel(g.rageLevel); }} disabled={!ready}>
+      <select value={gadget.id} onchange={(e) => { const g = GADGETS.find((x) => x.id === (e.currentTarget as HTMLSelectElement).value); if (!g) return; flow.setLevel(g.rageLevel); if (flow.snapshot.plansEnabled) flow.setPlan(PLAN_SLOTS[PLAN_SETS[g.rageLevel].indexOf(g.id)] ?? 'A'); }} disabled={!ready}>
         {#each GADGETS as g (g.id)}<option value={g.id}>{g.label} ({g.rageLevel})</option>{/each}
       </select>
     </label>
@@ -406,7 +421,13 @@
         <button onclick={() => collection.unlockAll()} data-testid="dev-coll-all">UNLOCK ALL</button>
         <button onclick={() => collection.unlockRandom(10, cryptoRandom)} data-testid="dev-coll-random10">UNLOCK RANDOM 10</button>
         <button onclick={() => collection.setDiscoveredCount(collection.catalog.cards.length - 2, cryptoRandom)} data-testid="dev-coll-49">SET {collection.catalog.cards.length - 2}/{collection.catalog.cards.length}</button>
-        <button onclick={() => collection.setGadgetCounts(meltdownMinusOne(), cryptoRandom)} data-testid="dev-coll-788">SET MELTDOWN − 1 ({MELTDOWN_PER_GADGET} × 8 GADGETS, {MELTDOWN_PER_GADGET - 1} × GRUMPY A)</button>
+        {#if collection.catalog.meltdown.kind === 'perSection'}
+          <!-- Mode classique : règle historique (N par Rage Level). -->
+          {@const n = collection.catalog.meltdown.n}
+          <button onclick={() => collection.setSectionCounts({ grumpy: n - 1, furious: n, unhinged: n }, cryptoRandom)} data-testid="dev-coll-788">SET MELTDOWN − 1 ({n - 1} GRUMPY, {n} FURIOUS, {n} UNHINGED)</button>
+        {:else}
+          <button onclick={() => collection.setGadgetCounts(meltdownMinusOne(), cryptoRandom)} data-testid="dev-coll-788">SET MELTDOWN − 1 ({MELTDOWN_PER_GADGET} × 8 GADGETS, {MELTDOWN_PER_GADGET - 1} × GRUMPY A)</button>
+        {/if}
         <button onclick={() => collection.forceNewDiscovery(cryptoRandom, snap.level, snap.plan ? planGadgetId(snap.level, snap.plan) ?? undefined : PLAN_SETS[snap.level][0])} data-testid="dev-coll-new">FORCE NEW DISCOVERY</button>
         <button onclick={onOpenCollection} disabled={!ready} data-testid="dev-coll-view">VIEW COLLECTION</button>
       </div>

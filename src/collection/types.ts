@@ -37,6 +37,12 @@ export interface Catalog {
   cards: readonly CardDef[];
   byId: ReadonlyMap<CardId, CardDef>;
   sections: readonly SectionDef[];
+  /**
+   * Règle d'OFFICE MELTDOWN de CE catalogue : 3 gadgets par niveau → au moins N découvertes avec chacun des 9 gadgets ;
+   * mode classique (un gadget par niveau, seul mode possible sur Stake tant qu'A2 n'est pas confirmée) → règle
+   * historique par Rage Level. Jamais une règle impossible à remplir avec les gadgets réellement jouables.
+   */
+  meltdown: MilestoneRule;
 }
 
 export type DiscoverySource = 'play' | 'resume' | 'dev';
@@ -135,6 +141,8 @@ export interface Progress {
   total: number;
   bySection: Record<SectionId, { discovered: number; total: number }>;
   byGadget: Record<string, { discovered: number; total: number }>;
+  /** Règle d'OFFICE MELTDOWN du catalogue (voir Catalog.meltdown). */
+  meltdown: MilestoneRule;
 }
 
 export interface DiscoveryEvent {

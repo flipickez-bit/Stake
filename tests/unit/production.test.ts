@@ -2,22 +2,24 @@
  * PRODUCTION 3 GADGETS PAR RAGE LEVEL — garanties de contenu, de son, de collection et de sécurité (9 gadgets).
  * Complète variety.test.ts (prévisibilité, rythme) et poc3Security.test.ts (maths A2, GRUMPY).
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import policy from '../../config/presentation_policy.json';
 import { SOUND_KIT, variantOf, WIN_SOUNDS } from '../../src/audio/soundKit';
 import { buildCatalog } from '../../src/collection/catalog';
+import { COPY } from '../../src/collection/copy';
+import { LEGACY_MELTDOWN_RULE, MELTDOWN_RULE, meltdownProgress, milestonesFor, newlyReached, progress } from '../../src/collection/rewards';
 import { Collection } from '../../src/collection/Collection';
 import { MemoryCollectionStore } from '../../src/collection/store';
 import { attachCollectionTracker } from '../../src/collection/tracker';
-import { GADGETS, gadgetForPlan, pickerGadget, planGadgets, planReadyLevels, restLayout } from '../../src/content/gadgets';
+import { CLASSIC_GADGETS, GADGETS, gadgetForPlan, pickerGadget, planGadgets, planReadyLevels, restLayout } from '../../src/content/gadgets';
 import { LIBRARY } from '../../src/content/library';
 import { OFFICE_LAYOUT } from '../../src/content/office';
 import { multiplierFor, planForBranch } from '../../src/dev/forceBranch';
 import { parseRound, type Outcome } from '../../src/domain/outcome';
 import { PLAN_SETS, PLAN_SLOTS, type PlanSlot } from '../../src/domain/plans';
 import { classify } from '../../src/domain/resultClass';
-import { mulberry32 } from '../../src/domain/seed';
+import { hash32 as hashSeed, mulberry32 } from '../../src/domain/seed';
 import { RAGE_LEVEL_IDS, type RageLevelId, type ResultClass, type Script } from '../../src/domain/types';
 import { GameFlow, type FlowState } from '../../src/flow/GameFlow';
 import { plansRequested } from '../../src/app/pocConfig';
@@ -252,9 +254,21 @@ describe('SOUND KIT : règles de gain et déterminisme', () => {
       kinds.add(ids || 'silence');
       expect(LIBRARY.reaction('SIP', seed)).toBe(r);
     }
-    expect(kinds.size).toBeGreaterThanOrEqual(3);
-    expect(kinds.has('silence')).toBe(true);
+    // Les 4 variantes (gorgée + HMPF, gorgée + CLINK, grande gorgée, silence) sont toutes atteintes.
+    expect(kinds).toEqual(new Set(['sip+hmpf', 'sip+clink', 'gulp+hmpf', 'silence']));
     expect([...kinds].every((k) => !(k.includes('sip') && k.includes('clink') && k.includes('hmpf')))).toBe(true);
+  });
+
+  it('aucun Math.random() dans le code du jeu (sons, contenu, présentation, domaine, rendu, flux)', () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${dir}/${e.name}`) : [`${dir}/${e.name}`]));
+    const files = walk('src').filter((f) => /\.(ts|svelte)$/.test(f));
+    expect(files.length).toBeGreaterThan(50);
+    for (const f of files) {
+      // Les commentaires peuvent citer l'interdit ; le code, jamais.
+      const code = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+      expect(code.includes('Math.random'), f).toBe(false);
+    }
   });
 
   it('le carillon de l\'ascenseur n\'est pas le DING de gain', () => {
@@ -293,6 +307,29 @@ describe('COLLECTION : seul le gadget JOUÉ découvre ses cartes, sur les trois 
       for (const id of found) expect(catalog.byId.get(id)?.gadgetId, `${level} : ${id}`).toBe(gB);
       expect(c.state.gadgetPicks).toEqual({ [gB]: 1 });
     }
+  });
+});
+
+describe('COLLECTION : le livre suit le mode (jamais une règle impossible à remplir)', () => {
+  it('plans (Mock) : 9 gadgets, 147 cartes, MELTDOWN = 4 avec chacun des 9 ; classique (Stake) : 3 gadgets, 51 cartes, 8 par Rage Level', () => {
+    const plans = buildCatalog(GADGETS);
+    expect(plans.cards).toHaveLength(147);
+    expect(plans.meltdown).toBe(MELTDOWN_RULE);
+    const classic = buildCatalog(Object.values(CLASSIC_GADGETS));
+    expect(classic.cards).toHaveLength(51);
+    expect(classic.meltdown).toBe(LEGACY_MELTDOWN_RULE);
+    expect(new Set(classic.cards.map((c) => c.gadgetId))).toEqual(new Set(['swivel-slingshot', 'trapdoor-express', 'office-rocket']));
+    // Mode classique : le jalon OFFICE MELTDOWN se remplit avec les 3 gadgets jouables (8 / 8 / 8), jamais la règle des 9.
+    const c = new Collection(new MemoryCollectionStore(), classic);
+    const ids = (lv: string, n: number) => classic.cards.filter((x) => x.section === lv).slice(0, n).map((x) => x.id);
+    const state = { ...c.state, entries: Object.fromEntries([...ids('grumpy', 8), ...ids('furious', 8), ...ids('unhinged', 7)].map((id) => [id, { firstAt: 'x', count: 1 }])) };
+    const p = progress(state as never, classic);
+    expect(meltdownProgress(p)).toMatchObject({ current: 23, required: 24, unlocked: false, gadgetsDone: 0 });
+    expect(milestonesFor(classic.meltdown).find((m) => m.id === 'explorer')!.rule).toBe(LEGACY_MELTDOWN_RULE);
+    const full = { ...state, entries: { ...state.entries, [ids('unhinged', 8)[7]!]: { firstAt: 'x', count: 1 } } };
+    expect(newlyReached(full as never, classic).map((m) => m.id)).toContain('explorer');
+    expect(COPY.meltdownRule(classic.meltdown)).toBe('8 discoveries in each Rage Level · BOSS FIGHT cards not required');
+    expect(COPY.meltdownRule(plans.meltdown)).toBe('4 discoveries with each of the 9 gadgets · BOSS FIGHT cards not required');
   });
 });
 
@@ -341,6 +378,36 @@ describe('SÉCURITÉ : A/B/C choisi AVANT Play, immuable ensuite, sur les trois 
   });
 });
 
+describe('LOOP ×100 par Rage Level et par plan (maths A2 réelles du mock, 3 vitesses)', () => {
+  it('chaque manche compile, révèle une fois, joue le gadget de son plan ; aucune erreur ; branches variées', () => {
+    const report: string[] = [];
+    for (const level of RAGE_LEVEL_IDS) {
+      for (const slot of PLAN_SLOTS) {
+        const rnd = mulberry32(hashSeed(`${level}/${slot}`));
+        const seen = new Set<string>();
+        let wins = 0;
+        for (let i = 0; i < 100; i++) {
+          const book = bookForPick(drawTriple(level, PLAN_SETS[level], rnd), slot, 1);
+          const o = parseRound({ roundId: `L-${level}-${slot}-${i}`, mode: level, betAmount: 1_000_000, payout: book.payoutMultiplier * 10_000, payoutMultiplier100: book.payoutMultiplier, active: false, events: book.events, plan: slot }, 'replay');
+          const g = gadgetForPlan(level, slot)!;
+          expect(o.plans?.selectedGadget).toBe(g.id);
+          for (const speed of ['normal', 'turbo', 'super'] as const) {
+            const seq = compileSequence(o, g, speed, LIBRARY);
+            expect(seq.gadgetId).toBe(g.id);
+            expect(seq.cues.filter((c) => c.kind === 'signal' && c.signal === 'reveal')).toHaveLength(1);
+            expect(seq.markers.reveal).toBeLessThanOrEqual(seq.markers.end);
+            if (speed === 'normal') seen.add(seq.branchId);
+          }
+          if (book.payoutMultiplier >= 100) wins++;
+        }
+        report.push(`${level}/${slot} ${seen.size} branches, ${wins} gains`);
+        expect(seen.size, `${level}/${slot}`).toBeGreaterThanOrEqual(8);
+      }
+    }
+    expect(report).toHaveLength(9);
+  });
+});
+
 describe('déterminisme de la présentation (reprise / replay)', () => {
   it('même book, même gadget → même branche, même séquence (clé), pour les 9 gadgets', () => {
     for (const g of GADGETS) {
@@ -352,5 +419,54 @@ describe('déterminisme de la présentation (reprise / replay)', () => {
         expect(a.branchId).toBe(b.branchId);
       }
     }
+  });
+});
+
+/**
+ * Feuilles de cues sonores (SOUND BIBLE §5) : avec SOUND_REPORT=<fichier>, écrit docs/generated/SOUND_CUES_P3.md
+ * à partir des séquences RÉELLEMENT compilées (jamais d'une liste tenue à la main).
+ */
+const soundReportPath = process.env.SOUND_REPORT;
+describe.skipIf(!soundReportPath)('rapport : feuilles de cues sonores des 9 gadgets', () => {
+  it('écrit le rapport', async () => {
+    const { writeFileSync } = await import('node:fs');
+    const sounds = (seq: AnimationSequence, from: number, to: number) =>
+      seq.cues.filter((c): c is Extract<ScheduledCue, { kind: 'sound' }> => c.kind === 'sound' && c.at >= from && c.at < to);
+    const fmt = (list: Extract<ScheduledCue, { kind: 'sound' }>[]) => {
+      const out: string[] = [];
+      for (const c of list) {
+        const last = out[out.length - 1];
+        const m = last?.match(/^`(\w+)`(?: ×(\d+))?$/);
+        if (m && m[1] === c.sound) out[out.length - 1] = `\`${c.sound}\` ×${Number(m[2] ?? 1) + 1}`;
+        else out.push(`\`${c.sound}\``);
+      }
+      return out.join(' · ') || '—';
+    };
+    const lines = [
+      '# SOUND CUES — PRODUCTION 3 GADGETS (généré)',
+      '',
+      `> Généré par \`SOUND_REPORT=${soundReportPath} npx vitest run tests/unit/production.test.ts\` le ${new Date().toISOString().slice(0, 10)}. Ne pas éditer.`,
+      '> Séquences compilées en vitesse normale, un book compatible par branche (classe la plus basse servie). « Tronc » : avant le point de divergence D1 (identique pour toutes les issues). « Fin » : après D1. DING = nombre de `ding` de la séquence.',
+      '',
+    ];
+    for (const level of RAGE_LEVEL_IDS) {
+      lines.push(`## ${level.toUpperCase()}`, '');
+      for (const g of planGadgets(level)!) {
+        const first = sequenceFor(g, g.branches[0]!);
+        lines.push(`### ${g.label} (\`${g.id}\`)`, '');
+        lines.push(`- **Signature** : ${(g.signature ?? []).map((s) => `\`${s}\``).join(' · ')}`);
+        lines.push(`- **Tronc (commun à toutes les issues)** : ${fmt(sounds(first, 0, first.markers.d1))}`);
+        lines.push(`- **Attente réseau** : \`${g.hold.sound}\` toutes les ${g.hold.everyMs} ms`, '');
+        lines.push('| Branche | Classes | Rareté | Durée | DING | Fin (ordre des sons) |', '|---|---|---|---:|---:|---|');
+        for (const b of g.branches) {
+          const seq = sequenceFor(g, b);
+          const end = sounds(seq, seq.markers.d1, Infinity);
+          const dings = seq.cues.filter((c) => c.kind === 'sound' && c.sound === 'ding').length;
+          lines.push(`| ${b.id} ${b.label} | ${b.classes.join(', ')} | ${b.rarity} | ${(seq.totalMs / 1000).toFixed(2)} s | ${dings} | ${fmt(end)} |`);
+        }
+        lines.push('');
+      }
+    }
+    writeFileSync(soundReportPath!, `${lines.join('\n')}\n`);
   });
 });

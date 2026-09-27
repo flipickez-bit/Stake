@@ -81,7 +81,10 @@ test('RESUME: a round interrupted before its reveal unlocks its card once, at th
 });
 
 test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 4 with each of the 9 gadgets (no BOSS FIGHT card), played with no wallet call; 100 % = trophy', async ({ page }) => {
-  await boot(page);
+  // PRODUCTION 3 GADGETS : le livre des 9 gadgets n'existe qu'avec les plans (Mock) ; plan A choisi pour que FIRE soit actif.
+  await boot(page, '?plans=on');
+  await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.flow.setPlan('A'));
+  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.collection.catalog.cards.length)).toBe(147);
   const T = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.collection.catalog.cards.length as number);
   await page.getByTestId('dev-toggle').click();
   await page.getByTestId('dev-coll-random10').click();
@@ -158,6 +161,27 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 4 with each
   await expect(page.getByTestId('dev-coll-count')).toContainText(`${T} / ${T}`);
   await page.getByTestId('dev-coll-view').click();
   await expect(page.getByTestId('collector-trophy')).toBeVisible();
+});
+
+test('MODE CLASSIQUE (Stake tant qu\'A2 n\'est pas confirmée) : le livre ne montre que les 3 gadgets jouables ; OFFICE MELTDOWN = règle historique (8 par Rage Level)', async ({ page }) => {
+  await boot(page);
+  const T = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.collection.catalog.cards.length as number);
+  expect(T).toBe(51);
+  await page.getByTestId('dev-toggle').click();
+  await page.getByTestId('dev-coll-788').click();
+  await expect(page.getByTestId('dev-coll-count')).toContainText(`23 / ${T}`);
+  await page.getByTestId('dev-coll-view').click();
+  await page.getByTestId('tab-rewards').click();
+  await expect(page.getByTestId('meltdown-grumpy')).toContainText('7 / 8');
+  await expect(page.getByTestId('meltdown-furious')).toContainText('8 / 8 ✓');
+  await expect(page.getByTestId('meltdown-total')).toHaveText('23 / 24 required discoveries');
+  await expect(page.getByTestId('meltdown-progress')).not.toContainText('ESPRESSO');
+  await expect(page.getByTestId('episode-play')).toHaveCount(0);
+  await page.getByTestId('collection-close').click();
+  await page.getByTestId('dev-toggle').click();
+  await page.getByTestId('dev-coll-new').click();
+  await page.getByLabel('Close dev panel').click();
+  await expect(page.getByTestId('new-badge-unlock')).toContainText('OFFICE MELTDOWN');
 });
 
 test('URL replay: no collection at all (no button, no badge, no storage)', async ({ page }) => {

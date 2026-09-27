@@ -275,7 +275,8 @@ test('PLAYTEST 50 (LOCAL DEV ONLY): 50 uninterrupted rounds, questionnaire at th
   expect(session.answers.wish).toBe('Un mug en or.');
   // COLLECTION BOOK : mesures locales de la session.
   expect(session.collection.atStart).toMatchObject({ discovered: 0 });
-  expect(session.collection.atStart.total).toBeGreaterThan(51);
+  // Mode classique : le livre ne montre que les 3 gadgets jouables (51 cartes) ; OFFICE MELTDOWN = 8 par Rage Level.
+  expect(session.collection.atStart.total).toBe(51);
   expect(session.collection.discoveries).toBe(session.collection.atEnd.discovered);
   expect(session.collection.discoveries).toBeGreaterThan(5);
   expect(session.rounds.filter((r: { discovered: boolean }) => r.discovered)).toHaveLength(session.collection.discoveries);

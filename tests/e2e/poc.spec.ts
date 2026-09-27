@@ -149,7 +149,9 @@ test('POC : REVEAL ALL (DEV, expérimental) affiche les trois plans automatiquem
 
 test('POC : PLAYTEST A/B — ordre tiré, compteur de session, affichage de la variante', async ({ page }) => {
   await boot(page);
-  await page.getByTestId('playtest-open').click();
+  // L'étude A/B est un outil DEV (le bouton PLAYTEST lance le PLAYTEST #3).
+  await page.getByTestId('dev-toggle').click();
+  await page.getByTestId('dev-poc-study').click();
   await expect(page.getByTestId('poc-playtest-intro')).toBeVisible();
   await page.getByTestId('poc-playtest-go').click();
   await untilState(page, 'READY');
@@ -164,4 +166,26 @@ test('POC : PLAYTEST A/B — ordre tiré, compteur de session, affichage de la v
   expect(rounds).toHaveLength(1);
   expect(rounds[0].plan).toBe('A');
   expect(rounds[0].alternatives).toEqual({ A: 0, B: 0, C: 0 });
+});
+
+test('PLAYTEST #3 : session en mode 3 gadgets — plan et gadget par manche, changements de gadget, REVEAL OTHER PLANS mesurés localement', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.flow.setSpeed('super'));
+  await page.getByTestId('playtest-open').click();
+  await expect(page.getByTestId('playtest-intro')).toContainText('PLAYTEST #3');
+  await page.getByTestId('playtest-go').click();
+  await untilState(page, 'READY');
+  // Expérience principale : ON-DEMAND.
+  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.poc.altDisplay.current)).toBe('ON_DEMAND');
+  await expect(page.getByTestId('playtest-counter')).toContainText('PLAYTEST 1/50');
+  await playRound(page, 'A', [0, 2, 5]);
+  await playRound(page, 'A', [0, 2, 5]);
+  await playRound(page, 'C', [0, 2, 0]);
+  await page.getByTestId('reveal-other-plans').click();
+  await expect(page.getByTestId('other-plans')).toBeVisible();
+  const current = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.playtest.current);
+  expect(current.plans).toBe(true);
+  expect(current.rounds.map((r: { plan: string }) => r.plan)).toEqual(['A', 'A', 'C']);
+  expect(current.rounds.map((r: { gadget: string }) => r.gadget)).toEqual(['swivel-slingshot', 'swivel-slingshot', 'copier-catapult']);
+  expect(current.otherPlans).toEqual({ opens: 1, afterLoss: 1, afterWin: 0 });
 });

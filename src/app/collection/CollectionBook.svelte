@@ -8,7 +8,7 @@
   import { SECTION_LABEL } from '../../collection/catalog';
   import type { Collection } from '../../collection/Collection';
   import { COPY, RARITY_LABEL } from '../../collection/copy';
-  import { COSMETICS, MELTDOWN_RULE, MILESTONES, NON_EQUIPABLE, meltdownProgress, milestoneCounter, progress as computeProgress, unlockedCosmetics } from '../../collection/rewards';
+  import { COSMETICS, NON_EQUIPABLE, meltdownProgress, milestoneCounter, milestonesFor, progress as computeProgress, unlockedCosmetics } from '../../collection/rewards';
   import type { CardDef, CollectionState, CosmeticDef, SectionId } from '../../collection/types';
   import { hash32 } from '../../domain/seed';
   import type { ThumbnailRenderer } from '../../render/ThumbnailRenderer';
@@ -63,7 +63,9 @@
   const meltdown = $derived(meltdownProgress(prog));
   const unlockedIds = $derived(new Set(unlockedCosmetics(cs).map((c) => c.id)));
   const episodeUnlocked = $derived(unlockedIds.has('episode.meltdown'));
-  const milestoneFor = (c: CosmeticDef) => MILESTONES.find((m) => m.rewards.includes(c.id));
+  // Jalons du catalogue (OFFICE MELTDOWN : règle des 9 gadgets, ou règle historique en mode classique).
+  const milestones = $derived(milestonesFor(catalog.meltdown));
+  const milestoneFor = (c: CosmeticDef) => milestones.find((m) => m.rewards.includes(c.id));
 
   function load(key: string, make: () => Promise<string | null>): void {
     if (key in images) return;
@@ -117,7 +119,7 @@
     {/each}
     <button class="tab rewards" class:on={tab === 'rewards'} onclick={() => (tab = 'rewards')} data-testid="tab-rewards">
       <span>{COPY.rewards}</span>
-      <b>{Object.keys(cs.milestones).length}/{MILESTONES.length}</b>
+      <b>{Object.keys(cs.milestones).length}/{milestones.length}</b>
     </button>
   </nav>
 
@@ -171,7 +173,7 @@
       <section class="rewards-page">
         <h3>{COPY.milestones}</h3>
         <ul class="milestones">
-          {#each MILESTONES as m (m.id)}
+          {#each milestones as m (m.id)}
             {@const reached = cs.milestones[m.id] !== undefined}
             {@const counter = milestoneCounter(m.rule, prog)}
             <li class:reached data-testid="milestone-{m.id}" data-reached={reached}>
@@ -191,9 +193,12 @@
             {#each meltdown.byGadget as c (c.gadgetId)}
               <li class:done={c.done} data-testid="meltdown-{c.gadgetId}"><span><i class="lv lv-{c.level}">{SECTION_LABEL[c.level]}</i> {c.label}</span><b>{c.current} / {c.target}{c.done ? ' ✓' : ''}</b></li>
             {/each}
+            {#each meltdown.bySection as c (c.section)}
+              <li class:done={c.done} data-testid="meltdown-{c.section}"><span><i class="lv lv-{c.section}">{SECTION_LABEL[c.section]}</i></span><b>{c.current} / {c.target}{c.done ? ' ✓' : ''}</b></li>
+            {/each}
           </ul>
           <div class="ep-total" data-testid="meltdown-total">{COPY.requiredDiscoveries(meltdown.current, meltdown.required)}</div>
-          <div class="ep-rule">{COPY.meltdownRule(MELTDOWN_RULE.n)}</div>
+          <div class="ep-rule">{COPY.meltdownRule(catalog.meltdown)}</div>
           {#if episodeUnlocked}
             <button class="play" disabled={!canPlayEpisode} onclick={onPlayEpisode} data-testid="episode-play">{COPY.episodePlay}</button>
           {:else}

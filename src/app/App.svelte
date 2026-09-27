@@ -4,33 +4,37 @@
   import type { BossFightStatus } from '../presenter/Presenter';
   import { bootstrap, type GameContext } from './bootstrap';
   import BfLadder from './BfLadder.svelte';
-  import DevPanel from './DevPanel.svelte';
   import Hud from './Hud.svelte';
   import ResultPop from './ResultPop.svelte';
-  import PlaytestIntro from './PlaytestIntro.svelte';
-  import PlaytestResults from './PlaytestResults.svelte';
-  import Questionnaire from './Questionnaire.svelte';
   import { formatBalance } from './format';
-  import { PLAYTEST_TARGET, type PlaytestAnswers, type PlaytestState } from '../dev/playtest';
+  import { PLAYTEST_TARGET, questionsFor, type PlaytestAnswers, type PlaytestState } from '../dev/playtest';
   import { makeBossFightPreview } from '../dev/devOutcomes';
   import { cryptoRandom } from '../platform/rgs/mock/mockMath';
-  import CollectionBook from './collection/CollectionBook.svelte';
   import DiscoveryFlight from './collection/DiscoveryFlight.svelte';
   import GiftNotice from './collection/GiftNotice.svelte';
-  import ShowcaseOverlay from './collection/ShowcaseOverlay.svelte';
   import { lookFrom } from './collection/look';
   import { progress as collectionProgress } from '../collection/rewards';
   import type { CollectionState, DiscoveryEvent } from '../collection/types';
   import { ThumbnailRenderer } from '../render/ThumbnailRenderer';
   import PlanPicker from './poc/PlanPicker.svelte';
   import OtherPlans from './poc/OtherPlans.svelte';
-  import PocPlaytestIntro from './poc/PocPlaytestIntro.svelte';
-  import PocQuestionnaire from './poc/PocQuestionnaire.svelte';
-  import PocResults from './poc/PocResults.svelte';
   import PocSessionCard from './poc/PocSessionCard.svelte';
   import { POC_SESSION_ROUNDS, type PocAnswers, type PocPlaytestState, type PocStudy } from '../dev/pocPlaytest';
   import type { AltDisplay } from './pocConfig';
   import type { PlanSlot } from '../domain/plans';
+  // LOT 6 (perf) : les écrans ouverts à la demande (DEV, playtest, collection, épisode spécial) sont chargés à la
+  // première ouverture — ils ne pèsent plus sur le chargement initial (budget ≤ 300 KB gzip).
+  const lazyUi = {
+    DevPanel: () => import('./DevPanel.svelte'),
+    PlaytestIntro: () => import('./PlaytestIntro.svelte'),
+    PlaytestResults: () => import('./PlaytestResults.svelte'),
+    Questionnaire: () => import('./Questionnaire.svelte'),
+    CollectionBook: () => import('./collection/CollectionBook.svelte'),
+    ShowcaseOverlay: () => import('./collection/ShowcaseOverlay.svelte'),
+    PocPlaytestIntro: () => import('./poc/PocPlaytestIntro.svelte'),
+    PocQuestionnaire: () => import('./poc/PocQuestionnaire.svelte'),
+    PocResults: () => import('./poc/PocResults.svelte'),
+  };
 
   let host: HTMLDivElement;
   let ctx = $state<GameContext | null>(null);
@@ -164,8 +168,9 @@
   }
 
   function onRevealOtherPlans(roundId: string) {
-    // Mesure du playtest POC : aucune autre conséquence (jamais de son, jamais d'effet sur le jeu).
+    // Mesures des playtests (POC et PLAYTEST #3) : aucune autre conséquence (jamais de son, jamais d'effet sur le jeu).
     ctx?.poc?.playtest.markRevealOpened(roundId, performance.now());
+    ctx?.playtest.markOtherPlansOpened((snap?.revealed?.multiplier100 ?? 0) >= 100); // x0,5 compte comme une perte (gain < mise)
   }
 
   /** Session propre (solde fictif remis à $1,000, aucun forçage, aucune panne) avec l'affichage de la variante. */
@@ -233,6 +238,8 @@
       s.balance = 1000 * 1_000_000;
     });
     const p = ctx.collection?.progress ?? null;
+    // PLAYTEST #3 : l'expérience principale (ON-DEMAND : les autres plans seulement si le joueur le demande).
+    if (snap?.plansEnabled) ctx.poc?.altDisplay.set('ON_DEMAND');
     ctx.playtest.start(
       {
         width: window.innerWidth,
@@ -241,6 +248,7 @@
         touch: navigator.maxTouchPoints > 0,
       },
       p,
+      { plans: snap?.plansEnabled === true },
     );
     await ctx.flow.start();
   }
@@ -306,8 +314,6 @@
     <span class="balance" data-testid="balance">{formatBalance(snap?.balance ?? null)}</span>
     {#if poc && pocSession}
       <span class="pt-chip" data-testid="poc-counter">PLAYTEST S{pocSession.index}/2 · {Math.min(pocSession.rounds.length + (pocSession.status === 'playing' ? 1 : 0), POC_SESSION_ROUNDS)}/{POC_SESSION_ROUNDS}</span>
-    {:else if poc}
-      <button class="icon pt" onclick={() => (pocIntro = true)} disabled={snap?.state !== 'READY'} data-testid="playtest-open">PLAYTEST</button>
     {:else if ptCurrent}
       <span class="pt-chip" data-testid="playtest-counter">PLAYTEST {Math.min(ptCurrent.rounds.length + (ptCurrent.status === 'playing' ? 1 : 0), PLAYTEST_TARGET)}/{PLAYTEST_TARGET}</span>
     {:else if ctx?.mock}
@@ -365,40 +371,40 @@
 </div>
 
 {#if ctx && snap && devOpen}
-  <DevPanel {ctx} {snap} onClose={() => (devOpen = false)} onShowSession={(id) => { devOpen = false; ptResultsId = id; }} onPreviewBossFight={previewBossFight} onOpenCollection={() => openCollection()} />
+  {#await lazyUi.DevPanel() then { default: DevPanel }}<DevPanel {ctx} {snap} onOpenPocStudy={() => { devOpen = false; pocIntro = true; }} onClose={() => (devOpen = false)} onShowSession={(id) => { devOpen = false; ptResultsId = id; }} onPreviewBossFight={previewBossFight} onOpenCollection={() => openCollection()} />{/await}
 {/if}
 
 {#if ctx?.collection && thumbs && bookOpen}
-  <CollectionBook
+  {#await lazyUi.CollectionBook() then { default: CollectionBook }}<CollectionBook
     collection={ctx.collection}
     {thumbs}
     initialTab={bookTab ?? snap?.level ?? 'grumpy'}
     canPlayEpisode={snap?.state === 'READY'}
     onClose={() => (bookOpen = false)}
     onPlayEpisode={playEpisode}
-  />
+  />{/await}
 {/if}
 {#if ctx && showcaseOn}
-  <ShowcaseOverlay presenter={ctx.presenter} onExit={exitEpisode} />
+  {#await lazyUi.ShowcaseOverlay() then { default: ShowcaseOverlay }}<ShowcaseOverlay presenter={ctx.presenter} onExit={exitEpisode} />{/await}
 {/if}
 
 {#if pocIntro}
-  <PocPlaytestIntro onStart={startPocPlaytest} onCancel={() => (pocIntro = false)} />
+  {#await lazyUi.PocPlaytestIntro() then { default: PocPlaytestIntro }}<PocPlaytestIntro onStart={startPocPlaytest} onCancel={() => (pocIntro = false)} />{/await}
 {/if}
 {#if showPocQuestionnaire && pocSession}
-  {#key pocSession.index}<PocQuestionnaire session={pocSession} onSubmit={submitPocAnswers} />{/key}
+  {#key pocSession.index}{#await lazyUi.PocQuestionnaire() then { default: PocQuestionnaire }}<PocQuestionnaire session={pocSession} onSubmit={submitPocAnswers} />{/await}{/key}
 {/if}
 {#if ctx?.poc && pocResults}
-  <PocResults recorder={ctx.poc.playtest} study={pocResults} onClose={() => (pocResults = null)} />
+  {#await lazyUi.PocResults() then { default: PocResults }}<PocResults recorder={ctx.poc.playtest} study={pocResults} onClose={() => (pocResults = null)} />{/await}
 {/if}
 {#if ptIntro}
-  <PlaytestIntro onStart={startPlaytest} onCancel={() => (ptIntro = false)} onPreviewBossFight={previewBossFight} />
+  {#await lazyUi.PlaytestIntro() then { default: PlaytestIntro }}<PlaytestIntro onStart={startPlaytest} onCancel={() => (ptIntro = false)} onPreviewBossFight={previewBossFight} plans={snap?.plansEnabled === true} />{/await}
 {/if}
 {#if showQuestionnaire}
-  <Questionnaire onSubmit={submitAnswers} />
+  {#await lazyUi.Questionnaire() then { default: Questionnaire }}<Questionnaire onSubmit={submitAnswers} questions={questionsFor(ptCurrent)} plans={ptCurrent?.plans === true} />{/await}
 {/if}
 {#if ctx && ptResults}
-  <PlaytestResults recorder={ctx.playtest} session={ptResults} onClose={() => (ptResultsId = null)} onPreviewBossFight={previewBossFight} />
+  {#await lazyUi.PlaytestResults() then { default: PlaytestResults }}<PlaytestResults recorder={ctx.playtest} session={ptResults} onClose={() => (ptResultsId = null)} onPreviewBossFight={previewBossFight} />{/await}
 {/if}
 
 <style>

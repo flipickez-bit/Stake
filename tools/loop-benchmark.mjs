@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * LOOP ×N dans Chromium headless (aucune mise) + mesures. Construit sa propre copie (dist-bench/).
- * Usage : node tools/loop-benchmark.mjs [--count 100] [--speed turbo] [--sample 50] [--markdown docs/generated/LOOP_X100.md]
+ * Usage : node tools/loop-benchmark.mjs [--count 100] [--speed turbo] [--sample 50] [--level grumpy] [--classic] [--markdown docs/generated/LOOP_X100.md]
+ * Par défaut : PRODUCTION 3 GADGETS (Mock, plans A → B → C à tour de rôle). --classic : un gadget par niveau (?plans=off).
  * --sample N : relevé mémoire toutes les N manches, avant et après un GC forcé (Chrome --expose-gc).
  * ⚠ Chromium headless utilise un rendu LOGICIEL (SwiftShader) : les FPS sont très pessimistes
  *    et ne représentent pas un téléphone. Seules la stabilité et les tendances sont significatives.
@@ -20,6 +21,8 @@ const speed = arg('speed', 'turbo');
 const sampleEvery = Number(arg('sample', '0'));
 const markdown = arg('markdown', null);
 const port = Number(arg('port', '4180'));
+const classic = process.argv.includes('--classic');
+const level = arg('level', 'all');
 
 execSync('npx vite build --outDir dist-bench --emptyOutDir', { stdio: 'ignore' });
 const server = spawn('npx', ['vite', 'preview', '--outDir', 'dist-bench', '--port', String(port), '--strictPort'], { stdio: 'ignore', detached: true });
@@ -37,7 +40,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(e.message));
-await page.goto(`http://localhost:${port}/`);
+await page.goto(`http://localhost:${port}/${classic ? '?plans=off' : ''}`);
 await page.waitForFunction(() => window.__BADBOSS__?.state().state === 'READY', null, { timeout: 30000 });
 await page.evaluate((s) => window.__BADBOSS__.ctx.flow.setSpeed(s), speed);
 const idle = await page.evaluate(async () => {
@@ -45,7 +48,7 @@ const idle = await page.evaluate(async () => {
   return window.__BADBOSS__.dev.perf();
 });
 const t0 = Date.now();
-const report = await page.evaluate(([n, every]) => window.__BADBOSS__.dev.loop({ count: n, level: 'all', sampleEvery: every }), [count, sampleEvery]);
+const report = await page.evaluate(([n, every, lv]) => window.__BADBOSS__.dev.loop({ count: n, level: lv, sampleEvery: every }), [count, sampleEvery, level]);
 const stats = await page.evaluate(() => window.__BADBOSS__.dev.stats());
 const wall = Date.now() - t0;
 await browser.close();
@@ -63,7 +66,7 @@ function slopePer100(samples, key, skip) {
   return den ? (num / den) * 100 : null;
 }
 
-const summary = { count, speed, wallMs: wall, idlePerf: idle, report, stageStats: stats, pageErrors };
+const summary = { count, speed, level, classic, wallMs: wall, idlePerf: idle, report, stageStats: stats, pageErrors };
 console.log(JSON.stringify(summary, null, 2));
 if (markdown) {
   const r = report;
@@ -78,10 +81,10 @@ if (markdown) {
     : '';
   const md = `# LOOP x${count} — BAD BOSS
 
-> Généré par \`tools/loop-benchmark.mjs --count ${count} --speed ${speed}${sampleEvery ? ` --sample ${sampleEvery}` : ''}\` le ${new Date().toISOString().slice(0, 10)}. Ne pas éditer.
+> Généré par \`tools/loop-benchmark.mjs --count ${count} --speed ${speed}${sampleEvery ? ` --sample ${sampleEvery}` : ''}${level !== 'all' ? ` --level ${level}` : ''}${classic ? ' --classic' : ''}\` le ${new Date().toISOString().slice(0, 10)}. Ne pas éditer.
 > Chromium headless, rendu **logiciel SwiftShader** (pas de GPU), viewport 1100 × 760 : les FPS sont très pessimistes
 > et **ne représentent pas un téléphone**. Ce qui compte ici : stabilité, absence d'erreur, mémoire stable.
-> Présentation seule (\`GameFlow.replayRound\`), **aucune mise**, résultats tirés par le mock mathématique, 3 Rage Levels en alternance.
+> Présentation seule (\`GameFlow.replayRound\`), **aucune mise**, résultats tirés par le mock mathématique, ${level === 'all' ? '3 Rage Levels en alternance' : `Rage Level ${level.toUpperCase()}`}${classic ? ', mode classique (un gadget par niveau)' : ', **3 gadgets par niveau** (triple A2 du mock, plans A → B → C à tour de rôle)'}.
 
 | Mesure | Valeur |
 |---|---|

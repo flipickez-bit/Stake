@@ -1,16 +1,16 @@
 <script lang="ts">
   import { PLAYTEST_TARGET } from '../dev/playtest';
 
-  let { onStart, onCancel, onPreviewBossFight }: { onStart: () => void; onCancel: () => void; onPreviewBossFight: () => void } = $props();
+  let { onStart, onCancel, onPreviewBossFight, plans = false }: { onStart: () => void; onCancel: () => void; onPreviewBossFight: () => void; plans?: boolean } = $props();
 </script>
 
 <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="pt-intro-title" data-testid="playtest-intro">
   <div class="panel">
-    <h2 id="pt-intro-title">PLAYTEST {PLAYTEST_TARGET}</h2>
+    <h2 id="pt-intro-title">{plans ? 'PLAYTEST #3' : `PLAYTEST ${PLAYTEST_TARGET}`}</h2>
     <p class="tag">LOCAL DEV ONLY · argent fictif</p>
     <ul>
-      <li>Joue {PLAYTEST_TARGET} manches comme tu le ferais normalement : choisis tes Rage Levels, ta mise, ta vitesse.</li>
-      <li>Aucune question pendant la partie. 6 questions à la fin.</li>
+      <li>Joue {PLAYTEST_TARGET} manches comme tu le ferais normalement : choisis tes Rage Levels, {plans ? 'tes gadgets, ' : ''}ta mise, ta vitesse.</li>
+      <li>Aucune question pendant la partie. {plans ? 11 : 8} affirmations à noter à la fin, et quelques questions libres facultatives.</li>
       <li>Les données restent dans ce navigateur. Tu choisis ensuite de les copier ou de les enregistrer.</li>
     </ul>
     <p class="small">Le solde fictif est remis à $1,000.00 au départ.</p>

@@ -4,6 +4,7 @@
  * de chance ni de promesse sur un résultat futur. Liste des formulations interdites : FORBIDDEN_PHRASES.
  */
 import type { BranchRarity } from '../presentation/types';
+import type { MilestoneRule } from './types';
 
 export const RARITY_LABEL: Record<BranchRarity, string> = {
   COMMON: 'COMMON',
@@ -50,7 +51,12 @@ export const COPY = {
   episodeName: 'OFFICE MELTDOWN',
   episodePlay: 'PLAY EPISODE',
   requiredDiscoveries: (c: number, t: number) => `${c} / ${t} required discoveries`,
-  meltdownRule: (n: number) => `${n} discoveries with each of the 9 gadgets · BOSS FIGHT cards not required`,
+  meltdownRule: (rule: MilestoneRule) =>
+    rule.kind === 'perGadget'
+      ? `${rule.n} discoveries with each of the ${rule.gadgets.length} gadgets · BOSS FIGHT cards not required`
+      : rule.kind === 'perSection'
+        ? `${rule.n} discoveries in each Rage Level · BOSS FIGHT cards not required`
+        : 'BOSS FIGHT cards not required',
   collectorMark: "COLLECTOR'S TROPHY · 100 %",
   showcaseNote: 'SHOWCASE · NO BET · NO PAYOUT',
   nextGag: 'NEXT GAG ▶',

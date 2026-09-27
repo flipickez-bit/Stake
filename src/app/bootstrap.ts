@@ -11,9 +11,9 @@ import { metaFeaturesFor, type MetaFeatures } from '../flow/featureGate';
 import { GameFlow } from '../flow/GameFlow';
 import { PerfMeter } from '../dev/perf';
 import { PlaytestRecorder } from '../dev/playtest';
-import { CONTENT_VERSION, GADGETS, planReadyLevels } from '../content/gadgets';
+import { CLASSIC_GADGETS, CONTENT_VERSION, GADGETS, planReadyLevels } from '../content/gadgets';
 import { makeDevRound } from '../dev/devOutcomes';
-import { planForBranch } from '../dev/forceBranch';
+import { armBranch } from './devArm';
 import type { ResultClass } from '../domain/types';
 import { runLoop, type LoopOptions } from '../dev/loop';
 import type { RageLevelId } from '../domain/types';
@@ -71,6 +71,7 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
   const stageT0 = performance.now();
   await stage.init(host, { plans: poc });
   const stageInitMs = performance.now() - stageT0;
+  let artReadyMs: number | null = null;
   const audio = new AudioDirector();
   const contentErrors: string[] = [];
   const presenter = new Presenter(stage, audio, {
@@ -108,7 +109,9 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
   const meta = metaFeaturesFor(params.rgs);
   let collection: Collection | null = null;
   if (meta.collection && !params.replay) {
-    const c = new Collection(new LocalCollectionStore(createBrowserStore()), buildCatalog());
+    // Le livre ne montre que ce qui peut se jouer : 9 gadgets avec les plans, les 3 gadgets classiques sinon (Stake
+    // tant qu'A2 n'est pas confirmée). La règle d'OFFICE MELTDOWN suit le catalogue (jamais impossible à remplir).
+    const c = new Collection(new LocalCollectionStore(createBrowserStore()), buildCatalog(poc ? GADGETS : Object.values(CLASSIC_GADGETS)));
     await c.init();
     attachCollectionTracker(flow, c);
     // Mesures du PLAYTEST : seulement les manches jouées (jamais les outils DEV).
@@ -164,6 +167,7 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
         runLoop(flow, presenter, perf, () => (mock ? mock.snapshot().calls.play + mock.snapshot().calls.endRound : 0), {
           level: 'all',
           forced: null,
+          plans: poc,
           sceneStats: () => stage.stats(),
           ...options,
         }),
@@ -176,18 +180,11 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
        */
       /** Contenu (DEV, captures) : gadgets et branches. */
       gadgets: () => GADGETS.map((g) => ({ id: g.id, level: g.rageLevel, label: g.label, branches: g.branches.map((b) => ({ id: b.id, label: b.label, rarity: b.rarity, bf: b.categories.includes('BF_ENTRY'), loss: b.classes.includes('MISS') })) })),
-      forceBranch: (gadgetId: string, branchId: string, prefer?: ResultClass) => {
-        if (!mock || flow.snapshot.state !== 'READY') return null;
-        const plan = planForBranch(gadgetId, branchId, prefer);
-        if (!plan) return null;
-        flow.setLevel(plan.level);
-        if (!flow.snapshot.plansEnabled || !flow.setPlan(plan.slot) && flow.snapshot.plan !== plan.slot) return null;
-        mock.update((st) => (st.nextForcedTriple = plan.triple));
-        presenter.forceBranchId = branchId;
-        return { level: plan.level, slot: plan.slot, resultClass: plan.resultClass };
-      },
+      forceBranch: (gadgetId: string, branchId: string, prefer?: ResultClass) => armBranch({ flow, presenter, mock }, gadgetId, branchId, prefer),
       stats: () => stage.stats(),
       stageInitMs: () => stageInitMs,
+      /** Fin du préchargement des livres différés (depuis le début de l'initialisation de la scène). */
+      artReadyMs: () => artReadyMs,
       /** Captures d'écran reproductibles (avant / après) : pause de la boucle et positionnement de la séquence. */
       capture: {
         pause: () => void (capturePaused = true),
@@ -196,6 +193,14 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
       },
     },
   };
-  void flow.start(params.replay);
+  // Livres d'art différés (FURIOUS, UNHINGED, plans B/C) : la scène s'affiche déjà ; la première manche (reprise
+  // comprise) attend qu'ils soient là, pour qu'aucune séquence ne se joue avec un accessoire vide.
+  // Un livre différé en échec ne bloque jamais le jeu (ses pièces restent vides, erreur visible dans la console).
+  void stage.artReady
+    .catch((e) => console.error('art différé :', e))
+    .then(() => {
+      artReadyMs = performance.now() - stageT0;
+      return flow.start(params.replay);
+    });
   return ctx;
 }

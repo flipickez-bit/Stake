@@ -6,6 +6,7 @@ import { CARD_TEXTS, SETUP_HINTS } from '../content/collectionCards';
 import { CONTENT_VERSION, GADGETS } from '../content/gadgets';
 import { RAGE_LEVEL_IDS } from '../domain/types';
 import type { BranchDef, GadgetDef } from '../presentation/types';
+import { meltdownRuleFor } from './rewards';
 import type { CardDef, Catalog, SectionDef, SectionId } from './types';
 
 export const SECTION_LABEL: Record<SectionId, string> = {
@@ -53,5 +54,5 @@ export function buildCatalog(gadgets: readonly GadgetDef[] = GADGETS, version = 
       total: inSection.length,
     };
   });
-  return { version, cards, byId: new Map(cards.map((c) => [c.id, c])), sections };
+  return { version, cards, byId: new Map(cards.map((c) => [c.id, c])), sections, meltdown: meltdownRuleFor(gadgets) };
 }

@@ -6,7 +6,9 @@ import { parseRound, type Outcome } from '../domain/outcome';
 import type { InternalRound } from '../domain/round';
 import { getRageLevel } from '../domain/rageLevels';
 import type { RageLevelId } from '../domain/types';
+import { PLAN_SETS, type PlanSlot } from '../domain/plans';
 import { generateBook, type ForcedOutcome, type RandomSource } from '../platform/rgs/mock/mockMath';
+import { bookForPick, drawTriple } from '../platform/rgs/mock/tripleMath';
 
 export function makeDevRound(level: RageLevelId, forced: ForcedOutcome | null, rnd: RandomSource, roundId: string): InternalRound {
   const book = generateBook(level, rnd, forced);
@@ -19,6 +21,25 @@ export function makeDevRound(level: RageLevelId, forced: ForcedOutcome | null, r
     payoutMultiplier100: book.payoutMultiplier,
     active: false,
     events: book.events,
+  };
+}
+
+/**
+ * Manche A2 de développement (3 gadgets) : triple tiré par le mock (maths de production, symétriques), plan `slot`.
+ * Présentation seule : jamais envoyée au RGS. INFORMATION STAKE ENGINE REQUISE pour le format réel.
+ */
+export function makeDevPlanRound(level: RageLevelId, slot: PlanSlot, rnd: RandomSource, roundId: string): InternalRound {
+  const book = bookForPick(drawTriple(level, PLAN_SETS[level], rnd), slot, 1);
+  const betAmount = 1_000_000;
+  return {
+    roundId,
+    mode: level,
+    betAmount,
+    payout: Math.round((betAmount * book.payoutMultiplier) / 100),
+    payoutMultiplier100: book.payoutMultiplier,
+    active: false,
+    events: book.events,
+    plan: slot,
   };
 }
 
