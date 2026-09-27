@@ -178,12 +178,27 @@ export class Collection {
   }
 
   /**
-   * Découvre une carte manquante au hasard par le même chemin qu'une vraie découverte (badge compris),
-   * de préférence dans la section indiquée (ex. le Rage Level courant).
+   * Exactement n cartes (de Rage Level, BOSS FIGHT exclus) découvertes avec chaque gadget indiqué, le reste vide ;
+   * jalons recalculés. Sert à tester OFFICE MELTDOWN (≥ 3 avec chacun des 9 gadgets).
    */
-  forceNewDiscovery(rnd: RandomSource, prefer?: SectionId): DiscoveryEvent | null {
+  setGadgetCounts(counts: Readonly<Record<string, number>>, rnd: RandomSource): void {
+    const ids: string[] = [];
+    for (const [gadgetId, n] of Object.entries(counts)) {
+      const cards = this.catalog.cards.filter((c) => c.gadgetId === gadgetId && c.section !== 'bossfight').map((c) => c.id);
+      ids.push(...shuffle(cards, rnd).slice(0, n));
+    }
+    this.s = { ...this.s, entries: {}, milestones: {}, equipped: {} };
+    this.setDiscovered(ids);
+  }
+
+  /**
+   * Découvre une carte manquante au hasard par le même chemin qu'une vraie découverte (badge compris),
+   * de préférence dans la section indiquée (ex. le Rage Level courant) ou pour le gadget indiqué.
+   */
+  forceNewDiscovery(rnd: RandomSource, prefer?: SectionId, preferGadget?: string): DiscoveryEvent | null {
     const all = this.catalog.cards.filter((c) => !this.isDiscovered(c.id));
-    const preferred = prefer ? all.filter((c) => c.section === prefer) : [];
+    const byGadget = preferGadget ? all.filter((c) => c.gadgetId === preferGadget && c.section !== 'bossfight') : [];
+    const preferred = byGadget.length > 0 ? byGadget : prefer ? all.filter((c) => c.section === prefer) : [];
     const missing = preferred.length > 0 ? preferred : all;
     if (missing.length === 0) return null;
     const card = missing[Math.floor(rnd() * missing.length)] as CardDef;

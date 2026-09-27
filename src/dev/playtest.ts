@@ -72,7 +72,10 @@ export interface PlaytestRound {
   discovered?: boolean;
 }
 
-/** Progression vers OFFICE MELTDOWN (compteurs plafonnés à 8 par Rage Level). */
+/**
+ * Progression vers OFFICE MELTDOWN (PRODUCTION : ≥ 3 découvertes avec chacun des 9 gadgets ; compteurs plafonnés).
+ * grumpy / furious / unhinged : somme des compteurs plafonnés des trois gadgets du niveau (≤ 9).
+ */
 export interface MeltdownSnapshot {
   grumpy: number;
   furious: number;
@@ -80,6 +83,8 @@ export interface MeltdownSnapshot {
   current: number;
   required: number;
   unlocked: boolean;
+  /** Gadgets déjà à leur quota (0 à 9). Absent avant la production 3 gadgets. */
+  gadgetsDone?: number;
 }
 
 /** Mesures locales du COLLECTION BOOK pendant la session (absent si la collection est désactivée). */
@@ -112,7 +117,7 @@ export interface PlaytestCollectionStats {
 
 const meltdownSnapshot = (p: Progress): MeltdownSnapshot => {
   const m = meltdownProgress(p);
-  return { grumpy: m.grumpy, furious: m.furious, unhinged: m.unhinged, current: m.current, required: m.required, unlocked: m.unlocked };
+  return { grumpy: m.grumpy, furious: m.furious, unhinged: m.unhinged, current: m.current, required: m.required, unlocked: m.unlocked, gadgetsDone: m.gadgetsDone };
 };
 
 export interface PlaytestAnswers {

@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { MELTDOWN_GADGETS, MELTDOWN_PER_GADGET } from '../collection/rewards';
+  import { PLAN_SETS, planGadgetId } from '../domain/plans';
+  /** DEV : tous les gadgets à N découvertes sauf le plan A de GRUMPY (N − 1) — le prochain pas débloque OFFICE MELTDOWN. */
+  const meltdownMinusOne = () => Object.fromEntries(MELTDOWN_GADGETS.map((g, i) => [g.gadgetId, i === 0 ? MELTDOWN_PER_GADGET - 1 : MELTDOWN_PER_GADGET]));
   import { GADGETS, gadgetFor } from '../content/gadgets';
   import { classify } from '../domain/resultClass';
   import { getRageLevel } from '../domain/rageLevels';
@@ -402,8 +406,8 @@
         <button onclick={() => collection.unlockAll()} data-testid="dev-coll-all">UNLOCK ALL</button>
         <button onclick={() => collection.unlockRandom(10, cryptoRandom)} data-testid="dev-coll-random10">UNLOCK RANDOM 10</button>
         <button onclick={() => collection.setDiscoveredCount(collection.catalog.cards.length - 2, cryptoRandom)} data-testid="dev-coll-49">SET {collection.catalog.cards.length - 2}/{collection.catalog.cards.length}</button>
-        <button onclick={() => collection.setSectionCounts({ grumpy: 7, furious: 8, unhinged: 8 }, cryptoRandom)} data-testid="dev-coll-788">SET 7/8/8 (MELTDOWN TEST)</button>
-        <button onclick={() => collection.forceNewDiscovery(cryptoRandom, snap.level)} data-testid="dev-coll-new">FORCE NEW DISCOVERY</button>
+        <button onclick={() => collection.setGadgetCounts(meltdownMinusOne(), cryptoRandom)} data-testid="dev-coll-788">SET MELTDOWN − 1 ({MELTDOWN_PER_GADGET} × 8 GADGETS, {MELTDOWN_PER_GADGET - 1} × GRUMPY A)</button>
+        <button onclick={() => collection.forceNewDiscovery(cryptoRandom, snap.level, snap.plan ? planGadgetId(snap.level, snap.plan) ?? undefined : PLAN_SETS[snap.level][0])} data-testid="dev-coll-new">FORCE NEW DISCOVERY</button>
         <button onclick={onOpenCollection} disabled={!ready} data-testid="dev-coll-view">VIEW COLLECTION</button>
       </div>
     </section>

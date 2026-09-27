@@ -13,16 +13,18 @@ import policy from '../../config/presentation_policy.json';
 import { buildCatalog, isBossFightBranch } from '../../src/collection/catalog';
 import { Collection } from '../../src/collection/Collection';
 import { COPY, FORBIDDEN_PHRASES, NEW_TITLE, RARITY_LABEL } from '../../src/collection/copy';
-import { COSMETICS, MELTDOWN_RULE, MILESTONES, meltdownProgress, milestoneCounter, progress } from '../../src/collection/rewards';
+import { COSMETICS, MELTDOWN_PER_GADGET as N, MELTDOWN_RULE, MILESTONES, meltdownProgress, milestoneCounter, progress } from '../../src/collection/rewards';
 import { LocalCollectionStore, MemoryCollectionStore, sanitizeCollection } from '../../src/collection/store';
 import { attachCollectionTracker, shouldObserve } from '../../src/collection/tracker';
 import { CARD_TEXTS, SETUP_HINTS } from '../../src/content/collectionCards';
-import { CLASSIC_GADGETS } from '../../src/content/gadgets';
+import { GADGETS } from '../../src/content/gadgets';
 
-/** Mécanique de la collection, vérifiée sur le contenu CLASSIQUE (3 gadgets, 51 cartes) ; le catalogue de production a ses propres tests (productionCollection.test.ts). */
-const GADGETS = [CLASSIC_GADGETS.grumpy, CLASSIC_GADGETS.furious, CLASSIC_GADGETS.unhinged];
+/** PRODUCTION 3 GADGETS : 9 gadgets, 147 cartes (129 de Rage Level + 18 BOSS FIGHT). */
+const TOTAL = GADGETS.reduce((n, g) => n + g.branches.length, 0);
+const ALL_GADGETS_AT = (n: number) => Object.fromEntries(GADGETS.map((g) => [g.id, n]));
 import { classify } from '../../src/domain/resultClass';
 import { mulberry32 } from '../../src/domain/seed';
+import { PLAN_SETS } from '../../src/domain/plans';
 import type { RageLevelId, ResultClass, Script } from '../../src/domain/types';
 import { GameFlow, type FlowSnapshot } from '../../src/flow/GameFlow';
 import { MockRgsAdapter } from '../../src/platform/rgs/mock/MockRgsAdapter';
@@ -42,13 +44,16 @@ const newCollection = () => new Collection(new MemoryCollectionStore(), catalog,
 const isLossCard = (id: string) => GADGETS.flatMap((g) => g.branches).find((b) => b.id === id)!.classes.includes('MISS');
 
 describe('catalogue', () => {
-  it('une carte par branche, identifiants et noms uniques, sections 15 / 14 / 16 / 6', () => {
+  it('une carte par branche, identifiants et noms uniques ; RAGE LEVEL → GADGET → ANIMATIONS (46 / 41 / 42 + 18 BOSS FIGHT)', () => {
     const branches = GADGETS.flatMap((g) => g.branches);
     expect(catalog.cards.map((c) => c.id)).toEqual(branches.map((b) => b.id));
     expect(new Set(catalog.cards.map((c) => c.name)).size).toBe(catalog.cards.length);
     const totals = Object.fromEntries(catalog.sections.map((s) => [s.id, s.total]));
-    expect(totals).toEqual({ grumpy: 15, furious: 14, unhinged: 16, bossfight: 6 });
-    expect(catalog.cards).toHaveLength(51);
+    expect(totals).toEqual({ grumpy: 46, furious: 41, unhinged: 42, bossfight: 18 });
+    expect(catalog.cards).toHaveLength(147);
+    // Chaque onglet de Rage Level range ses cartes par gadget (les 3 plans du niveau), avec leur propre compteur.
+    for (const s of catalog.sections.filter((x) => x.id !== 'bossfight')) expect(s.gadgets.map((g) => g.gadgetId)).toHaveLength(3);
+    expect(catalog.sections.find((x) => x.id === 'bossfight')!.gadgets).toHaveLength(9);
     for (const b of branches) {
       expect(CARD_TEXTS[b.id], `texte manquant : ${b.id}`).toBeDefined();
       expect(CARD_TEXTS[b.id]!.blurb.length, b.id).toBeGreaterThan(8);
@@ -130,7 +135,7 @@ describe('observation : seules les manches jouées comptent', () => {
     const c = newCollection();
     const first = c.observe({ roundId: 'R1', branchId: 'SLG-A1', source: 'play', loss: true });
     expect(first?.isNew).toBe(true);
-    expect(first?.progress).toEqual({ discovered: 1, total: 51 });
+    expect(first?.progress).toEqual({ discovered: 1, total: TOTAL });
     expect(c.observe({ roundId: 'R1', branchId: 'SLG-A1', source: 'resume', loss: true })).toBeNull();
     const again = c.observe({ roundId: 'R2', branchId: 'SLG-A1', source: 'play', loss: true });
     expect(again?.isNew).toBe(false);
@@ -138,25 +143,25 @@ describe('observation : seules les manches jouées comptent', () => {
     expect(c.observe({ roundId: 'R3', branchId: 'FALLBACK', source: 'play', loss: true })).toBeNull();
   });
 
-  it('jalons : 5 et 10 découvertes débloquent (et portent) leurs cosmétiques ; 8/8/8 débloque OFFICE MELTDOWN ; 100 % = trophée', () => {
+  it('jalons : 5 et 10 découvertes débloquent (et portent) leurs cosmétiques ; N × 9 gadgets débloque OFFICE MELTDOWN ; 100 % = trophée', () => {
     const c = newCollection();
     const events = catalog.cards.map((card, i) => c.observe({ roundId: `R${i}`, branchId: card.id, source: 'play', loss: false })!);
     expect(events[4]!.milestones.map((m) => m.id)).toEqual(['count-5']);
     expect(events[4]!.unlocked.map((u) => u.id)).toEqual(['mug.okayest']);
     expect(events[9]!.unlocked.map((u) => u.id)).toEqual(['tie.polka']);
     expect(c.state.equipped).toMatchObject({ mug: 'mug.okayest', tie: 'tie.polka' });
-    // OFFICE MELTDOWN : débloqué par la découverte qui porte le 3e Rage Level à 8 (pas par le 100 %).
+    // OFFICE MELTDOWN : débloqué par la découverte qui porte le 9e gadget à N (pas par le 100 %).
     const meltIndex = events.findIndex((e) => e.milestones.some((m) => m.id === 'explorer'));
     expect(meltIndex).toBeGreaterThan(0);
     expect(events[meltIndex]!.unlocked.map((u) => u.id)).toEqual(['episode.meltdown']);
     const counts = (upTo: number) => {
-      const seen = catalog.cards.slice(0, upTo + 1);
-      return (['grumpy', 'furious', 'unhinged'] as const).map((lv) => seen.filter((x) => x.section === lv).length);
+      const seen = catalog.cards.slice(0, upTo + 1).filter((x) => x.section !== 'bossfight');
+      return GADGETS.map((g) => seen.filter((x) => x.gadgetId === g.id).length);
     };
-    expect(Math.min(...counts(meltIndex))).toBe(8);
-    expect(Math.min(...counts(meltIndex - 1))).toBe(7);
+    expect(Math.min(...counts(meltIndex))).toBe(N);
+    expect(Math.min(...counts(meltIndex - 1))).toBe(N - 1);
     // 100 % : trophée et thème d'album, rien d'autre (aucune valeur, aucun avantage).
-    const full = events[50]!;
+    const full = events[TOTAL - 1]!;
     expect(full.milestones.map((m) => m.id)).toContain('full-mvp');
     const fullRewards = MILESTONES.find((m) => m.id === 'full-mvp')!.rewards;
     expect([...fullRewards].sort()).toEqual(['album.hallofshame', 'trophy.collector']);
@@ -175,18 +180,22 @@ describe('observation : seules les manches jouées comptent', () => {
     expect(c.state.equipped.mug).toBe('mug.okayest');
   });
 
-  it('OFFICE MELTDOWN : ≥ 8 dans CHAQUE Rage Level, cartes BOSS FIGHT non requises, compteur factuel « 23 / 24 »', () => {
+  it('OFFICE MELTDOWN : ≥ N avec CHACUN des 9 gadgets ; trois gadgets ne suffisent JAMAIS ; BOSS FIGHT non requis ; compteur factuel', () => {
     const c = newCollection();
-    // Beaucoup de cartes mais un mode peu exploré : pas de déblocage.
-    c.setSectionCounts({ grumpy: 15, furious: 14, unhinged: 7, bossfight: 6 }, mulberry32(2));
-    expect(c.progress.discovered).toBe(42);
+    // Trois gadgets explorés à 100 % (un par Rage Level, ou les trois d'un niveau) : jamais de déblocage.
+    const three = ['swivel-slingshot', 'trapdoor-express', 'office-rocket'];
+    c.setGadgetCounts(Object.fromEntries(three.map((id) => [id, 99])), mulberry32(2));
+    expect(c.progress.discovered).toBeGreaterThan(40);
     expect(c.state.milestones.explorer).toBeUndefined();
-    expect(meltdownProgress(c.progress)).toMatchObject({ grumpy: 8, furious: 8, unhinged: 7, current: 23, required: 24, unlocked: false });
-    // 7 / 8 / 8 sans aucune carte BOSS FIGHT, puis une découverte GRUMPY.
-    c.setSectionCounts({ grumpy: 7, furious: 8, unhinged: 8 }, mulberry32(3));
-    expect(milestoneCounter(MELTDOWN_RULE, c.progress)).toEqual({ current: 23, target: 24 });
-    const e = c.forceNewDiscovery(mulberry32(4), 'grumpy');
-    expect(e?.card.section).toBe('grumpy');
+    expect(meltdownProgress(c.progress)).toMatchObject({ current: 3 * N, required: 9 * N, unlocked: false, gadgetsDone: 3 });
+    c.setGadgetCounts({ 'swivel-slingshot': 99, 'espresso-blaster': 99, 'copier-catapult': 99 }, mulberry32(3));
+    expect(c.state.milestones.explorer).toBeUndefined();
+    // 8 gadgets à N et un à N − 1, sans aucune carte BOSS FIGHT, puis une découverte avec ce gadget.
+    c.setGadgetCounts({ ...ALL_GADGETS_AT(N), 'hvac-hurricane': N - 1 }, mulberry32(4));
+    expect(milestoneCounter(MELTDOWN_RULE, c.progress)).toEqual({ current: 9 * N - 1, target: 9 * N });
+    expect(meltdownProgress(c.progress).byGadget.find((g) => g.gadgetId === 'hvac-hurricane')).toMatchObject({ current: N - 1, target: N, done: false });
+    const e = c.forceNewDiscovery(mulberry32(5), 'unhinged', 'hvac-hurricane');
+    expect(e?.card.gadgetId).toBe('hvac-hurricane');
     expect(e?.milestones.map((m) => m.id)).toEqual(['explorer']);
     expect(c.unlocked.map((u) => u.id)).toContain('episode.meltdown');
     expect(c.progress.bySection.bossfight.discovered).toBe(0);
@@ -195,7 +204,7 @@ describe('observation : seules les manches jouées comptent', () => {
   it('jalon satisfait mais non enregistré (règle changée) → enregistré au chargement, sans badge', async () => {
     const store = new MemoryCollectionStore();
     const a = new Collection(store, catalog, fixedNow);
-    a.setSectionCounts({ grumpy: 8, furious: 8, unhinged: 8 }, mulberry32(5));
+    a.setGadgetCounts(ALL_GADGETS_AT(N), mulberry32(5));
     const raw = JSON.parse(JSON.stringify(a.state));
     delete raw.milestones.explorer;
     await store.save(raw);
@@ -213,12 +222,12 @@ describe('observation : seules les manches jouées comptent', () => {
     expect(c.state.equipped.rocket).toBeUndefined();
   });
 
-  it('compteurs de jalons : des faits (« 23 / 25 »), 50 % = 26 / 51', () => {
+  it('compteurs de jalons : des faits (« 23 / 25 »), 50 % = 74 / 147', () => {
     const c = newCollection();
     c.setDiscoveredCount(23, mulberry32(1));
     const p = progress(c.state, catalog);
     expect(milestoneCounter({ kind: 'count', n: 25 }, p)).toEqual({ current: 23, target: 25 });
-    expect(milestoneCounter({ kind: 'fraction', f: 0.5 }, p)).toEqual({ current: 23, target: 26 });
+    expect(milestoneCounter({ kind: 'fraction', f: 0.5 }, p)).toEqual({ current: 23, target: 74 });
   });
 });
 
@@ -268,26 +277,25 @@ describe('stockage (localStorage NON sécurisé, chargement tolérant)', () => {
 });
 
 describe('outils DEV (COLLECTION DEBUG)', () => {
-  it('SET 49/51 (OFFICE MELTDOWN déjà ouvert), FORCE NEW DISCOVERY ×2 → 51/51 et trophée ; RESET → 0', async () => {
+  it('SET 145/147 (OFFICE MELTDOWN déjà ouvert), FORCE NEW DISCOVERY ×2 → 147/147 et trophée ; RESET → 0', async () => {
     const c = newCollection();
-    c.setDiscoveredCount(49, mulberry32(7));
-    expect(c.progress.discovered).toBe(49);
+    c.setGadgetCounts(ALL_GADGETS_AT(99), mulberry32(6));
+    c.setDiscoveredCount(TOTAL - 2, mulberry32(7));
+    expect(c.progress.discovered).toBe(TOTAL - 2);
     expect(c.state.milestones['full-mvp']).toBeUndefined();
-    expect(c.state.milestones.explorer).toBeDefined();
     const e1 = c.forceNewDiscovery(mulberry32(8));
     expect(e1?.isNew).toBe(true);
     expect(e1?.source).toBe('dev');
     const e2 = c.forceNewDiscovery(mulberry32(9));
-    expect(e2?.progress).toEqual({ discovered: 51, total: 51 });
+    expect(e2?.progress).toEqual({ discovered: TOTAL, total: TOTAL });
     expect(e2?.unlocked.map((u) => u.id)).toContain('trophy.collector');
-    expect(e2?.unlocked.map((u) => u.id)).not.toContain('episode.meltdown');
     expect(c.forceNewDiscovery(mulberry32(10))).toBeNull();
     await c.reset();
     expect(c.progress.discovered).toBe(0);
     c.unlockRandom(10, mulberry32(3));
     expect(c.progress.discovered).toBe(10);
     c.unlockAll();
-    expect(c.progress.discovered).toBe(51);
+    expect(c.progress.discovered).toBe(TOTAL);
   });
 });
 
@@ -385,13 +393,14 @@ describe('SPECIAL EPISODE : OFFICE MELTDOWN (showcase, aucune manche)', () => {
 // ------------------------------------------------------------------ rapport (optionnel)
 const reportPath = process.env.COLLECTION_REPORT;
 if (reportPath) {
-  it('écrit le rapport de complétion', () => {
+  it('écrit le rapport de complétion (PRODUCTION 3 GADGETS)', () => {
     const SCRIPTS = policy.scripts_by_class as Record<ResultClass, Partial<Record<Script, number>>>;
-    const perRound = (level: RageLevelId) => {
-      const g = GADGETS.find((x) => x.rageLevel === level)!;
+    /** P(branche) par manche jouée AVEC ce gadget (distribution du Rage Level, BOSS FIGHT compris). */
+    const perRoundOf = (gadgetId: string) => {
+      const g = GADGETS.find((x) => x.id === gadgetId)!;
       const out = new Map<string, number>();
       const bf: Record<string, number> = {};
-      for (const r of distributionTable(level)) {
+      for (const r of distributionTable(g.rageLevel)) {
         const c = classify(r.multiplier100);
         if (r.bossFightRung !== null) {
           bf[c] = (bf[c] ?? 0) + r.p;
@@ -402,8 +411,7 @@ if (reportPath) {
       for (const [c, p] of Object.entries(bf)) for (const [id, q] of branchProbabilities(g, c as ResultClass, { BF_ENTRY: 1 })) out.set(id, (out.get(id) ?? 0) + q * p);
       return out;
     };
-    const p = new Map<string, number>();
-    for (const level of ['grumpy', 'furious', 'unhinged'] as RageLevelId[]) for (const [id, v] of perRound(level)) p.set(id, v);
+    const perGadget = new Map<string, Map<string, number>>(GADGETS.map((g) => [g.id, perRoundOf(g.id)]));
     // Poisson-binomial : P(au moins k cartes découvertes après t manches).
     const atLeast = (ps: number[], t: number, k: number) => {
       let d = [1];
@@ -421,7 +429,8 @@ if (reportPath) {
     const quantile = (f: (t: number) => number, prob: number) => {
       let lo = 0;
       let hi = 1;
-      while (f(hi) < prob) hi *= 2;
+      while (f(hi) < prob && hi < 1e8) hi *= 2;
+      if (f(hi) < prob) return Number.POSITIVE_INFINITY;
       for (let i = 0; i < 50; i++) {
         const m = (lo + hi) / 2;
         if (f(m) < prob) lo = m;
@@ -429,52 +438,64 @@ if (reportPath) {
       }
       return Math.round(hi);
     };
-    const cardsP = (filter: (id: string) => boolean, share: number) => catalog.cards.filter((c) => filter(c.id)).map((c) => (p.get(c.id) ?? 0) * share);
-    const row = (label: string, ps: number[], k: number) => `| ${label} | ${quantile((t) => atLeast(ps, t, k), 0.5)} | ${quantile((t) => atLeast(ps, t, k), 0.9)} |`;
-    const all = cardsP(() => true, 1 / 3);
+    /** Profil de jeu : part des manches par gadget. */
+    const uniform = Object.fromEntries(GADGETS.map((g) => [g.id, 1 / GADGETS.length]));
+    const favourite = Object.fromEntries(GADGETS.map((g) => {
+      const slot = PLAN_SETS[g.rageLevel].indexOf(g.id);
+      return [g.id, (1 / 3) * [0.6, 0.25, 0.15][slot]!];
+    }));
+    const onlyA = Object.fromEntries(GADGETS.map((g) => [g.id, PLAN_SETS[g.rageLevel][0] === g.id ? 1 / 3 : 0]));
+    const cardsP = (share: Record<string, number>, filter: (c: (typeof catalog.cards)[number]) => boolean) =>
+      catalog.cards.filter(filter).map((c) => (perGadget.get(c.gadgetId)!.get(c.id) ?? 0) * share[c.gadgetId]!);
+    const fmt = (n: number) => (Number.isFinite(n) ? String(n) : 'jamais');
+    const row = (label: string, f: (t: number) => number) => `| ${label} | ${fmt(quantile(f, 0.5))} | ${fmt(quantile(f, 0.9))} |`;
+    const meltdown = (share: Record<string, number>, n: number) => (t: number) =>
+      GADGETS.map((g) => atLeast(cardsP(share, (c) => c.gadgetId === g.id && c.section !== 'bossfight'), t, n)).reduce((a, b) => a * b, 1);
+    const all = (share: Record<string, number>) => cardsP(share, () => true);
     const lines = [
-      '# COLLECTION BOOK — temps de découverte', '',
+      '# COLLECTION BOOK — temps de découverte (PRODUCTION 3 GADGETS)', '',
       `> Généré par \`COLLECTION_REPORT=${reportPath} npx vitest run tests/unit/collection.test.ts\` le ${new Date().toISOString().slice(0, 10)}. Ne pas éditer.`,
-      '> Calcul exact (contenu, rareté, scripts du book, distribution mathématique, BOSS FIGHT compris). La collection ne change aucune de ces probabilités :',
-      '> ces chiffres décrivent ce que le jeu montre déjà.', '',
-      '## Jalons (jeu réparti : 1/3 des manches par Rage Level)', '',
+      '> Calcul exact (contenu, rareté, scripts du book, distribution mathématique, BOSS FIGHT compris). La collection ne change aucune de ces',
+      '> probabilités : ces chiffres décrivent ce que le jeu montre déjà. Seul le gadget JOUÉ découvre ses cartes (jamais les autres plans).', '',
+      `Catalogue : **${catalog.cards.length} cartes** (${catalog.sections.map((x) => `${x.label} ${x.total}`).join(' · ')}).`, '',
+      '## Jalons — joueur qui répartit ses manches (1/3 par Rage Level, 1/3 par plan : 1/9 par gadget)', '',
       '| Jalon | Manches (médiane) | Manches (90 %) |', '|---|---:|---:|',
       ...MILESTONES.map((m) => {
         const r = m.rule;
-        if (r.kind === 'count') return row(m.label, all, r.n);
-        if (r.kind === 'fraction') return row(m.label, all, Math.ceil(r.f * all.length));
+        const ps = all(uniform);
+        if (r.kind === 'count') return row(m.label, (t) => atLeast(ps, t, r.n));
+        if (r.kind === 'fraction') return row(m.label, (t) => atLeast(ps, t, Math.ceil(r.f * ps.length)));
         if (r.kind === 'section') {
-          const ps = cardsP((id) => catalog.byId.get(id)!.section === r.section, 1 / 3);
-          return row(m.label, ps, ps.length);
+          const sp = cardsP(uniform, (c) => c.section === r.section);
+          return row(m.label, (t) => atLeast(sp, t, sp.length));
         }
-        if (r.kind === 'perSection') {
-          const f = (t: number) => r.sections.map((sec) => atLeast(cardsP((id) => catalog.byId.get(id)!.section === sec, 1 / 3), t, r.n)).reduce((a, b) => a * b, 1);
-          return `| ${m.label} (≥ ${r.n} dans ${r.sections.map((x) => x.toUpperCase()).join(', ')}) | ${quantile(f, 0.5)} | ${quantile(f, 0.9)} |`;
-        }
-        return row(m.label, all, all.length);
+        if (r.kind === 'perGadget') return row(`${m.label} (≥ ${r.n} avec chacun des 9 gadgets)`, meltdown(uniform, r.n));
+        if (r.kind === 'perSection') return row(m.label, () => 0);
+        return row(m.label, (t) => atLeast(ps, t, ps.length));
       }),
-      '', '## Courbe de découverte (jeu réparti)', '',
+      '', '## Règles étudiées pour OFFICE MELTDOWN (retenue : ≥ 4 avec chacun des 9 gadgets)', '',
+      '| Règle | Joueur réparti : médiane | 90 % | Joueur « plan préféré » (A 60 %, B 25 %, C 15 %) : médiane | 90 % | Joueur « plan A seulement » |', '|---|---:|---:|---:|---:|---:|',
+      ...[2, 3, 4, 5].map((n) => `| ≥ ${n} avec chacun des 9 gadgets | ${fmt(quantile(meltdown(uniform, n), 0.5))} | ${fmt(quantile(meltdown(uniform, n), 0.9))} | ${fmt(quantile(meltdown(favourite, n), 0.5))} | ${fmt(quantile(meltdown(favourite, n), 0.9))} | ${fmt(quantile(meltdown(onlyA, n), 0.5))} |`),
+      (() => {
+        const legacy = (share: Record<string, number>) => (t: number) => (['grumpy', 'furious', 'unhinged'] as const).map((lv) => atLeast(cardsP(share, (c) => c.section === lv), t, 8)).reduce((a, b) => a * b, 1);
+        return `| (ancienne règle) ≥ 8 dans chaque Rage Level | ${fmt(quantile(legacy(uniform), 0.5))} | ${fmt(quantile(legacy(uniform), 0.9))} | ${fmt(quantile(legacy(favourite), 0.5))} | ${fmt(quantile(legacy(favourite), 0.9))} | ${fmt(quantile(legacy(onlyA), 0.5))} |`;
+      })(),
+      '', 'Avec la règle retenue, un joueur qui ne joue que trois gadgets (un par niveau, ou les trois d\'un niveau) ne débloque jamais OFFICE MELTDOWN.', '',
+      '## 100 % (accomplissement de collectionneur, cosmétique)', '',
+      '| Profil | 100 % : médiane | 90 % |', '|---|---:|---:|',
+      row('Joueur réparti (1/9 par gadget)', (t) => atLeast(all(uniform), t, all(uniform).length)),
+      row('Joueur « plan préféré »', (t) => atLeast(all(favourite), t, all(favourite).length)),
+      '', '## Courbe de découverte (joueur réparti)', '',
       '| Manches | 10 | 25 | 50 | 100 | 200 | 500 | 1 000 |', '|---|---:|---:|---:|---:|---:|---:|---:|',
-      `| Cartes découvertes (espérance, sur ${all.length}) | ${[10, 25, 50, 100, 200, 500, 1000].map((n) => all.reduce((a, x) => a + 1 - Math.exp(-x * n), 0).toFixed(1)).join(' | ')} |`,
-      '', '## Règles étudiées pour OFFICE MELTDOWN (retenue : ≥ 8 dans chaque Rage Level, COLLECTION_BOOK.md §E.3)', '',
-      '| Règle | Manches (médiane) | Manches (90 %) |', '|---|---:|---:|',
-      ...[5, 8].map((k) => {
-        const f = (t: number) =>
-          (['grumpy', 'furious', 'unhinged'] as RageLevelId[])
-            .map((lv) => atLeast(cardsP((id) => catalog.byId.get(id)!.section === lv, 1 / 3), t, k))
-            .reduce((a, b) => a * b, 1);
-        return `| ≥ ${k} découvertes dans chaque Rage Level | ${quantile(f, 0.5)} | ${quantile(f, 0.9)} |`;
-      }),
-      row('30 découvertes au total', all, 30),
-      '', '## Joueur d\'un seul mode', '',
-      '| Rage Level | Cartes accessibles | 10 découvertes (médiane) | 100 % du mode (médiane) |', '|---|---:|---:|---:|',
-      ...(['grumpy', 'furious', 'unhinged'] as RageLevelId[]).map((lv) => {
-        const ps = cardsP((id) => catalog.byId.get(id)!.level === lv, 1);
-        const core = cardsP((id) => catalog.byId.get(id)!.section === lv, 1);
-        return `| ${lv.toUpperCase()} | ${ps.length} / ${all.length} | ${quantile((t) => atLeast(ps, t, 10), 0.5)} | ${quantile((t) => atLeast(core, t, core.length), 0.5)} |`;
+      `| Cartes découvertes (espérance, sur ${catalog.cards.length}) | ${[10, 25, 50, 100, 200, 500, 1000].map((n) => all(uniform).reduce((a, x) => a + 1 - Math.exp(-x * n), 0).toFixed(1)).join(' | ')} |`,
+      '', '## Par gadget (joueur réparti) : cartes de Rage Level découvertes (espérance)', '',
+      '| Gadget | Cartes | 25 manches | 50 | 100 | 200 |', '|---|---:|---:|---:|---:|---:|',
+      ...GADGETS.map((g) => {
+        const ps = cardsP(uniform, (c) => c.gadgetId === g.id && c.section !== 'bossfight');
+        return `| ${g.label} | ${ps.length} | ${[25, 50, 100, 200].map((n) => ps.reduce((a, x) => a + 1 - Math.exp(-x * n), 0).toFixed(1)).join(' | ')} |`;
       }),
       '',
     ];
-    writeFileSync(reportPath, lines.join('\n'));
-  });
+    writeFileSync(reportPath, `${lines.join('\n')}\n`);
+  }, 120_000);
 }

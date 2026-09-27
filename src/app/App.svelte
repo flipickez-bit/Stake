@@ -71,6 +71,11 @@
   const overlayOpen = $derived(ptIntro || showQuestionnaire || ptResults !== null || bookOpen || showcaseOn || pocIntro || showPocQuestionnaire || pocResults !== null);
   const collProgress = $derived(ctx?.collection && coll ? collectionProgress(coll, ctx.collection.catalog) : null);
   const shownCount = $derived(collProgress ? Math.max(0, collProgress.discovered - countHold) : 0);
+  /** Animations découvertes avec un gadget (cartes de Rage Level) : un fait, affiché sous son nom pendant le choix. */
+  function gadgetFound(gadgetId: string): { discovered: number; total: number } | null {
+    const g = ctx?.collection?.catalog.cards.find((c) => c.gadgetId === gadgetId);
+    return g && collProgress ? (collProgress.byGadget[`${g.level}/${gadgetId}`] ?? null) : null;
+  }
   const unseenRewards = $derived(ctx?.collection && coll ? ctx.collection.unseenRewards.length : 0);
   const giftCount = $derived(countHold > 0 ? 0 : unseenRewards);
   $effect(() => {
@@ -333,7 +338,7 @@
       <div class="badge" data-testid="mode-badge">{snap.state === 'RESUMING' ? 'RESUMED ROUND' : 'REPLAY · NO BET'}</div>
     {/if}
     {#if ctx && snap && poc && snap.plansEnabled && !showcaseOn && !bootError}
-      <PlanPicker flow={ctx.flow} stage={ctx.stage} {snap} onPick={onPickPlan} />
+      <PlanPicker flow={ctx.flow} stage={ctx.stage} {snap} onPick={onPickPlan} found={collProgress ? gadgetFound : null} />
     {/if}
     {#if ctx && snap && poc && snap.state === 'READY' && snap.revealed?.plans && !showcaseOn}
       <OtherPlans revealed={snap.revealed} level={snap.level} mode={altMode} onOpen={onRevealOtherPlans} />

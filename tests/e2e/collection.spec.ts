@@ -80,7 +80,7 @@ test('RESUME: a round interrupted before its reveal unlocks its card once, at th
   expect(entries[ids[0]!]).toMatchObject({ seen: 1, source: 'resume' });
 });
 
-test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 8/8/8 (no BOSS FIGHT card), played with no wallet call; 100 % = trophy', async ({ page }) => {
+test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 4 with each of the 9 gadgets (no BOSS FIGHT card), played with no wallet call; 100 % = trophy', async ({ page }) => {
   await boot(page);
   const T = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.collection.catalog.cards.length as number);
   await page.getByTestId('dev-toggle').click();
@@ -108,21 +108,21 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 8/8/8 (no B
   }
   await page.getByTestId('collection-close').click();
 
-  // 7 / 8 / 8, aucune carte BOSS FIGHT : progression factuelle, épisode verrouillé.
+  // 4 découvertes avec 8 gadgets, 3 avec le 9e, aucune carte BOSS FIGHT : progression factuelle, épisode verrouillé.
   await page.getByTestId('dev-toggle').click();
   await page.getByTestId('dev-coll-788').click();
-  await expect(page.getByTestId('dev-coll-count')).toContainText(`23 / ${T}`);
+  await expect(page.getByTestId('dev-coll-count')).toContainText(`35 / ${T}`);
   await page.getByTestId('dev-coll-view').click();
   await page.getByTestId('tab-rewards').click();
-  await expect(page.getByTestId('meltdown-grumpy')).toContainText('7 / 8');
-  await expect(page.getByTestId('meltdown-grumpy')).not.toContainText('✓');
-  await expect(page.getByTestId('meltdown-furious')).toContainText('8 / 8 ✓');
-  await expect(page.getByTestId('meltdown-unhinged')).toContainText('8 / 8 ✓');
-  await expect(page.getByTestId('meltdown-total')).toHaveText('23 / 24 required discoveries');
+  await expect(page.getByTestId('meltdown-swivel-slingshot')).toContainText('3 / 4');
+  await expect(page.getByTestId('meltdown-swivel-slingshot')).not.toContainText('✓');
+  await expect(page.getByTestId('meltdown-espresso-blaster')).toContainText('4 / 4 ✓');
+  await expect(page.getByTestId('meltdown-hvac-hurricane')).toContainText('4 / 4 ✓');
+  await expect(page.getByTestId('meltdown-total')).toHaveText('35 / 36 required discoveries');
   await expect(page.getByTestId('episode-play')).toHaveCount(0);
   await page.getByTestId('collection-close').click();
 
-  // Une découverte GRUMPY (Rage Level courant) → 8 / 8 / 8 : l'épisode est débloqué, jamais ouvert automatiquement.
+  // Une découverte avec le SWIVEL SLINGSHOT (GRUMPY) → 4 avec chacun des 9 gadgets : l'épisode est débloqué, jamais ouvert automatiquement.
   await page.getByTestId('dev-toggle').click();
   await page.getByTestId('dev-coll-new').click();
   await page.getByLabel('Close dev panel').click();
@@ -132,7 +132,7 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 8/8/8 (no B
   const calls = (await hook(page)).calls;
   await page.getByTestId('collection-open').click();
   await page.getByTestId('tab-rewards').click();
-  await expect(page.getByTestId('meltdown-total')).toHaveText('24 / 24 required discoveries');
+  await expect(page.getByTestId('meltdown-total')).toHaveText('36 / 36 required discoveries');
   await page.getByTestId('episode-play').click();
   const show = page.getByTestId('showcase');
   await expect(show).toBeVisible();

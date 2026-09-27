@@ -69,6 +69,11 @@ export type MilestoneRule =
   | { kind: 'section'; section: SectionId }
   /** Au moins n découvertes dans CHACUNE des sections (compteur plafonné à n par section). */
   | { kind: 'perSection'; sections: readonly SectionId[]; n: number }
+  /**
+   * PRODUCTION 3 GADGETS : au moins n découvertes (cartes de Rage Level, BOSS FIGHT exclus) avec CHACUN des gadgets
+   * indiqués (compteur plafonné à n par gadget). Impossible à remplir en ne jouant que trois gadgets.
+   */
+  | { kind: 'perGadget'; gadgets: readonly { gadgetId: string; level: RageLevelId; label: string }[]; n: number }
   | { kind: 'all' };
 
 export type CosmeticId =

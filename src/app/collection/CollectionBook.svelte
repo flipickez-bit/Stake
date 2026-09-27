@@ -188,8 +188,8 @@
           <div class="ep-title">{COPY.episodeName}</div>
           <div class="ep-note">{COPY.showcaseNote}</div>
           <ul class="ep-progress" data-testid="meltdown-progress">
-            {#each meltdown.bySection as c (c.section)}
-              <li class:done={c.done} data-testid="meltdown-{c.section}"><span>{SECTION_LABEL[c.section]}</span><b>{c.current} / {c.target}{c.done ? ' ✓' : ''}</b></li>
+            {#each meltdown.byGadget as c (c.gadgetId)}
+              <li class:done={c.done} data-testid="meltdown-{c.gadgetId}"><span><i class="lv lv-{c.level}">{SECTION_LABEL[c.level]}</i> {c.label}</span><b>{c.current} / {c.target}{c.done ? ' ✓' : ''}</b></li>
             {/each}
           </ul>
           <div class="ep-total" data-testid="meltdown-total">{COPY.requiredDiscoveries(meltdown.current, meltdown.required)}</div>
@@ -348,4 +348,8 @@
     .pages { padding-left: max(12px, calc(50% - 380px)); padding-right: max(12px, calc(50% - 380px)); }
     .tabs { padding-left: max(8px, calc(50% - 380px)); padding-right: max(8px, calc(50% - 380px)); }
   }
+  .ep-progress .lv { font-style: normal; font-size: 8px; letter-spacing: 1px; opacity: 0.7; margin-right: 4px; }
+  .ep-progress .lv-grumpy { color: var(--grumpy, #4aa3ff); }
+  .ep-progress .lv-furious { color: var(--furious, #ff9e3d); }
+  .ep-progress .lv-unhinged { color: var(--unhinged, #ff4b6e); }
 </style>

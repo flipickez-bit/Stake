@@ -4,6 +4,9 @@
  * Tant que Stake Engine n'a pas confirmé la compatibilité de récompenses persistantes (INFORMATION STAKE ENGINE
  * REQUISE), rien ici n'a ni n'aura de valeur financière — et rien ne dépendra du stockage local, modifiable.
  */
+import { gadgetById } from '../content/gadgets';
+import { PLAN_SETS } from '../domain/plans';
+import { RAGE_LEVEL_IDS } from '../domain/types';
 import type { Catalog, CollectionState, CosmeticDef, CosmeticId, CosmeticSlot, MilestoneDef, MilestoneRule, Progress, SectionId } from './types';
 
 export const COSMETICS: readonly CosmeticDef[] = [
@@ -25,13 +28,25 @@ export const NON_EQUIPABLE: ReadonlySet<CosmeticSlot> = new Set<CosmeticSlot>(['
 
 export const COSMETIC_BY_ID: ReadonlyMap<CosmeticId, CosmeticDef> = new Map(COSMETICS.map((c) => [c.id, c]));
 
-/** OFFICE MELTDOWN récompense l'EXPLORATION des trois Rage Levels (décision du 2026-09-26, COLLECTION_BOOK.md §E.3). */
-export const MELTDOWN_RULE = { kind: 'perSection', sections: ['grumpy', 'furious', 'unhinged'], n: 8 } as const satisfies MilestoneRule;
+/**
+ * OFFICE MELTDOWN récompense l'EXPLORATION des 9 gadgets (PRODUCTION 3 GADGETS, décision du 2026-09-27) :
+ * au moins MELTDOWN_PER_GADGET découvertes avec CHACUN des neuf gadgets (les trois Rage Levels, les trois plans).
+ * Trois gadgets ne suffisent jamais. N choisi par simulation (docs/generated/COLLECTION_REPORT_P3.md).
+ * Aucune fréquence de branche n'est modifiée : la règle ne fait que lire ce que le jeu montre déjà.
+ */
+export const MELTDOWN_PER_GADGET = 4;
+export const MELTDOWN_GADGETS: readonly { gadgetId: string; level: (typeof RAGE_LEVEL_IDS)[number]; label: string }[] = RAGE_LEVEL_IDS.flatMap((level) =>
+  PLAN_SETS[level].map((gadgetId) => ({ gadgetId, level, label: gadgetById(gadgetId)?.label ?? gadgetId })),
+);
+export const MELTDOWN_RULE = { kind: 'perGadget', gadgets: MELTDOWN_GADGETS, n: MELTDOWN_PER_GADGET } as const satisfies MilestoneRule;
+
+/** Ancienne règle (P05-C, 3 gadgets) : ≥ 8 découvertes dans chaque Rage Level. Conservée pour les rapports. */
+export const LEGACY_MELTDOWN_RULE = { kind: 'perSection', sections: ['grumpy', 'furious', 'unhinged'], n: 8 } as const satisfies MilestoneRule;
 
 /**
- * Jalons. OFFICE MELTDOWN : ≥ 8 découvertes dans GRUMPY, FURIOUS ET UNHINGED (≈ 63 manches en médiane, jeu réparti) ;
- * les cartes BOSS FIGHT ne sont pas requises. 100 % reste un accomplissement de collectionneur, purement cosmétique
- * (trophée + thème d'album), sans aucune facilité ajoutée. Aucune fréquence de branche n'est modifiée pour l'un ou l'autre.
+ * Jalons. OFFICE MELTDOWN : ≥ 3 découvertes avec chacun des 9 gadgets (les cartes BOSS FIGHT ne sont pas requises).
+ * 100 % reste un accomplissement de collectionneur, purement cosmétique (trophée + thème d'album), sans aucune
+ * facilité ajoutée. Aucune fréquence de branche n'est modifiée pour l'un ou l'autre.
  */
 export const MILESTONES: readonly MilestoneDef[] = [
   { id: 'count-5', label: '5 DISCOVERED', rule: { kind: 'count', n: 5 }, rewards: ['mug.okayest'] },
@@ -43,7 +58,7 @@ export const MILESTONES: readonly MilestoneDef[] = [
   { id: 'full-furious', label: '100 % FURIOUS', rule: { kind: 'section', section: 'furious' }, rewards: ['trapdoor.arctic'] },
   { id: 'full-unhinged', label: '100 % UNHINGED', rule: { kind: 'section', section: 'unhinged' }, rewards: ['rocket.retro'] },
   { id: 'full-bossfight', label: '100 % BOSS FIGHT', rule: { kind: 'section', section: 'bossfight' }, rewards: ['album.arcade'] },
-  { id: 'full-mvp', label: '100 % MVP COLLECTION', rule: { kind: 'all' }, rewards: ['trophy.collector', 'album.hallofshame'] },
+  { id: 'full-mvp', label: '100 % COLLECTION', rule: { kind: 'all' }, rewards: ['trophy.collector', 'album.hallofshame'] },
 ];
 
 export function progress(state: CollectionState, catalog: Catalog): Progress {
@@ -80,6 +95,8 @@ export function milestoneCounter(rule: MilestoneRule, p: Progress): { current: n
     }
     case 'perSection':
       return sectionCounters(rule, p).reduce((a, c) => ({ current: a.current + c.current, target: a.target + c.target }), { current: 0, target: 0 });
+    case 'perGadget':
+      return gadgetCounters(rule, p).reduce((a, c) => ({ current: a.current + c.current, target: a.target + c.target }), { current: 0, target: 0 });
     case 'all':
       return { current: p.discovered, target: p.total };
   }
@@ -93,16 +110,29 @@ export function sectionCounters(rule: Extract<MilestoneRule, { kind: 'perSection
   });
 }
 
+/** Détail par gadget d'une règle `perGadget` (plafonné à n) : « ESPRESSO BLASTER 2 / 3 ». Des faits, rien d'autre. */
+export function gadgetCounters(rule: Extract<MilestoneRule, { kind: 'perGadget' }>, p: Progress): { gadgetId: string; level: SectionId; label: string; current: number; target: number; done: boolean }[] {
+  return rule.gadgets.map((g) => {
+    const current = Math.min(p.byGadget[`${g.level}/${g.gadgetId}`]?.discovered ?? 0, rule.n);
+    return { gadgetId: g.gadgetId, level: g.level, label: g.label, current, target: rule.n, done: current >= rule.n };
+  });
+}
+
 /** Progression vers OFFICE MELTDOWN (affichage REWARDS, mesures du PLAYTEST). */
 export function meltdownProgress(p: Progress) {
-  const bySection = sectionCounters(MELTDOWN_RULE, p);
-  const count = (id: SectionId) => bySection.find((c) => c.section === id)?.current ?? 0;
+  const byGadget = gadgetCounters(MELTDOWN_RULE, p);
+  const count = (id: SectionId) => byGadget.filter((c) => c.level === id).reduce((a, c) => a + c.current, 0);
   const { current, target } = milestoneCounter(MELTDOWN_RULE, p);
-  return { grumpy: count('grumpy'), furious: count('furious'), unhinged: count('unhinged'), current, required: target, unlocked: bySection.every((c) => c.done), bySection };
+  return {
+    grumpy: count('grumpy'), furious: count('furious'), unhinged: count('unhinged'),
+    current, required: target, unlocked: byGadget.every((c) => c.done), byGadget,
+    gadgetsDone: byGadget.filter((c) => c.done).length,
+  };
 }
 
 export function ruleMet(rule: MilestoneRule, p: Progress): boolean {
   if (rule.kind === 'perSection') return sectionCounters(rule, p).every((c) => c.done);
+  if (rule.kind === 'perGadget') return gadgetCounters(rule, p).every((c) => c.done);
   const { current, target } = milestoneCounter(rule, p);
   return target > 0 && current >= target;
 }

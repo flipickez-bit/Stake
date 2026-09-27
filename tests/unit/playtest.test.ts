@@ -1,3 +1,4 @@
+import { PLAN_SETS } from '../../src/domain/plans';
 import { describe, expect, it } from 'vitest';
 import { PLAYTEST_NA_ALLOWED, PLAYTEST_QUESTIONS, PLAYTEST_TARGET, PlaytestRecorder, outcomeOf, summarize } from '../../src/dev/playtest';
 import type { Progress } from '../../src/collection/types';
@@ -7,12 +8,23 @@ import { createMemoryStore } from '../../src/platform/storage';
 const DEVICE = { width: 390, height: 844, portrait: true, touch: true };
 
 /** Progression de collection synthétique (GRUMPY, FURIOUS, UNHINGED, BOSS FIGHT). */
-const P = (g: number, f: number, u: number, b = 0): Progress => ({
-  discovered: g + f + u + b,
-  total: 51,
-  bySection: { grumpy: { discovered: g, total: 15 }, furious: { discovered: f, total: 14 }, unhinged: { discovered: u, total: 16 }, bossfight: { discovered: b, total: 6 } },
-  byGadget: {},
-});
+/** Progression de production : `counts` = découvertes par gadget, dans l'ordre des plans (GRUMPY A B C, FURIOUS A B C, UNHINGED A B C). */
+const IDS = ['grumpy', 'furious', 'unhinged'].flatMap((lv) => PLAN_SETS[lv as 'grumpy'].map((id) => ({ lv, id })));
+const PG = (counts: readonly number[], b = 0): Progress => {
+  const byGadget: Progress['byGadget'] = {};
+  const lv = { grumpy: 0, furious: 0, unhinged: 0 } as Record<string, number>;
+  IDS.forEach(({ lv: l, id }, i) => {
+    byGadget[`${l}/${id}`] = { discovered: counts[i] ?? 0, total: 15 };
+    lv[l] = (lv[l] ?? 0) + (counts[i] ?? 0);
+  });
+  return {
+    discovered: counts.reduce((a, n) => a + n, 0) + b,
+    total: 147,
+    bySection: { grumpy: { discovered: lv.grumpy!, total: 46 }, furious: { discovered: lv.furious!, total: 41 }, unhinged: { discovered: lv.unhinged!, total: 42 }, bossfight: { discovered: b, total: 18 } },
+    byGadget,
+  };
+};
+const P = (g: number, f: number, u: number, b = 0): Progress => PG([g, 0, 0, f, 0, 0, u, 0, 0], b);
 
 const rec = (i: number, over: Partial<RoundRecord> = {}): RoundRecord => ({
   roundId: `M-${i}`,
@@ -121,7 +133,7 @@ describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
   it('COLLECTION BOOK : découvertes par section, ouvertures, changement de mode après ouverture, progression MELTDOWN', () => {
     const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
     p.start(DEVICE, P(1, 1, 1));
-    expect(p.current!.collection).toMatchObject({ atStart: { discovered: 3, total: 51 }, firstOpenAfterRound: null, meltdownAtStart: { current: 3, required: 24, unlocked: false } });
+    expect(p.current!.collection).toMatchObject({ atStart: { discovered: 3, total: 147 }, firstOpenAfterRound: null, meltdownAtStart: { current: 3, required: 36, unlocked: false } });
     // Ouverture avant la 1re manche, sur GRUMPY ; la manche suivante (rec(1)) est en GRUMPY : pas de changement.
     p.markCollectionOpened('grumpy');
     p.onDiscovery({ isNew: true, section: 'grumpy' }, P(2, 1, 1));
@@ -141,24 +153,24 @@ describe('PLAYTEST 50 (LOCAL DEV ONLY)', () => {
       firstOpenAfterRound: 0,
       openLog: [{ afterRound: 0, level: 'grumpy' }, { afterRound: 2, level: 'unhinged' }],
       discoveriesBySection: { grumpy: 1, furious: 0, unhinged: 0, bossfight: 1 },
-      atEnd: { discovered: 5, total: 51 },
+      atEnd: { discovered: 5, total: 147 },
       meltdownUnlock: null,
     });
     expect(summarize(s).levelChangesAfterOpen).toEqual({ opens: 2, changed: 1 });
   });
 
-  it('OFFICE MELTDOWN : le déblocage NATUREL (8 / 8 / 8) est enregistré une seule fois, jamais forcé', () => {
+  it('OFFICE MELTDOWN : le déblocage NATUREL (4 avec chacun des 9 gadgets) est enregistré une seule fois, jamais forcé', () => {
     const p = new PlaytestRecorder(createMemoryStore(), 'TEST');
-    p.start(DEVICE, P(7, 8, 8));
+    p.start(DEVICE, PG([3, 4, 4, 4, 4, 4, 4, 4, 4]));
     p.onRoundComplete(rec(1));
     p.onRoundComplete(rec(2));
-    p.onDiscovery({ isNew: true, section: 'grumpy' }, P(8, 8, 8, 1));
+    p.onDiscovery({ isNew: true, section: 'grumpy' }, PG([4, 4, 4, 4, 4, 4, 4, 4, 4], 1));
     p.onRoundComplete(rec(3));
-    p.onDiscovery({ isNew: true, section: 'grumpy' }, P(9, 8, 8, 1));
+    p.onDiscovery({ isNew: true, section: 'grumpy' }, PG([5, 4, 4, 4, 4, 4, 4, 4, 4], 1));
     p.onRoundComplete(rec(4));
     const c = p.current!.collection!;
-    expect(c.meltdownUnlock).toEqual({ roundUnlocked: 3, rageCountsAtUnlock: { grumpy: 8, furious: 8, unhinged: 8 }, collectionCountAtUnlock: 25 });
-    expect(c.meltdownAtEnd).toMatchObject({ grumpy: 8, furious: 8, unhinged: 8, current: 24, required: 24, unlocked: true });
+    expect(c.meltdownUnlock).toEqual({ roundUnlocked: 3, rageCountsAtUnlock: { grumpy: 12, furious: 12, unhinged: 12 }, collectionCountAtUnlock: 37 });
+    expect(c.meltdownAtEnd).toMatchObject({ grumpy: 12, furious: 12, unhinged: 12, current: 36, required: 36, unlocked: true, gadgetsDone: 9 });
     // Le joueur décide lui-même de lancer l'épisode.
     expect(c.episodePlays).toBe(0);
     p.markEpisodePlayed();
