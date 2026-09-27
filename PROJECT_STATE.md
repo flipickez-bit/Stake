@@ -4,6 +4,15 @@
 
 _Dernière mise à jour : 2026-09-27, **Phase 0.6 — VISUAL UPGRADE : vertical slice GRUMPY + SWIVEL SLINGSHOT livrée, en attente de validation** (`PHASE_0_6.md`, `BAD_BOSS_ART_BIBLE.md`). Les 48 autres branches et la Phase 1 ne sont PAS commencées. La préversion P05-C (PLAYTEST #2) reste publiée à part, inchangée. **PLAYTEST #2 humain toujours attendu** sur P05-C._
 
+## Étude : choix entre 3 gadgets A/B/C (`docs/ETUDE_CHOIX_3_GADGETS.md`)
+- ✅ Étude de faisabilité livrée (aucun code, aucune donnée mathématique modifiée). La proposition « 9 profils mathématiques indépendants » est abandonnée.
+- Conclusion :
+  - seule architecture Stake vérifiée pour des alternatives réelles : choix = mode avant `Play` (9 modes) et books triples partagés (A2) ;
+  - RTP de 96,5 % pour toute stratégie ; volatilité inchangée ;
+  - modèle recommandé : indépendant, BOSS FIGHT commun ;
+  - UX recommandée : PRIVATE par défaut, révélation à la demande ; REVEAL ALL seulement après playtest et conformité.
+- ⏳ **Décision attendue** (vous) : la mécanique remplace-t-elle le modèle actuel ? 9 questions à poser à Stake (Q21–Q29).
+
 ## Phase 0.6 : état (`PHASE_0_6.md`)
 - ✅ Skills PixiJS (15, MIT) installés et utilisés ; Game Assets Enhancer **non utilisé** (fal.ai payant : STOP, rien dépensé).
 - ✅ **Art bible** (`BAD_BOSS_ART_BIBLE.md`) + **contrôle automatique** (`tests/unit/artBible.test.ts` : palette, traits, pas de texte ni d'image, atlas, mémoire).
