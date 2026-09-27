@@ -54,7 +54,8 @@ export interface ContentLibrary {
   reactionPool(resultClass: ResultClass): readonly BossReaction[];
   /** Réactions quand le boss a quitté le cadre (fenêtre, trappe, plafond). */
   awayPool: readonly BossReaction[];
-  bossFight(bossFight: NonNullable<Outcome['bossFight']>): SegmentDef[];
+  /** Déroulé du BOSS FIGHT ; `projectiles` : ce que le gadget joué lance sur le boss (variation visuelle). */
+  bossFight(bossFight: NonNullable<Outcome['bossFight']>, projectiles?: readonly string[]): SegmentDef[];
   cooCameo: { chance: number; segment: SegmentDef };
 }
 
@@ -172,7 +173,7 @@ function resolveStep(step: Step, outcome: Outcome, gadget: GadgetDef, lib: Conte
     return [{ id: `SILENCE_${step.silence}`, phase: 'twist', ms: step.silence, turbo: 'drop', cues: [{ kind: 'silence', at: 0, ms: step.silence }] }];
   }
   if (!outcome.bossFight) throw new CompileError(`${gadget.id} : étape bossFight sans BOSS FIGHT dans le book`);
-  return lib.bossFight(outcome.bossFight);
+  return lib.bossFight(outcome.bossFight, gadget.bfProjectiles);
 }
 
 function place(

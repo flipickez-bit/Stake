@@ -37,7 +37,7 @@ const TIERS: Record<ImpactTier, TierSpec> = {
 
 /** Couche OBJECT de l'impact selon ce qui est frappé (le décor sonne comme ce qu'il est). */
 const OBJECT_LAYER: Record<ImpactDirection, SoundId> = {
-  none: 'bonk', window: 'glass', overdesk: 'clang', ceiling: 'debris', floor: 'thump', cork: 'paper', wall: 'clang', elevator: 'clang',
+  none: 'bonk', window: 'glass', overdesk: 'clang', ceiling: 'debris', floor: 'thump', cork: 'paper', wall: 'clang', elevator: 'clang', vent: 'rattle',
 };
 
 function impactSegment(tier: ImpactTier, direction: ImpactDirection): SegmentDef {
@@ -73,6 +73,7 @@ function impactSegment(tier: ImpactTier, direction: ImpactDirection): SegmentDef
   if (direction === 'wall') cues.push(state(0, 'cabinet', 'dented'), tw(0, 'cabinet', { rot: -0.08 }, 90, 'outQuad'), tw(90, 'cabinet', { rot: 0 }, 400, 'outElastic'));
   if (direction === 'floor') cues.push(fx(40, 'dust', p.x, p.y - 10, t.dust), fx(80, 'smoke', p.x, p.y - 20, big ? 10 : 4));
   if (direction === 'elevator') cues.push(state(0, 'elevator', 'dent=yes'), fx(30, 'smoke', p.x, p.y - 30, big ? 12 : 6));
+  if (direction === 'vent') cues.push(state(0, 'vent', 'dented'), fx(20, 'dust', p.x, p.y, 12), tw(0, 'vent', { rot: 0.06 }, 80, 'outQuad'), tw(80, 'vent', { rot: 0 }, 400, 'outElastic'));
   cues.push(silence(0, 220));
   for (let i = 0; i < t.dings; i++) cues.push(sound(260 + i * 150, 'ding', 1 + i * 0.12));
   return seg(`IMP_${tier}_${direction.toUpperCase()}`, 'impact', t.ms, 'keep', cues);
@@ -168,8 +169,8 @@ const BF_ARENA = seg('BF_ARENA', 'twist', 700, 'compress', [
   signal(400, 'bfRung', 0), sound(400, 'ding'),
 ]);
 
-function attackSegments(index: number, attack: { result: 'HIT' | 'BLOCKED'; variant: number }): SegmentDef[] {
-  const kind = BF_PROJECTILES[attack.variant % BF_PROJECTILES.length] ?? 'stapler';
+function attackSegments(index: number, attack: { result: 'HIT' | 'BLOCKED'; variant: number }, projectiles: readonly string[] = BF_PROJECTILES): SegmentDef[] {
+  const kind = projectiles[attack.variant % projectiles.length] ?? 'stapler';
   // Tronc commun de l'attaque : on ne sait pas si elle passera avant ~900 ms.
   const windup = seg(`BF_WINDUP_${index}`, 'action', 900, 'compress', [
     state(0, 'proj', `kind=${kind}`),
@@ -194,9 +195,9 @@ function attackSegments(index: number, attack: { result: 'HIT' | 'BLOCKED'; vari
   ])];
 }
 
-function bossFightSegments(bf: NonNullable<Outcome['bossFight']>): SegmentDef[] {
+function bossFightSegments(bf: NonNullable<Outcome['bossFight']>, projectiles?: readonly string[]): SegmentDef[] {
   const out: SegmentDef[] = [BF_ENTRY_MUG, BF_ARENA];
-  bf.attacks.forEach((a, i) => out.push(...attackSegments(i, a)));
+  bf.attacks.forEach((a, i) => out.push(...attackSegments(i, a, projectiles?.length ? projectiles : BF_PROJECTILES)));
   if (bf.ko) {
     out.push(seg('BF_KO', 'impact', 1700, 'keep', [
       anim(0, 'boss', 'giant-ko'), tw(0, 'boss', { rot: -1.45, y: 600 }, 600, 'inQuad'),

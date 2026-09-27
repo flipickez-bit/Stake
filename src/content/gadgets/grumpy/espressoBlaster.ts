@@ -289,6 +289,7 @@ export const espressoBlaster: GadgetDef = {
   trunk: ['ESP_IN', 'ESP_PRESSURE'],
   hold: { sound: 'pfft', everyMs: 700 },
   signature: ['pfft', 'clunk', 'rattle', 'plop'],
+  bfProjectiles: ['cup', 'coffee', 'cup'],
   pick: {
     layer: 'front',
     box: { x: ESP.body.x - 70, y: ESP.body.y - 150, w: 150, h: 160 },

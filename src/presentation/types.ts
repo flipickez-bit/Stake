@@ -88,7 +88,7 @@ export interface SegmentDef {
   cues: Cue[];
 }
 
-export type ImpactDirection = 'none' | 'window' | 'overdesk' | 'ceiling' | 'floor' | 'cork' | 'wall' | 'elevator';
+export type ImpactDirection = 'none' | 'window' | 'overdesk' | 'ceiling' | 'floor' | 'cork' | 'wall' | 'elevator' | 'vent';
 
 /** Réactions partagées (bibliothèque REACTION). Les deux dernières servent quand le boss a quitté le cadre. */
 export type BossReaction = 'SIP' | 'LAUGH' | 'FLEX' | 'SULK' | 'DAZED' | 'OFFICE_CHEER' | 'WENDELL_PEEK';
@@ -185,6 +185,11 @@ export interface GadgetDef {
   pick?: PickSpec;
   /** Signature sonore (SOUND BIBLE) : famille de sons qui identifie le gadget les yeux fermés. */
   signature?: SoundId[];
+  /**
+   * BOSS FIGHT (commun à la manche, mêmes maths pour les 9 gadgets) : ce que le joueur lance sur le boss géant avec
+   * CE gadget (variation visuelle uniquement). Absent : projectiles de bureau génériques.
+   */
+  bfProjectiles?: readonly string[];
   branches: BranchDef[];
   segments: Record<string, SegmentDef>;
 }

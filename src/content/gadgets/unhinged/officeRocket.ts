@@ -9,6 +9,8 @@ import type { GadgetDef } from '../../../presentation/types';
 import {
   anim, BOSS_FIGHT, compose, fx, LOSS, mod, paced, punch, seg, segments, shake, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_MID, WIN_SMALL,
 } from '../../dsl';
+import { FUSE } from '../stations';
+import { UNHINGED_DECOR } from './decor';
 
 const D1 = 'fuse-out';
 
@@ -22,6 +24,9 @@ const MISS = mod('MISS', { seg: 'RKT_T_MISS' });
 const THROUGH = mod('THROUGH_ROOF', { seg: 'RKT_T_THROUGH' });
 const ELEV = mod('ELEV_WAIT', { seg: 'ELEV_WAIT' });
 
+/** Mèche : de la fusée (sous le fauteuil) jusqu'à l'embout de mise à feu, dans la zone visible en portrait. */
+const FUSE_END = FUSE.to;
+
 const fuseOut = [tw(0, 'spark', { alpha: 0 }, 60, 'linear'), state(0, 'fuse', 'burnt')];
 
 export const officeRocket: GadgetDef = {
@@ -29,20 +34,31 @@ export const officeRocket: GadgetDef = {
   label: 'OFFICE ROCKET',
   rageLevel: 'unhinged',
   layout: {
-    boss: { transform: { x: 650, y: 560 }, states: { seat: 'rocket', mug: 'normal', face: 'normal' }, anim: 'sip' },
+    ...UNHINGED_DECOR,
     fuse: { transform: { x: 700, y: 556 }, states: { main: 'unlit' } },
-    spark: { transform: { x: 900, y: 552, alpha: 0 } },
+    spark: { transform: { x: FUSE_END.x, y: FUSE_END.y, alpha: 0 } },
+    fuseEnd: { transform: { x: FUSE_END.x + 18, y: 560 } },
   },
-  props: ['fuse', 'spark'],
+  props: ['fuse', 'spark', 'fuseEnd'],
   trunk: ['RKT_IN', 'RKT_FUSE'],
   hold: { sound: 'fuse', everyMs: 500 },
+  signature: ['fuse', 'roar', 'whoosh', 'crash'],
+  bfProjectiles: ['rocket', 'stapler', 'rocket'],
+  // Choix : l'embout de mise à feu au bout de la mèche ; au survol, il grésille (étincelle d'attente).
+  pick: {
+    layer: 'room',
+    box: { x: FUSE_END.x - 70, y: FUSE_END.y - 90, w: 130, h: 104 },
+    spot: { x: FUSE_END.x - 20, y: 556, sx: 0.9 },
+    idle: [{ actor: 'fuseEnd', prop: 'sy', amp: 0.06, periodMs: 180 }],
+    puff: { x: FUSE_END.x + 18, y: 530 },
+  },
   segments: segments([
     seg('RKT_IN', 'intro', 450, 'compress', [
-      anim(0, 'hands', 'lighter'), tw(0, 'hands', { x: 906, y: 520 }, 380, 'outBack'), anim(0, 'boss', 'sip'), sound(380, 'click', 1.4),
+      anim(0, 'hands', 'lighter'), tw(0, 'hands', { x: FUSE_END.x + 6, y: 520 }, 380, 'outBack'), anim(0, 'boss', 'sip'), sound(380, 'click', 1.4),
     ]),
     seg('RKT_FUSE', 'setup', 900, 'compress', [
       state(0, 'fuse', 'lit'), tw(0, 'spark', { alpha: 1 }, 60, 'linear'), sound(0, 'fuse'),
-      tw(0, 'spark', { x: 716 }, 880, 'linear'), tw(100, 'hands', { y: 1060 }, 300, 'inQuad'),
+      tw(0, 'spark', { x: FUSE.from.x }, 880, 'linear'), tw(100, 'hands', { y: 1060 }, 300, 'inQuad'),
       tw(0, 'camera', { x: 620, sx: 1.08 }, 800, 'inOutQuad'), anim(450, 'boss', 'sniff'),
     ]),
 
@@ -171,7 +187,7 @@ export const officeRocket: GadgetDef = {
     compose('RKT-B1', 'Pétard mouillé', [B], [{ seg: 'RKT_E_FIZZLE' }, { reaction: 'auto' }], { categories: ['CLEAN_MISS', 'TEASE'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
     compose('RKT-B2', 'Rallumage, plafond', [B, REIGNITE], [{ seg: 'RKT_E_CEILING' }, { impact: 'ceiling' }, { reaction: 'away' }], { categories: ['GRAZE', 'DIRECT', 'COMEBACK'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),
     compose('RKT-B3', 'WENDELL CEILING', [B, REIGNITE, SMOKE], [{ seg: 'RKT_E_WCEIL' }, { reaction: 'SIP' }], { categories: ['BACKFIRE'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
-    compose('RKT-B9', 'Fumée : l\'extincteur', [B, REIGNITE, SMOKE], [{ seg: 'RKT_E_FOAM' }, { reaction: 'SIP' }], { categories: ['CLEAN_MISS', 'TEASE'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
+    compose('RKT-B9', 'Fumée : l\'extincteur', [B, REIGNITE, SMOKE], [{ seg: 'RKT_E_FOAM' }, { reaction: 'SIP' }], { categories: ['CLEAN_MISS', 'TEASE'], classes: LOSS, rarity: 'VERY_RARE', d1: D1 }),
     compose('RKT-B4', 'Fumée : B.B. au plafond', [B, REIGNITE, SMOKE], [{ seg: 'RKT_E_BBCEIL' }, { impact: 'ceiling' }, { reaction: 'away' }], { categories: ['COMEBACK', 'DIRECT', 'GRAZE'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),
     compose('RKT-B5', 'Fumée : le cratère', [B, REIGNITE, SMOKE], [{ seg: 'RKT_E_CRATER' }, { impact: 'window' }, { reaction: 'away' }], { categories: ['CHAIN', 'SUPER', 'COMEBACK'], classes: WIN_BIG, rarity: 'RARE', d1: D1 }),
     compose('RKT-B6', 'Fumée dorée', [B, REIGNITE, SMOKE], [{ seg: 'RKT_E_SMOKEBF' }, { bossFight: true }], { categories: ['BF_ENTRY'], classes: BOSS_FIGHT, rarity: 'UNCOMMON', d1: D1 }),

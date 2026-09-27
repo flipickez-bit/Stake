@@ -38,6 +38,7 @@ export const swivelSlingshot: GadgetDef = {
   trunk: ['SLG_IN', 'SLG_PULL'],
   hold: { sound: 'creak', everyMs: 700 },
   signature: ['stretch', 'creak', 'twang', 'snap'],
+  bfProjectiles: ['stapler', 'mug', 'plane'],
   // Choix : le poteau dans la pièce ; au survol, l'élastique vibre (dessiné par la scène) et le poteau frémit.
   pick: {
     layer: 'room',

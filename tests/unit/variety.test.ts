@@ -274,5 +274,5 @@ if (reportPath) {
     lines.push(`Branches distinctes attendues (hors BOSS FIGHT, sur ${all.length}) : ${[10, 25, 50, 100, 200].map((n) => `${n} manches → ${seen(n).toFixed(1)}`).join(' · ')}.`);
     lines.push(`Nouvelles branches attendues entre la 41e et la 50e manche : ${(seen(50) - seen(40)).toFixed(1)} ; entre la 91e et la 100e : ${(seen(100) - seen(90)).toFixed(1)}.`, '');
     writeFileSync(reportPath, `${lines.join('\n')}\n`);
-  });
+  }, 120_000);
 }

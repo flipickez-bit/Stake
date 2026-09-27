@@ -42,7 +42,7 @@ describe('POC 3 PLANS : prototypes B et C (présentation honnête de chaque rés
   it('B et C sont hors du contenu de production ; les plans A, B, C de GRUMPY sont SLINGSHOT, ESPRESSO, COPIER', () => {
     for (const g of POC_GADGETS) expect(GADGETS.includes(g)).toBe(false);
     expect(planGadgets('grumpy')!.map((g) => g.id)).toEqual(['swivel-slingshot', 'espresso-blaster', 'copier-catapult']);
-    expect(planGadgets('furious')).toBeNull();
+    expect(planGadgets('furious')!.map((g) => g.id)).toEqual(['trapdoor-express', 'cabinet-domino', 'cooler-bowling']);
   });
 
   it('chaque (classe, script) que GRUMPY peut produire a une branche EXACTE (jamais de repli), BOSS FIGHT compris', () => {

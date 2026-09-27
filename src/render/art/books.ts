@@ -6,6 +6,7 @@ import type { AtlasBook } from './atlas';
 import { BOSS_PARTS } from './parts/boss';
 import { CAST_PARTS } from './parts/cast';
 import { FURIOUS_PARTS } from './parts/furious';
+import { UNHINGED_PARTS } from './parts/unhinged';
 import { OFFICE_PARTS } from './parts/office';
 import { PLAN_PARTS } from './parts/plans';
 import { VFX_PARTS } from './parts/vfx';
@@ -23,7 +24,9 @@ export const CHARACTER_BOOK: AtlasBook = { id: 'characters', scale: 2, parts: [.
 /** Accessoires du plan d'action et du premier plan (bureau, écran, lance-pierre…) : 1,75 px par unité (page 2048 × 512). */
 export const PROPS_BOOK: AtlasBook = { id: 'props', scale: 1.75, parts: OFFICE_PARTS.filter((p) => !SOFT.has(p.id) && !DECOR.has(p.id)) };
 export const DECOR_BOOK: AtlasBook = { id: 'decor', scale: 1.5, parts: OFFICE_PARTS.filter((p) => DECOR.has(p.id)) };
-export const SOFT_BOOK: AtlasBook = { id: 'soft', scale: 0.6, parts: OFFICE_PARTS.filter((p) => SOFT.has(p.id)) };
+/** La mini-tornade (HVAC HURRICANE) est de l'air flou : elle rejoint l'art doux (0,6 px par unité). */
+const SOFT_UNHINGED = new Set(['hvac_twister']);
+export const SOFT_BOOK: AtlasBook = { id: 'soft', scale: 0.6, parts: [...OFFICE_PARTS.filter((p) => SOFT.has(p.id)), ...UNHINGED_PARTS.filter((p) => SOFT_UNHINGED.has(p.id))] };
 /** Compatibilité des tests : tout le bureau. */
 export const OFFICE_BOOK: AtlasBook = { id: 'office', scale: 2, parts: [...OFFICE_PARTS] };
 
@@ -33,7 +36,10 @@ export const OFFICE_BOOK: AtlasBook = { id: 'office', scale: 2, parts: [...OFFIC
  */
 export const FURIOUS_BOOK: AtlasBook = { id: 'furious', scale: 1.5, maxPx: 1024, parts: FURIOUS_PARTS };
 
-export const ART_BOOKS: readonly AtlasBook[] = [CHARACTER_BOOK, PROPS_BOOK, DECOR_BOOK, SOFT_BOOK, FURIOUS_BOOK];
+/** UNHINGED : embout de mèche (aussi en mode classique), coffre-fort, détonateur, grille, thermostat, mini-tornade. */
+export const UNHINGED_BOOK: AtlasBook = { id: 'unhinged', scale: 1.5, maxPx: 1024, parts: UNHINGED_PARTS.filter((p) => !SOFT_UNHINGED.has(p.id)) };
+
+export const ART_BOOKS: readonly AtlasBook[] = [CHARACTER_BOOK, PROPS_BOOK, DECOR_BOOK, SOFT_BOOK, FURIOUS_BOOK, UNHINGED_BOOK];
 
 /**
  * POC « 3 PLANS » : prototypes des plans B et C, dans leur propre petite page (1024 × 512, 1,5 px par unité),

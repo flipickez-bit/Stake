@@ -204,6 +204,7 @@ export const cabinetDomino: GadgetDef = {
   trunk: ['DOM_IN', 'DOM_PUSH'],
   hold: { sound: 'rattle', everyMs: 620 },
   signature: ['clang', 'rattle', 'slide', 'creak'],
+  bfProjectiles: ['drawer', 'ream', 'drawer'],
   pick: {
     layer: 'room',
     box: { x: DOMINO.xs[0] - 10, y: FLOOR - 186, w: PX[2] - DOMINO.xs[0] + 16, h: 196 },

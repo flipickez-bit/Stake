@@ -1,5 +1,5 @@
 /**
- * PLAN C · WATER COOLER BOWLING (FURIOUS) — gadget de PRODUCTION (15 branches).
+ * PLAN C · WATER COOLER BOWLING (FURIOUS) — gadget de PRODUCTION (16 branches).
  * Une rampe de bowling sur le bureau du joueur ; la boule, c'est la bonbonne de la fontaine à eau. Elle roule du
  * bureau du joueur jusqu'aux pieds de B.B. (elle rapetisse en s'éloignant : profondeur 2.5D).
  * Signature sonore : ROLL (grondement), GULP (glouglou), STRIKE (quilles), SPLASH.
@@ -15,15 +15,18 @@
 import type { GadgetDef, SegmentDef } from '../../../presentation/types';
 import { anim, BOSS_FIGHT, compose, fx, impactFrame, LOSS, mod, paced, seg, segments, shake, signal, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_MID, WIN_SMALL } from '../../dsl';
 import { bb, cam, props, wendell } from '../../kit';
-import { COOLER, FRONT_DY, PLAN_SCALE as S } from '../stations';
+import { COOLER, FRONT_DY } from '../stations';
+
+/** Rampe et bonbonne à l'échelle 1 (la bonbonne doit se lire comme une bonbonne, même sur téléphone). */
+const S = 1;
 import { FURIOUS_DECOR, FURIOUS_WORLD_PROPS } from './decor';
 
 const D1 = 'wound-up';
 
 // ------------------------------------------------------------------ piste (monde)
 /** Haut et bas de la rampe (la bonbonne y repose, puis la dévale). */
-const TOP = { x: COOLER.ramp.x + 54, y: COOLER.ramp.y - 86 + FRONT_DY };
-const LOW = { x: COOLER.ramp.x - 66, y: COOLER.ramp.y - 50 + FRONT_DY };
+const TOP = { x: COOLER.ramp.x + 66, y: COOLER.ramp.y - 104 + FRONT_DY };
+const LOW = { x: COOLER.ramp.x - 72, y: COOLER.ramp.y - 66 + FRONT_DY };
 /** Au sol de la pièce, en s'éloignant (z : profondeur ; plus loin = plus petit). */
 const MID = { x: 690, y: 596, z: 140 };
 const FEET = { x: 668, y: 548, z: 280 };
@@ -186,6 +189,12 @@ const SEGMENTS: SegmentDef[] = [
     tw(300, 'jug', { x: FEET.x, y: FEET.y, z: FEET.z, rot: -12 }, 320, 'inQuad'), sound(620, 'thump', 1.3), sound(640, 'deflate'),
     signal(640, 'reveal'), anim(660, 'boss', 'laugh'), sound(680, 'laugh'), tw(0, 'camera', { x: 420, y: 420, sx: 1.02 }, 400, 'inOutQuad'),
   ]),
+  /** GAIN : la fusée à eau lui arrive en pleine figure (glouglou, douche, il vacille). */
+  seg('BWL_E_SOAK', 'action', 420, 'compress', [
+    tw(0, 'jug', { x: 648, y: 400, z: 240 }, 300, 'inQuad'), tw(0, 'jug', { rot: -14 }, 300, 'linear'), sound(0, 'whoosh', 1.3), anim(160, 'boss', 'scared'),
+    tw(300, 'jug', { alpha: 0 }, 40), fx(300, 'water', 648, 400, 26), sound(302, 'splash'),
+    tw(0, 'camera', { x: 640, y: 400, sx: 1.12 }, 300, 'inQuad'),
+  ]),
   /** GROS GAIN : la fusée le frappe en pleine poitrine ; une vague l'emporte à travers la pièce jusqu'à la fenêtre. */
   seg('BWL_E_WAVE', 'action', 760, 'compress', [
     tw(0, 'jug', { x: 640, y: 420 }, 160, 'inQuad'), ...impactFrame(160, 30, 40), sound(160, 'splash'), sound(160, 'boom', 1.1),
@@ -220,9 +229,10 @@ export const coolerBowling: GadgetDef = {
   trunk: ['BWL_IN', 'BWL_WINDUP'],
   hold: { sound: 'gulp', everyMs: 700 },
   signature: ['roll', 'gulp', 'strike', 'splash'],
+  bfProjectiles: ['jug', 'cup', 'jug'],
   pick: {
     layer: 'front',
-    box: { x: COOLER.ramp.x - 76, y: COOLER.ramp.y - 128, w: 152, h: 138 },
+    box: { x: COOLER.ramp.x - 92, y: COOLER.ramp.y - 150, w: 184, h: 160 },
     spot: { x: COOLER.ramp.x, y: COOLER.ramp.y - 2, sx: 1 },
     idle: [{ actor: 'jug', prop: 'rot', amp: 0.08, periodMs: 700 }],
   },
@@ -241,6 +251,7 @@ export const coolerBowling: GadgetDef = {
     compose('BWL-W1', 'Wendell, quille', [HOOK, WENDELL], [{ seg: 'BWL_E_WSTRIKE' }], { categories: ['BACKFIRE', 'TEASE'], classes: LOSS, rarity: 'RARE', d1: D1 }),
     compose('BWL-W2', 'Wendell saute', [HOOK, WENDELL], [{ seg: 'BWL_E_WJUMP' }, { impact: 'none' }, { reaction: 'auto' }], { categories: ['CHAIN', 'COMEBACK', 'DIRECT'], classes: WIN_MID, rarity: 'RARE', d1: D1 }),
     compose('BWL-B1', 'Arrosage', [BURST], [{ seg: 'BWL_E_PLANT' }], { categories: ['CLEAN_MISS', 'BACKFIRE'], classes: LOSS, rarity: 'UNCOMMON', d1: D1 }),
+    compose('BWL-B4', 'La douche', [BURST], [{ seg: 'BWL_E_SOAK' }, { impact: 'none' }, { reaction: 'auto' }], { categories: ['GRAZE', 'DIRECT', 'COMEBACK'], classes: WIN_ANY, rarity: 'UNCOMMON', d1: D1 }),
     compose('BWL-B2', 'La vague', [BURST], [{ seg: 'BWL_E_WAVE' }, { impact: 'window' }, { seg: 'BWL_AWAY' }, { reaction: 'away' }], { categories: ['CHAIN', 'SUPER', 'COMEBACK', 'DIRECT'], classes: WIN_BIG, rarity: 'UNCOMMON', d1: D1 }),
     compose('BWL-B3', 'Pluie dorée', [BURST], [{ seg: 'BWL_E_GOLDRAIN' }, { bossFight: true }], { categories: ['BF_ENTRY'], classes: BOSS_FIGHT, rarity: 'UNCOMMON', d1: D1 }),
   ],

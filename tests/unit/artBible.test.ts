@@ -11,10 +11,11 @@ import { CAST_PARTS } from '../../src/render/art/parts/cast';
 import { OFFICE_PARTS } from '../../src/render/art/parts/office';
 import { PLAN_PARTS } from '../../src/render/art/parts/plans';
 import { FURIOUS_PARTS } from '../../src/render/art/parts/furious';
+import { UNHINGED_PARTS } from '../../src/render/art/parts/unhinged';
 import { VFX_PARTS } from '../../src/render/art/parts/vfx';
 import { ART_BOOKS, PLAN_BOOK } from '../../src/render/art/books';
 
-const ALL = [...BOSS_PARTS, ...CAST_PARTS, ...OFFICE_PARTS, ...VFX_PARTS, ...PLAN_PARTS, ...FURIOUS_PARTS];
+const ALL = [...BOSS_PARTS, ...CAST_PARTS, ...OFFICE_PARTS, ...VFX_PARTS, ...PLAN_PARTS, ...FURIOUS_PARTS, ...UNHINGED_PARTS];
 
 /** Retire les masques de luminance (blanc/noir techniques) et les dégradés qu'ils utilisent. */
 function visible(body: string): string {

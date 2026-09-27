@@ -77,6 +77,8 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
     onContentError: (e) => contentErrors.push(e instanceof Error ? e.message : String(e)),
     plans: poc,
   });
+  // Musique non permanente (SOUND KIT) : boucle du BOSS FIGHT pilotée par les signaux de la séquence.
+  presenter.onSignalEvent((signal) => audio.onSignal(signal));
   const perf = new PerfMeter();
   const playtest = new PlaytestRecorder(createBrowserStore(), CONTENT_VERSION);
   const { rgs, mock } = await createRgs(params);
@@ -93,6 +95,12 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
     },
     // PRODUCTION 3 GADGETS : chaque Rage Level complet se joue en choisissant A, B ou C avant le tir.
     ...(poc ? { planLevels: planReadyLevels() } : {}),
+  });
+
+  // Ambiance du Rage Level courant (rendu sonore seulement).
+  let ambienceLevel: RageLevelId | null = null;
+  flow.subscribe((snap) => {
+    if (snap.level !== ambienceLevel) audio.setLevel((ambienceLevel = snap.level));
   });
 
   // COLLECTION BOOK : observateur branché sur les snapshots publics de GameFlow (aucune modification du flux).

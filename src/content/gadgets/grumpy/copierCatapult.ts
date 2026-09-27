@@ -257,6 +257,7 @@ export const copierCatapult: GadgetDef = {
   trunk: ['COP_IN', 'COP_WARM'],
   hold: { sound: 'clunk', everyMs: 650 },
   signature: ['clunk', 'paper', 'snap', 'boing'],
+  bfProjectiles: ['ream', 'plane', 'ream'],
   pick: {
     layer: 'front',
     box: { x: COP.body.x - 80, y: COP.body.y - 160, w: 165, h: 170 },
@@ -284,6 +285,6 @@ export const copierCatapult: GadgetDef = {
     compose('COP-J2', 'Tout le bac', [JAM], [{ seg: 'COP_E_SPIT' }, { impact: 'overdesk' }, { reaction: 'auto' }], { categories: ['COMEBACK', 'DIRECT', 'GRAZE', 'CHAIN'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),
     compose('COP-J3', 'Photocopie dorée', [JAM], [{ seg: 'COP_E_GOLDCOPY' }, { bossFight: true }], { categories: ['BF_ENTRY'], classes: BOSS_FIGHT, rarity: 'UNCOMMON', d1: D1 }),
     compose('COP-W1', 'Wendell répare : dans l\'estomac', [JAM, FIX], [{ seg: 'COP_E_WKICK' }], { categories: ['BACKFIRE', 'TEASE'], classes: LOSS, rarity: 'UNCOMMON', d1: D1 }),
-    compose('COP-W2', 'Wendell répare : en plein vol', [JAM, FIX], [{ seg: 'COP_E_WASSIST' }, { impact: 'overdesk' }, { reaction: 'OFFICE_CHEER' }], { categories: ['COMEBACK', 'CHAIN', 'DIRECT'], classes: WIN_SMALL.concat('BIG'), rarity: 'UNCOMMON', d1: D1 }),
+    compose('COP-W2', 'Wendell répare : en plein vol', [JAM, FIX], [{ seg: 'COP_E_WASSIST' }, { impact: 'overdesk' }, { reaction: 'OFFICE_CHEER' }], { categories: ['COMEBACK', 'CHAIN', 'DIRECT'], classes: WIN_MID, rarity: 'UNCOMMON', d1: D1 }),
   ],
 };

@@ -54,6 +54,8 @@ export const IMPACT_POINTS: Record<ImpactDirection, { x: number; y: number }> = 
   cork: { x: 560, y: 150 },
   wall: { x: 128, y: 470 },
   elevator: { x: 985, y: 470 },
+  /** UNHINGED : la bouche d'aération du mur du fond (HVAC HURRICANE). */
+  vent: { x: 430, y: 300 },
 };
 
 /**

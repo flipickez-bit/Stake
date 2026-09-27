@@ -8,6 +8,7 @@
  */
 import { Application, Container, Graphics, Point, Sprite, Texture } from 'pixi.js';
 import { ALL_GADGET_PROPS, planGadgets } from '../content/gadgets';
+import { FUSE, SAFE_HANG } from '../content/gadgets/stations';
 import { PLAN_SLOTS, type PlanSlot } from '../domain/plans';
 import type { RageLevelId } from '../domain/types';
 import type { CharacterAnimator, PoseContext } from '../presentation/characterAnimator';
@@ -178,6 +179,8 @@ export class PixiStage implements SceneSink {
   private readonly fuseLine = new Graphics();
   private readonly impactPlane = new Graphics();
   private readonly cable = new Graphics();
+  /** Corde du coffre-fort (du moteur du ventilateur jusqu'au coffre). */
+  private readonly safeRope = new Graphics();
   private readonly particlePool: Sprite[] = [];
   private readonly shadowOf = new Map<ActorId, Sprite>();
   private readonly speedLines: Sprite[] = [];
@@ -413,6 +416,7 @@ export class PixiStage implements SceneSink {
       this.add('coolRamp', kit.sprite('cool_ramp'), undefined, this.plansLayer);
       this.add('jug', kit.sprite('cool_jug'), undefined, this.frontWorld);
     }
+    if (kit.has('safe_body')) this.buildUnhinged(kit);
 
     // Ombres de contact (personnages).
     for (const [id, sx] of [['boss', 1.25], ['wendell', 0.75], ['coo', 0.36], ['chairProp', 0.9]] as const) {
@@ -481,7 +485,19 @@ export class PixiStage implements SceneSink {
     this.fg.addChild(desk2.view, this.plansLayer);
     w.addChild(this.frontWorld);
 
-    const projectiles = office.drawProjectiles();
+    const projectiles: Record<string, Container> = office.drawProjectiles();
+    // BOSS FIGHT : chaque gadget lance ses propres objets sur le boss géant (variation visuelle seulement).
+    const art: [string, string, number][] = [
+      ['mug', 'bb_mug', 1.4], ['cup', 'esp_cup', 1.3], ['ream', 'cop_ream', 1], ['drawer', 'dom_drawer', 1.1], ['jug', 'cool_jug', 0.9],
+      ['rocket', 'bb_rocket', 0.42], ['safe', 'safe_body', 0.5], ['glove', 'safe_glove', 0.8], ['monitor', 'monitor', 0.55],
+    ];
+    for (const [kind, tex, k] of art) {
+      if (!kit.has(tex)) continue;
+      const sp = kit.sprite(tex);
+      sp.anchor.set(0.5);
+      sp.scale.set(k);
+      projectiles[kind] = sp;
+    }
     const proj = new Container();
     for (const g of Object.values(projectiles)) proj.addChild(g);
     this.add('proj', proj, (f) => {
@@ -574,6 +590,49 @@ export class PixiStage implements SceneSink {
       beacon.position.set(640, 76);
       this.dressing.addChild(beacon);
     }
+  }
+
+  /** UNHINGED : embout de mèche, coffre-fort (et sa corde), détonateur, gant, grille, thermostat, mini-tornade. */
+  private buildUnhinged(kit: ArtKit): void {
+    this.add('fuseEnd', kit.sprite('fuse_end'), undefined, this.gadget);
+    // Le coffre et sa corde passent DEVANT B.B. (ils lui tombent dessus).
+    this.frontWorld.addChild(this.safeRope);
+    const safe = new Container();
+    const body = kit.sprite('safe_body');
+    const open = kit.sprite('safe_open');
+    safe.addChild(body, open);
+    this.add('safe', safe, (f) => {
+      open.visible = f.states.door === 'open';
+      body.visible = !open.visible;
+      const g = this.safeRope;
+      g.clear();
+      g.alpha = 1;
+      if (!safe.visible || f.transform.alpha < 0.05) return;
+      const r = SAFE_HANG.rope;
+      if (f.states.rope === 'cut') {
+        g.moveTo(r.x, r.y).lineTo(r.x + 4, r.y + 30).stroke({ width: 5, color: INK, cap: 'round' });
+        g.moveTo(r.x, r.y).lineTo(r.x + 4, r.y + 30).stroke({ width: 2.5, color: hex('woodLight'), cap: 'round' });
+        return;
+      }
+      const path = () => g.moveTo(r.x, r.y).quadraticCurveTo((r.x + f.transform.x) / 2 + 6, (r.y + f.transform.y) / 2, f.transform.x, f.transform.y);
+      path().stroke({ width: 5, color: INK, cap: 'round' });
+      path().stroke({ width: 2.5, color: hex('woodLight'), cap: 'round' });
+    }, this.frontWorld);
+    this.add('safeGlove', kit.sprite('safe_glove'), undefined, this.frontWorld);
+    this.add('plunger', kit.sprite('plunger_box'), undefined, this.plansLayer);
+    this.add('plungerHandle', kit.sprite('plunger_handle'), undefined, this.plansLayer);
+    // Grille et thermostat : au mur du fond, derrière les personnages.
+    this.add('vent', kit.sprite('vent_grille'), undefined, this.gadget);
+    this.add('thermo', kit.sprite('thermo'), undefined, this.gadget);
+    this.add('thermoNeedle', kit.sprite('thermo_needle'), undefined, this.gadget);
+    const twister = kit.sprite('hvac_twister');
+    twister.blendMode = 'normal';
+    this.add('twister', twister, (f, all) => {
+      // Tourbillon : respiration de la largeur (fonction de l'horloge : reprise et replay identiques).
+      twister.scale.x *= 0.88 + 0.12 * Math.sin(all.clock / 45);
+      twister.skew.x = 0.06 * Math.sin(all.clock / 90);
+      void f;
+    }, this.frontWorld);
   }
 
   /** TRAPDOOR EXPRESS : trappe (fermée, ouverte, coincée) et levier au sol ; formes placeholder si l'art manque. */
@@ -785,8 +844,10 @@ export class PixiStage implements SceneSink {
     const g = this.fuseLine;
     g.clear();
     if (!this.gadgetProps.has('fuse') || f.states.main === 'burnt') return;
-    const end = f.states.main === 'lit' ? (all.actors.spark?.transform.x ?? 900) : 900;
-    g.moveTo(716, 556).quadraticCurveTo((716 + end) / 2, 572, end, 552).stroke({ width: 4, color: 0x3b2a1a });
+    const end = f.states.main === 'lit' ? (all.actors.spark?.transform.x ?? FUSE.to.x) : FUSE.to.x;
+    const path = () => g.moveTo(FUSE.from.x, FUSE.from.y).quadraticCurveTo((FUSE.from.x + end) / 2, 572, end, FUSE.to.y);
+    path().stroke({ width: 6, color: INK, cap: 'round' });
+    path().stroke({ width: 3, color: hex('coffee'), cap: 'round' });
   }
 
   setGadget(gadget: GadgetDef): void {
@@ -830,6 +891,7 @@ export class PixiStage implements SceneSink {
         view.visible = k > 0;
         view.alpha = Math.max(0, k);
         if (k <= 0) this.fading.delete(id);
+        if (id === 'safe') this.safeRope.alpha = view.alpha;
         if (id === 'slingPost') {
           // L'élastique n'appartient qu'au plan A : il disparaît tout de suite (il suivrait sinon un B.B. qui bouge).
           this.elastic.clear();
@@ -844,6 +906,7 @@ export class PixiStage implements SceneSink {
           if (this.pouch) this.pouch.visible = false;
         }
         if (id === 'fuse') this.fuseLine.clear();
+        if (id === 'safe') this.safeRope.clear();
         continue;
       }
       update(f, frame);

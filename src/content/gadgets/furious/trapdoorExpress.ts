@@ -34,6 +34,7 @@ export const trapdoorExpress: GadgetDef = {
   trunk: ['TRP_IN', 'TRP_PULL'],
   hold: { sound: 'creak', everyMs: 650 },
   signature: ['creak', 'clunk', 'fall', 'elevator'],
+  bfProjectiles: ['stapler', 'keyboard', 'mug'],
   // Choix : le levier au sol, à droite du bureau ; au survol, il tremble dans son socle.
   pick: {
     layer: 'room',
@@ -157,7 +158,7 @@ export const trapdoorExpress: GadgetDef = {
     compose('TRP-A5', 'COO le repêche', [A], [{ seg: 'TRP_E_COO' }], { categories: ['CLEAN_MISS', 'TEASE'], classes: LOSS, rarity: 'VERY_RARE', d1: D1 }),
     compose('TRP-A6', 'Remontée dorée', [A, FALL], [{ seg: 'TRP_E_BFRISE' }, { bossFight: true }], { categories: ['BF_ENTRY'], classes: BOSS_FIGHT, rarity: 'COMMON', d1: D1 }),
     compose('TRP-B1', 'TEASE : la cravate', [B, CATCH, HELP], [{ seg: 'TRP_E_PULLUP' }, { reaction: 'SIP' }], { categories: ['TEASE', 'CLEAN_MISS'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
-    compose('TRP-B2', 'La cravate cède', [B, CATCH, HELP], [{ seg: 'TRP_E_TIESNAP' }, { impact: 'floor' }, { seg: 'TRP_CLOSE' }, { reaction: 'away' }], { categories: ['COMEBACK', 'DIRECT'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),
+    compose('TRP-B2', 'La cravate cède', [B, CATCH, HELP], [{ seg: 'TRP_E_TIESNAP' }, { impact: 'floor' }, { seg: 'TRP_CLOSE' }, { reaction: 'away' }], { categories: ['COMEBACK', 'DIRECT'], classes: ['HIT', 'BIG'], rarity: 'COMMON', d1: D1 }),
     compose('TRP-B3', 'Remonte seul, DING', [B, CATCH], [{ seg: 'TRP_E_CLIMB' }], { categories: ['CLEAN_MISS', 'TEASE'], classes: LOSS, rarity: 'UNCOMMON', d1: D1 }),
     compose('TRP-B4', 'Ascenseur : intact', [B, ELEV], [{ seg: 'ELEV_SAFE' }], { categories: ['CLEAN_MISS', 'TEASE', 'BACKFIRE'], classes: LOSS, rarity: 'UNCOMMON', d1: D1 }),
     compose('TRP-B5', 'Ascenseur : en miettes', [B, ELEV], [{ seg: 'ELEV_WRECK' }, { impact: 'elevator' }, { reaction: 'auto' }], { categories: ['GRAZE', 'DIRECT', 'COMEBACK'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),

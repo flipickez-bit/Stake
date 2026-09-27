@@ -103,9 +103,15 @@ export const SAFE = {
   cleat: { x: 352, y: 432 },
 } as const;
 
+/** Détonateur (sur le bureau du joueur, calque du premier plan) : il libère le coffre. */
+export const PLUNGER = { x: 610, y: FRONT_Y } as const;
+/** Le coffre pend sous le moteur du ventilateur (UNHINGED : oui, vraiment). */
+export const SAFE_HANG = { x: 650, y: 178, rope: { x: 650, y: 76 } } as const;
+
 export const HVAC = {
   vent: UNHINGED_STATIONS.C,
-  thermo: { x: 430, y: 392 },
+  /** Thermostat à droite de la grille (lisible, jamais caché par l'étiquette du choix). */
+  thermo: { x: 534, y: 304 },
 } as const;
 
 /** Fusée : la mèche part de la fusée et finit au taquet de mise à feu. */

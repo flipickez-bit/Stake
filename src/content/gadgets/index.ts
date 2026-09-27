@@ -2,17 +2,21 @@ import { PLAN_SETS, PLAN_SLOTS, type PlanSlot } from '../../domain/plans';
 import type { RageLevelId } from '../../domain/types';
 import type { ActorId, ActorRest, GadgetDef } from '../../presentation/types';
 import { OFFICE_LAYOUT } from '../office';
+import { cabinetDomino } from './furious/cabinetDomino';
+import { coolerBowling } from './furious/coolerBowling';
 import { trapdoorExpress } from './furious/trapdoorExpress';
 import { copierCatapult } from './grumpy/copierCatapult';
 import { espressoBlaster } from './grumpy/espressoBlaster';
 import { swivelSlingshot } from './grumpy/swivelSlingshot';
+import { ceilingSafe } from './unhinged/ceilingSafe';
+import { hvacHurricane } from './unhinged/hvacHurricane';
 import { officeRocket } from './unhinged/officeRocket';
 
 /**
  * PRODUCTION 3 GADGETS : tous les gadgets jouables, par Rage Level (plans A, B, C ; PLAN_SETS).
  * Chaque gadget appartient à un seul Rage Level ; ses branches sont des cartes du COLLECTION BOOK.
  */
-export const GADGETS: readonly GadgetDef[] = [swivelSlingshot, espressoBlaster, copierCatapult, trapdoorExpress, officeRocket];
+export const GADGETS: readonly GadgetDef[] = [swivelSlingshot, espressoBlaster, copierCatapult, trapdoorExpress, cabinetDomino, coolerBowling, officeRocket, ceilingSafe, hvacHurricane];
 
 /**
  * Mode CLASSIQUE (un gadget par Rage Level : Stake tant que A2 n'est pas confirmée, `?plans=off`) : le gadget
