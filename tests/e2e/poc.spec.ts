@@ -30,7 +30,11 @@ async function setAlt(page: Page, mode: 'PRIVATE' | 'ON_DEMAND' | 'REVEAL_ALL') 
 
 async function playRound(page: Page, plan: 'A' | 'B' | 'C', multipliers: [number, number, number]) {
   await forceTriple(page, multipliers);
-  await page.getByTestId(`plan-${plan}`).click();
+  // P3.1 : le panneau OTHER PLANS reste ouvert jusqu'à un geste du joueur ; pour CHANGER de plan, on le ferme d'abord.
+  if ((await state(page)).plan !== plan) {
+    if (await page.getByTestId('other-plans').count()) await page.getByTestId('other-plans-hide').click();
+    await page.getByTestId(`plan-${plan}`).click();
+  }
   await page.getByTestId('fire').click();
   await page.waitForFunction(() => {
     const s = (window as unknown as Win).__BADBOSS__.state();

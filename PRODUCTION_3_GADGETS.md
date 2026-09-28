@@ -8,7 +8,7 @@
 
 **Ce qui est livré**
 - **9 gadgets réels**, 3 par Rage Level.
-- **147 branches**, **147 cartes** de collection.
+- **150 branches**, **150 cartes** de collection (P3.1 : HVAC HURRICANE 15 → 18, voir `P3_1_CORRECTIF.md`).
 - Son : SOUND KIT et `SOUND_BIBLE.md` v1.
 - Animation : ANIMATION KIT, `ANIMATION_KIT.md`.
 - Collection niveau → gadget → animations, avec une nouvelle règle d'OFFICE MELTDOWN.
@@ -34,7 +34,7 @@
 | FURIOUS | C | **WATER COOLER BOWLING** | Roulement : la bonbonne en boule de bowling | STRAIGHT, HOOK, BURST · puis PAUSE, WENDELL | 16 | roll · gulp · strike · splash |
 | UNHINGED | A | **OFFICE ROCKET** | Propulsion : le fauteuil-fusée | IGNITE, STALL, UP · puis ZIGZAG, REIGNITE, SMOKE, MISS, THROUGH_ROOF, ELEV_WAIT | 18 | fuse · roar · whoosh · crash |
 | UNHINGED | B | **CEILING SAFE** | Gravité : un coffre-fort pend au-dessus de B.B. | DROP, SWING, LOWER · puis COO | 15 | creak · chain · boom · crank |
-| UNHINGED | C | **HVAC HURRICANE** | Le vent : la ventilation poussée au maximum | GUST, TORNADO, SUCK · puis WENDELL, ORBIT | 15 | whirr · gust · rattle · crank |
+| UNHINGED | C | **HVAC HURRICANE** | Le vent : la ventilation poussée au maximum | GUST, TORNADO, SUCK, DUCTS · puis WENDELL, ORBIT | 18 | whirr · gust · rattle · crank |
 
 ### Pourquoi ces 6 nouveaux gadgets (et pourquoi aucun n'est « le bon, le moyen, le mauvais »)
 
@@ -57,17 +57,17 @@
 
 ## 2. Branches exactes par gadget
 
-**Total : 147 branches** (dans la cible de 135 à 160) :
-- 65 fins de perte ;
-- 44 fins de gain ;
-- 20 gros gains ;
+**Total : 150 branches** (dans la cible de 135 à 160) :
+- 66 fins de perte ;
+- 45 fins de gain ;
+- 21 gros gains ;
 - 18 entrées de BOSS FIGHT.
 
 Détail des durées, des sons et des probabilités :
 - `docs/generated/SOUND_CUES_P3.md` : ordre des sons, DING, durée ;
 - `docs/generated/VARIETY_REPORT.md` : chemin visible, probabilité, première apparition.
 
-Chaque branche a sa carte de collection (147 noms uniques, `src/content/collectionCards.ts`).
+Chaque branche a sa carte de collection (150 noms uniques, `src/content/collectionCards.ts`).
 
 **SWIVEL SLINGSHOT** (GRUMPY, 17 branches)
 
@@ -225,14 +225,14 @@ Chaque branche a sa carte de collection (147 noms uniques, `src/content/collecti
 - `SAFE-L4` Poupées russes — début : LOWER — perte, VERY RARE
 - `SAFE-L5` Trésor doré — début : LOWER — BOSS FIGHT, UNCOMMON
 
-**HVAC HURRICANE** (UNHINGED, 15 branches)
+**HVAC HURRICANE** (UNHINGED, 18 branches ; retravaillé en P3.1, voir `P3_1_CORRECTIF.md`)
 
-- `HVAC-G1` Tenir bon — début : GUST — perte, COMMON
-- `HVAC-G2` Contre son bureau — début : GUST — gain, COMMON
+- `HVAC-G1` Pfft — début : GUST — perte, COMMON
+- `HVAC-G2` Girouette — début : GUST — gain, COMMON
 - `HVAC-G3` Vol plané — début : GUST — gros gain, COMMON
 - `HVAC-W1` Wendell s'envole — début : GUST › WENDELL — perte, UNCOMMON
 - `HVAC-W2` Wendell à la voile — début : GUST › WENDELL — gain, UNCOMMON
-- `HVAC-T1` La tornade passe — début : TORNADO — perte, COMMON
+- `HVAC-T1` La bougie — début : TORNADO — perte, COMMON
 - `HVAC-T2` Essorage — début : TORNADO — gain, COMMON
 - `HVAC-T3` Le toit — début : TORNADO — gros gain, UNCOMMON
 - `HVAC-T4` Tornade dorée — début : TORNADO — BOSS FIGHT, COMMON
@@ -240,8 +240,11 @@ Chaque branche a sa carte de collection (147 noms uniques, `src/content/collecti
 - `HVAC-O2` Bombardement — début : TORNADO › ORBIT — gain, VERY RARE
 - `HVAC-S1` Le mug s'envole — début : SUCK — perte, COMMON
 - `HVAC-S2` Face contre la grille — début : SUCK — gain, COMMON
-- `HVAC-S3` Le COO aspiré — début : SUCK — perte, RARE
+- `HVAC-S3` Le COO aspiré — début : SUCK — perte, UNCOMMON
 - `HVAC-S4` Souffle doré — début : SUCK — BOSS FIGHT, UNCOMMON
+- `HVAC-D1` Avion en papier — début : DUCTS — perte, COMMON
+- `HVAC-D2` La dalle — début : DUCTS — gain, COMMON
+- `HVAC-D3` Courant d'air — début : DUCTS — gros gain, RARE
 
 ## 3. Flux de jeu (Mock, mode 3 gadgets)
 
@@ -255,7 +258,8 @@ Chaque branche a sa carte de collection (147 noms uniques, `src/content/collecti
 8. **NEXT**.
 
 Règles d'affichage des autres plans (`src/app/poc/OtherPlans.svelte`) :
-- ON-DEMAND est l'expérience principale ; c'est celle du PLAYTEST #3 ;
+- ON-DEMAND est l'expérience principale et, depuis P3.1, **la valeur par défaut** ; le PLAYTEST #3 l'impose et rétablit l'ancien réglage à la fin ;
+- après chaque manche, l'action REVEAL OTHER PLANS est bien visible sous le résultat ; le panneau montre les trois plans dans l'ordre de l'écran et reste ouvert jusqu'à un geste du joueur (REPLAY PLAN, CHOOSE ANOTHER PLAN, fermer, FIRE) — détails : `P3_1_CORRECTIF.md` §5 ;
 - PRIVATE et REVEAL ALL sont des réglages DEV ;
 - le vocabulaire est neutre, contrôlé par `FORBIDDEN_PHRASES` et ses tests.
 
@@ -265,14 +269,14 @@ Le livre suit le mode, pour qu'aucune règle ne soit impossible à remplir :
 
 | Mode | Catalogue | OFFICE MELTDOWN | P50 / P90 (manches) | 100 % P50 / P90 |
 |---|---|---|---:|---:|
-| **3 gadgets** (Mock) | **147 cartes** : GRUMPY 46 · FURIOUS 41 · UNHINGED 42 · BOSS FIGHT 18 | **≥ 4 découvertes avec CHACUN des 9 gadgets** (cartes BOSS FIGHT non requises) | **89 / 131** (joueur réparti) · 161 / 261 (plan préféré 60/25/15) · jamais (3 gadgets seulement) | **31 710 / 69 068** (réparti) · 34 833 / 66 452 (plan préféré) |
+| **3 gadgets** (Mock) | **150 cartes** : GRUMPY 46 · FURIOUS 41 · UNHINGED 45 · BOSS FIGHT 18 | **≥ 4 découvertes avec CHACUN des 9 gadgets** (cartes BOSS FIGHT non requises) | **86 / 123** (joueur réparti) · 150 / 230 (plan préféré 60/25/15) · jamais (3 gadgets seulement) | **32 830 / 69 327** (réparti) · 40 440 / 76 299 (plan préféré) |
 | Classique (Stake tant qu'A2 n'est pas confirmée ; `?plans=off`) | 51 cartes (3 gadgets) | ≥ 8 dans chaque Rage Level (règle historique) | 70 / 113 | 9 844 / 22 880 |
 
 **OFFICE MELTDOWN : pourquoi N = 4.** L'épisode doit récompenser l'exploration des 9 gadgets sans jamais s'ouvrir avec trois gadgets seulement. Le choix vient d'un calcul exact (Poisson-binomial ; `docs/generated/COLLECTION_REPORT_P3.md`) :
 - N = 2 → 42 / 64 manches ; trop tôt ;
-- N = 3 → 63 / 92 ;
-- **N = 4 → 89 / 131** : environ deux PLAYTEST de 50 manches ;
-- N = 5 → 126 / 195 ; trop long.
+- N = 3 → 62 / 90 ;
+- **N = 4 → 86 / 123** : environ deux PLAYTEST de 50 manches (89 / 131 avant P3.1) ;
+- N = 5 → 119 / 174 ; trop long.
 
 Avec N = 4, un joueur qui ne joue que trois gadgets (un par niveau, ou les trois d'un niveau) ne débloque **jamais** l'épisode (test).
 
@@ -345,7 +349,7 @@ Captures avec et sans interface (test de lisibilité du monde) : `docs/productio
 Réglages disponibles :
 - Rage Level ;
 - gadget (qui choisit le plan) ;
-- **recherche de branche** (147 branches, filtre par niveau, gadget, issue et rareté, texte) ;
+- **recherche de branche** (150 branches, filtre par niveau, gadget, issue et rareté, texte) ;
 - issue, multiplicateur et graine imposés ;
 - vitesse ;
 - BOSS FIGHT (aperçu sans mise) ;

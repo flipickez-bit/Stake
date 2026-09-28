@@ -3,7 +3,11 @@
   import { hash32 } from '../domain/seed';
   import { formatMoney, formatX } from './format';
 
-  let { revealed, currency }: { revealed: Revealed | null; currency: string } = $props();
+  /**
+   * `settled` (P3.1, mode 3 gadgets) : la manche est finie (READY) ; en paysage, le résultat remonte en haut de la scène
+   * (toujours visible) et laisse le milieu aux gadgets du choix et à REVEAL OTHER PLANS.
+   */
+  let { revealed, currency, settled = false }: { revealed: Revealed | null; currency: string; settled?: boolean } = $props();
 
   const LOSS_LINES = ['B.B. dodged it.', 'Not today.', 'He didn\'t even spill his coffee.', 'Back to work.', 'Denied.'];
   const line = $derived(revealed ? LOSS_LINES[hash32(revealed.roundId) % LOSS_LINES.length] : '');
@@ -12,7 +16,7 @@
 
 {#if revealed}
   {#key revealed.roundId}
-    <div class="pop {tone}" data-testid="result" data-multiplier={revealed.multiplier100}>
+    <div class="pop {tone}" class:settled data-testid="result" data-multiplier={revealed.multiplier100}>
       <div class="x">{formatX(revealed.multiplier100)}</div>
       {#if revealed.multiplier100 > 0}
         <div class="win">WIN {formatMoney(revealed.payout, currency)}</div>
@@ -25,7 +29,11 @@
 
 <style>
   .pop { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
-  @media (orientation: portrait) and (max-aspect-ratio: 4/5) { .pop { top: 24%; } }
+  .pop.settled { animation: settle 0.35s ease-out both; }
+  @keyframes settle { from { top: 38%; transform: translate(-50%, -50%) scale(1); } to { top: 13%; transform: translate(-50%, -50%) scale(0.72); } }
+  @media (prefers-reduced-motion: reduce) { .pop.settled { animation: none; top: 13%; transform: translate(-50%, -50%) scale(0.72); } }
+  /* Portrait : le résultat est déjà en haut (24 %) ; il ne bouge pas. */
+  @media (orientation: portrait) and (max-aspect-ratio: 4/5) { .pop { top: 24%; } .pop.settled { animation: none; top: 24%; transform: translate(-50%, -50%); } }
   .x { font-size: clamp(44px, 11vw, 96px); font-weight: 900; color: #fff; -webkit-text-stroke: 3px var(--bb-ink); text-shadow: 0 6px 0 var(--bb-ink); letter-spacing: 2px; }
   .win, .line { margin-top: 4px; font-size: clamp(16px, 4vw, 26px); font-weight: 900; color: var(--bb-yellow); -webkit-text-stroke: 1px var(--bb-ink); text-shadow: 0 3px 0 var(--bb-ink); }
   .miss .x { color: #cfd3e6; font-size: clamp(36px, 9vw, 72px); }

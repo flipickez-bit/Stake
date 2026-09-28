@@ -170,6 +170,8 @@ export interface PlaytestSession {
   collection?: PlaytestCollectionStats;
   /** PLAYTEST #3 : la session se joue en choisissant un gadget parmi 3 (Mock). Absent avant le PLAYTEST #3. */
   plans?: boolean;
+  /** PLAYTEST #3 : affichage des autres plans imposé pendant la session (P3.1 : toujours ON_DEMAND). */
+  altDisplay?: string;
   /** PLAYTEST #3 : ouvertures de REVEAL OTHER PLANS pendant les 50 manches (jamais proposé en PRIVATE). */
   otherPlans?: { opens: number; afterLoss: number; afterWin: number };
 }
@@ -226,7 +228,7 @@ export class PlaytestRecorder {
     return () => this.listeners.delete(fn);
   }
 
-  start(device: PlaytestSession['device'], collection: Progress | null = null, options: { plans?: boolean } = {}): void {
+  start(device: PlaytestSession['device'], collection: Progress | null = null, options: { plans?: boolean; altDisplay?: string } = {}): void {
     const session: PlaytestSession = {
       id: `PT-${this.now().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}`,
       contentVersion: this.contentVersion,
@@ -239,7 +241,7 @@ export class PlaytestRecorder {
       answers: null,
       questionnaireSkipped: false,
       extraRounds: 0,
-      ...(options.plans ? { plans: true, otherPlans: { opens: 0, afterLoss: 0, afterWin: 0 } } : {}),
+      ...(options.plans ? { plans: true, otherPlans: { opens: 0, afterLoss: 0, afterWin: 0 }, altDisplay: options.altDisplay ?? 'ON_DEMAND' } : {}),
       ...(collection
         ? {
             collection: {

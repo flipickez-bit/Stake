@@ -2,17 +2,28 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-_Dernière mise à jour : 2026-09-27, **PRODUCTION 3 GADGETS PAR RAGE LEVEL livrée, prête pour le PLAYTEST #3** (`PRODUCTION_3_GADGETS.md`). A2 : INFORMATION STAKE ENGINE REQUISE (Mock seulement ; Stake = mode classique)._
+_Dernière mise à jour : 2026-09-28, **P3.1 livré : correctif final avant le PLAYTEST #3** (`P3_1_CORRECTIF.md`). A2 : INFORMATION STAKE ENGINE REQUISE (Mock seulement ; Stake = mode classique)._
+
+## P3.1 — CORRECTIF FINAL AVANT PLAYTEST #3 (`P3_1_CORRECTIF.md`)
+- ✅ Variété perçue d'HVAC HURRICANE (UNHINGED, en haut à gauche) :
+  - 15 → 18 branches, 4 débuts à cadrage distinct, tronc plus court ;
+  - 3 pertes fréquentes aux silhouettes différentes (21 % au plus, contre 29 % avant) ;
+  - branches différentes vues en 10 / 50 manches : 4,8 → 5,5 et 8,6 → 10,2.
+- ✅ OTHER PLANS :
+  - cause réelle : réglage PRIVATE par défaut et bouton trop discret ;
+  - désormais ON-DEMAND par défaut et imposé par le PLAYTEST #3 (réglage rétabli à la fin) ;
+  - action bien visible après chaque manche, panneau A/B/C dans l'ordre de l'écran, REPLAY / CHOOSE ANOTHER PLAN, indication unique après la 1re manche du PLAYTEST.
+- ✅ Maths inchangées ; 8 autres gadgets inchangés ; 150 cartes (MELTDOWN P50 86 / P90 123).
 
 ## PRODUCTION 3 GADGETS (`PRODUCTION_3_GADGETS.md`)
 - ✅ 9 gadgets réels, 3 par Rage Level :
   - GRUMPY : SWIVEL SLINGSHOT, ESPRESSO BLASTER, COPIER CATAPULT ;
   - FURIOUS : TRAPDOOR EXPRESS, CABINET DOMINO, WATER COOLER BOWLING ;
   - UNHINGED : OFFICE ROCKET, CEILING SAFE, HVAC HURRICANE.
-- ✅ 147 branches (15 à 18 par gadget) : pertes, gains, gros gains, RARE, VERY RARE, 2 entrées de BOSS FIGHT par gadget ; chaque début mène à des pertes et à des gains.
+- ✅ 150 branches depuis P3.1 (15 à 18 par gadget) : pertes, gains, gros gains, RARE, VERY RARE, 2 entrées de BOSS FIGHT par gadget ; chaque début mène à des pertes et à des gains.
 - ✅ SOUND KIT et `SOUND_BIBLE.md` v1 : x0,5 sans DING (test), variantes déterministes, impacts en couches, LE SIP ×4, musique non permanente.
 - ✅ ANIMATION KIT (`ANIMATION_KIT.md`, `src/content/kit.ts`).
-- ✅ Collection niveau → gadget → animations : 147 cartes. OFFICE MELTDOWN = ≥ 4 avec chacun des 9 gadgets (P50 89 / P90 131) ; mode classique = règle historique.
+- ✅ Collection niveau → gadget → animations : 150 cartes. OFFICE MELTDOWN = ≥ 4 avec chacun des 9 gadgets (P50 86 / P90 123) ; mode classique = règle historique.
 - ✅ BOSS FIGHT 1/150 inchangé, entrées et projectiles par gadget.
 - ✅ Mondes et transitions ; mobile portrait ; perf (JS initial 279 KB gzip, textures ≤ 41,5 Mo, ≤ 10 appels de dessin, ≤ 226 particules).
 - ✅ DEV PANEL : recherche de branche, LOOP A → B → C. PLAYTEST #3 (bouton PLAYTEST du Mock).

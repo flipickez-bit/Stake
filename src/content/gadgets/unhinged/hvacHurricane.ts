@@ -1,16 +1,22 @@
 /**
- * PLAN C · HVAC HURRICANE (UNHINGED) — gadget de PRODUCTION (15 branches).
+ * PLAN C · HVAC HURRICANE (UNHINGED) — gadget de PRODUCTION (18 branches).
  * La bouche d'aération du mur du fond et son thermostat : le joueur tourne le cadran à fond.
  * UNHINGED : ventilation, fenêtres, plafond, objets qui volent — slapstick, jamais de blessure.
  * Signature sonore : WHIRR qui monte, GUST, RATTLE de la grille, SWIRL (papiers).
  *
+ * P3.1 (variété PERÇUE) : en UNHINGED, 85 % des manches sont des pertes. Avant P3.1, trois pertes faisaient 76 % des
+ * manches et deux se ressemblaient presque (vent → B.B. s'accroche → le vent tombe → LE SIP). Désormais :
+ * - tronc plus court (0,84 s) : le début visible arrive avant 1 s ;
+ * - chaque début a son CADRAGE, sa DIRECTION et son PREMIER ACTEUR dès sa première image ;
+ * - les pertes fréquentes ont chacune leur silhouette (échec éclair, souffle de bougie, événement hors champ + SIP).
+ *
  * Tronc neutre : la main tourne le cadran jusqu'au MAX ; la grille claque, des papiers s'envolent ; B.B. sirote.
  * DÉBUTS VISIBLES (chacun mène à des pertes ET à des gains) :
- *   GUST    : un souffle droit sur B.B. : il s'agrippe à son fauteuil-fusée, qui recule.
- *   WENDELL : Wendell traverse la rafale avec une pile de dossiers.
- *   TORNADO : l'air s'enroule en mini-tornade, qui traverse la pièce vers B.B.
- *   ORBIT   : l'écran et la plante se mettent à tourner autour de lui.
- *   SUCK    : à l'envers ! La bouche ASPIRE tout.
+ *   GUST    : plan serré sur B.B. ; un souffle droit sur lui (→) : il s'agrippe, son fauteuil-fusée recule.
+ *   TORNADO : plan large ; une mini-tornade naît au pied de la grille et grandit lentement ; B.B. baisse les yeux.
+ *   SUCK    : gros plan sur la grille ; à l'envers (←) : les papiers quittent son bureau, la bouche ASPIRE.
+ *   DUCTS   : la grille crachote… et se tait (faux départ). Puis un vacarme voyage DANS le plafond, jusqu'au-dessus de lui.
+ * REBONDISSEMENTS : WENDELL (après GUST), ORBIT (après TORNADO).
  */
 import type { GadgetDef, SegmentDef } from '../../../presentation/types';
 import { anim, BOSS_FIGHT, compose, fx, impactFrame, LOSS, mod, paced, seg, segments, shake, signal, silence, sound, state, tw, WIN_ANY, WIN_BIG, WIN_MID } from '../../dsl';
@@ -33,41 +39,55 @@ const WENDELL = mod('WENDELL', { seg: 'HVAC_T_WENDELL' });
 const TORNADO = mod('TORNADO', { seg: 'HVAC_TORNADO' });
 const ORBIT = mod('ORBIT', { seg: 'HVAC_T_ORBIT' });
 const SUCK = mod('SUCK', { seg: 'HVAC_SUCK' });
+const DUCTS = mod('DUCTS', { seg: 'HVAC_DUCTS' });
 
 const SEGMENTS: SegmentDef[] = [
-  // ---------------------------------------------------------------- tronc (neutre)
-  seg('HVAC_IN', 'intro', 450, 'compress', [
-    anim(0, 'hands', 'open'), tw(0, 'hands', { x: T.x + 10, y: T.y + 36 }, 360, 'outBack'), anim(360, 'hands', 'turn'), sound(380, 'click'),
+  // ---------------------------------------------------------------- tronc (neutre, 0,84 s)
+  seg('HVAC_IN', 'intro', 380, 'compress', [
+    anim(0, 'hands', 'open'), tw(0, 'hands', { x: T.x + 10, y: T.y + 36 }, 300, 'outBack'), anim(300, 'hands', 'turn'), sound(310, 'click'),
     anim(0, 'boss', 'sip'),
   ]),
-  seg('HVAC_CRANK', 'setup', 700, 'compress', [
-    tw(0, 'thermoNeedle', { rot: 1.2 }, 600, 'inOutQuad'), sound(0, 'crank', 0.9), sound(200, 'crank', 1.0), sound(400, 'crank', 1.1),
-    sound(100, 'whirr', 0.8), ...wobble(200, 'vent', 0, 0.03, 6, 70), fx(300, 'papers', V.x, V.y + 40, 4), sound(320, 'rattle', 1.2),
-    anim(220, 'boss', 'oblivious'), tw(0, 'camera', { x: 520, y: 340, sx: 1.05 }, 600, 'inOutQuad'),
+  seg('HVAC_CRANK', 'setup', 460, 'compress', [
+    tw(0, 'thermoNeedle', { rot: 1.2 }, 400, 'inOutQuad'), sound(0, 'crank', 0.9), sound(150, 'crank', 1.0), sound(300, 'crank', 1.1),
+    sound(80, 'whirr', 0.8), ...wobble(150, 'vent', 0, 0.03, 4, 60), fx(250, 'papers', V.x, V.y + 40, 3), sound(260, 'rattle', 1.2),
+    anim(180, 'boss', 'oblivious'), tw(0, 'camera', { x: 520, y: 340, sx: 1.05 }, 400, 'inOutQuad'),
   ]),
 
-  // ---------------------------------------------------------------- DÉBUTS
-  /** Une rafale droit sur B.B. : il s'agrippe, son fauteuil-fusée recule, la plante se couche. */
-  seg('HVAC_GUST', 'action', 680, 'compress', [
+  // ---------------------------------------------------------------- DÉBUTS (cadrage, direction et premier acteur distincts)
+  /** GUST (→) : la caméra se serre sur B.B. ; la rafale le frappe, il s'agrippe, son fauteuil-fusée recule. */
+  seg('HVAC_GUST', 'action', 920, 'compress', [
     tw(0, 'hands', { y: 1060 }, 220, 'inQuad'), state(0, 'vent', 'open'), sound(0, 'gust'), sound(260, 'gust', 1.1),
     ...gustLine(0, V, { x: 650, y: 420 }, 5, 100), fx(80, 'papers', 520, 380, 14),
-    anim(120, 'boss', 'braced'), tw(120, 'boss', { x: 690 }, 440, 'outQuad'), tw(60, 'plant', { rot: 0.28 }, 300, 'outQuad'),
-    tw(0, 'camera', { x: 560, y: 380, sx: 1.04 }, 500, 'inOutQuad'),
+    anim(60, 'boss', 'braced'), tw(60, 'boss', { x: 700 }, 440, 'outQuad'), tw(60, 'plant', { rot: 0.28 }, 300, 'outQuad'),
+    fx(520, 'papers', 700, 360, 8), sound(560, 'gust', 1.2), tw(560, 'boss', { x: 720 }, 300, 'inOutQuad'), fx(700, 'papers', 720, 330, 6),
+    tw(0, 'camera', { x: 640, y: 400, sx: 1.16 }, 260, 'outQuad'),
   ]),
-  /** L'air s'enroule en mini-tornade qui grandit sous la grille et traverse la pièce vers B.B. */
-  seg('HVAC_TORNADO', 'action', 820, 'compress', [
-    tw(0, 'hands', { y: 1060 }, 220, 'inQuad'), state(0, 'vent', 'open'), sound(0, 'whirr', 1.2), sound(200, 'gust', 0.9),
-    tw(0, 'twister', { x: V.x, y: FLOOR, alpha: 0.9, sx: 0.4, sy: 0.4 }, 1, 'linear'), tw(2, 'twister', { sx: 0.9, sy: 0.9 }, 320, 'outBack'),
-    tw(320, 'twister', { x: 590 }, 500, 'inOutQuad'), fx(100, 'swirl', V.x, 480, 10), fx(400, 'papers', 520, 460, 16), fx(600, 'swirl', 590, 440, 10),
-    tw(200, 'plant', { rot: -0.4 }, 300, 'outQuad'), anim(420, 'boss', 'panic'),
-    tw(0, 'camera', { x: 560, y: 360, sx: 1.04 }, 600, 'inOutQuad'),
+  /** TORNADO : plan LARGE ; la tornade naît au pied de la grille, grandit lentement et avance ; B.B. baisse les yeux. */
+  seg('HVAC_TORNADO', 'action', 1020, 'compress', [
+    tw(0, 'hands', { y: 1060 }, 220, 'inQuad'), state(0, 'vent', 'open'), sound(0, 'whirr', 0.8), sound(420, 'whirr', 1.15), sound(300, 'gust', 0.7),
+    tw(0, 'twister', { x: V.x, y: FLOOR, alpha: 0, sx: 0.25, sy: 0.25 }, 1, 'linear'), tw(2, 'twister', { alpha: 0.9 }, 300, 'outQuad'),
+    tw(2, 'twister', { sx: 0.85, sy: 0.85 }, 760, 'inOutQuad'), tw(300, 'twister', { x: 560 }, 640, 'inOutQuad'), fx(860, 'papers', 560, 470, 6),
+    fx(60, 'swirl', V.x, FLOOR - 30, 8), fx(400, 'papers', 500, 500, 12), fx(620, 'swirl', 560, 480, 10),
+    anim(200, 'boss', 'lookdown'), tw(260, 'plant', { rot: -0.3 }, 300, 'outQuad'),
+    tw(0, 'camera', { x: 560, y: 390, sx: 0.94 }, 520, 'inOutQuad'),
   ]),
-  /** À l'envers : la grille ASPIRE. Papiers happés, la plante penche, le fauteuil de B.B. glisse vers le mur. */
-  seg('HVAC_SUCK', 'action', 760, 'compress', [
+  /** SUCK (←) : GROS PLAN sur la grille ; les papiers quittent d'abord son bureau, puis B.B. glisse vers le mur. */
+  seg('HVAC_SUCK', 'action', 960, 'compress', [
     tw(0, 'hands', { y: 1060 }, 220, 'inQuad'), state(0, 'vent', 'open'), sound(0, 'deflate', 0.6), sound(100, 'gust', 0.7),
-    ...gustLine(60, { x: 650, y: 420 }, V, 5, 100), fx(200, 'papers', 560, 420, 10),
-    tw(80, 'plant', { rot: 0.35 }, 300, 'outQuad'), anim(160, 'boss', 'braced'), tw(160, 'boss', { x: 610 }, 500, 'inQuad'),
-    tw(0, 'camera', { x: 540, y: 370, sx: 1.04 }, 500, 'inOutQuad'),
+    fx(0, 'papers', 640, 420, 10), ...gustLine(80, { x: 650, y: 420 }, V, 5, 90),
+    tw(80, 'plant', { rot: -0.35 }, 300, 'outQuad'), anim(240, 'boss', 'braced'), tw(240, 'boss', { x: 610 }, 480, 'inQuad'), sound(600, 'rattle', 1.3), ...wobble(560, 'vent', 0, 0.04, 3, 60), fx(760, 'papers', 560, 400, 6), sound(800, 'gust', 0.8),
+    tw(0, 'camera', { x: 470, y: 330, sx: 1.18 }, 300, 'outQuad'),
+  ]),
+  /**
+   * DUCTS (faux départ, événement hors champ) : la grille crachote une bouffée… et se TAIT. Silence. Puis un vacarme
+   * voyage dans le plafond, de la grille jusqu'au-dessus de B.B. (poussière qui tombe du plafond) ; il lève les yeux.
+   */
+  seg('HVAC_DUCTS', 'action', 960, 'compress', [
+    tw(0, 'hands', { y: 1060 }, 220, 'inQuad'), sound(0, 'pfft', 0.6), fx(20, 'smoke', V.x, V.y + 10, 4), state(120, 'vent', 'closed'),
+    silence(140, 260), tw(0, 'camera', { x: 560, y: 250, sx: 1.06 }, 420, 'inOutQuad'),
+    sound(420, 'rattle', 1.3), fx(420, 'dust', 470, 92, 5), sound(560, 'rattle', 1.2), fx(560, 'dust', 560, 84, 5),
+    sound(700, 'rattle', 1.05), fx(700, 'dust', 650, 78, 6), anim(480, 'boss', 'lookup'), tw(600, 'fan', { rot: 0.2 }, 200, 'outQuad'),
+    sound(840, 'rattle', 0.95), fx(840, 'dust', 700, 76, 4), tw(820, 'fan', { rot: -0.15 }, 140, 'inOutQuad'),
   ]),
 
   // ---------------------------------------------------------------- TWISTS
@@ -179,6 +199,52 @@ const SEGMENTS: SegmentDef[] = [
     anim(600, 'coo', 'shock'), signal(620, 'reveal'), anim(660, 'boss', 'laugh'), sound(680, 'laugh'),
     tw(0, 'camera', { x: 540, y: 380, sx: 1.06 }, 400, 'inOutQuad'),
   ]),
+  // ---------------------------------------------------------------- FINS P3.1
+  /** PERTE (échec éclair) : la rafale meurt sur un « pfft » pitoyable ; une feuille retombe ; il n'a jamais lâché son mug. */
+  seg('HVAC_E_FIZZLE', 'action', 760, 'compress', [
+    state(0, 'vent', 'closed'), sound(0, 'deflate', 0.8), sound(80, 'pfft', 0.5), tw(0, 'plant', { rot: 0 }, 400, 'outElastic'),
+    tw(0, 'boss', { x: 650 }, 220, 'outQuad'), fx(100, 'papers', 650, 300, 2), anim(120, 'boss', 'smirk'), signal(200, 'reveal'),
+    tw(0, 'camera', { x: 600, y: 380, sx: 1.06 }, 360, 'inOutQuad'),
+  ]),
+  /** GAIN (girouette) : la rafale le fait tourner sur son fauteuil comme une girouette… et le couche sur son bureau. */
+  seg('HVAC_E_VANE', 'action', 520, 'compress', [
+    sound(0, 'gust', 1.3), anim(0, 'boss', 'spin'), sound(20, 'spin', 1.1), tw(0, 'boss', { rot: 6.2832 }, 340, 'inQuad'),
+    tw(340, 'boss', { x: 730, y: 470, rot: 6.9 }, 160, 'inQuad'), ...gustLine(0, V, { x: 700, y: 420 }, 3, 90), anim(360, 'boss', 'scared'),
+    tw(0, 'camera', { x: 680, y: 400, sx: 1.12 }, 480, 'inQuad'),
+  ]),
+  /** PERTE (faux suspense) : la tornade s'arrête devant lui… il souffle dessus comme sur une bougie. Elle s'éteint. */
+  seg('HVAC_E_BLOWOUT', 'action', 860, 'compress', [
+    tw(0, 'twister', { x: 590 }, 220, 'outQuad'), sound(0, 'whirr', 0.9), silence(220, 140), anim(160, 'boss', 'smirk'), tw(340, 'boss', { rot: -0.12 }, 120, 'outQuad'),
+    sound(460, 'pfft', 1.35), sound(470, 'whoosh', 0.7), tw(460, 'twister', { sx: 0.08, sy: 0.08, alpha: 0 }, 220, 'inQuad'),
+    fx(480, 'smoke', 590, 500, 5), signal(540, 'reveal'), tw(580, 'boss', { rot: 0 }, 160, 'outQuad'), anim(600, 'boss', 'smug'),
+    fx(620, 'papers', 560, 420, 6), tw(0, 'plant', { rot: 0 }, 500, 'outElastic'), tw(0, 'camera', { x: 620, y: 400, sx: 1.12 }, 400, 'inOutQuad'),
+  ]),
+  /**
+   * PERTE (hors champ + LE SIP) : le vacarme s'arrête juste au-dessus de lui. Silence. Un avion en papier sort d'une
+   * fissure, plane… et atterrit DANS son mug. Il regarde dedans. Il boit quand même.
+   */
+  seg('HVAC_E_PLANE', 'action', 1080, 'compress', [
+    silence(0, 200), state(0, 'proj', 'kind=plane'), tw(0, 'proj', { x: 720, y: 96, alpha: 0, rot: 0.3, sx: 1.5, sy: 1.5, z: 0 }, 1, 'linear'),
+    tw(200, 'proj', { alpha: 1 }, 60, 'linear'), tw(200, 'proj', { x: 520, y: 240, rot: -0.3 }, 240, 'outQuad'), tw(440, 'proj', { x: 700, y: 300, rot: 0.25 }, 160, 'inOutQuad'),
+    tw(600, 'proj', { x: MUG.x, y: MUG.y - 14, rot: 0.5 }, 140, 'inQuad'), sound(220, 'whoosh', 1.6), sound(460, 'whoosh', 1.8),
+    sound(740, 'plop', 1.2), tw(740, 'proj', { alpha: 0 }, 40, 'linear'), anim(300, 'boss', 'lookup'),
+    anim(760, 'boss', 'mugcheck'), signal(780, 'reveal'), sound(840, 'hmpf', 1.3), anim(910, 'boss', 'sip'), sound(980, 'sip'),
+    tw(0, 'camera', { x: 600, y: 330, sx: 1.08 }, 640, 'inOutQuad'),
+  ]),
+  /** GAIN (réaction en chaîne) : la dalle du plafond au-dessus de lui cède : une ramette de papier lui tombe sur la tête. */
+  seg('HVAC_E_FILES', 'action', 420, 'compress', [
+    state(0, 'ceiling', 'hole'), sound(0, 'clunk', 0.8), sound(20, 'debris', 1.1), fx(0, 'dust', 650, 90, 12), fx(20, 'papers', 650, 100, 24),
+    state(0, 'proj', 'kind=ream'), tw(0, 'proj', { x: 650, y: 110, alpha: 1, rot: 0, sx: 1, sy: 1, z: 0 }, 1, 'linear'), tw(2, 'proj', { y: 400, rot: 0.6 }, 300, 'inQuad'),
+    tw(300, 'proj', { alpha: 0 }, 60, 'linear'), anim(200, 'boss', 'lookup'), tw(0, 'camera', { x: 640, y: 320, sx: 1.08 }, 360, 'inQuad'),
+  ]),
+  /** GROS GAIN (destruction) : la gaine éclate : un torrent d'air et de dossiers l'emporte, lui et son fauteuil, par la fenêtre. */
+  seg('HVAC_E_DOWNDRAFT', 'action', 760, 'compress', [
+    state(0, 'ceiling', 'hole'), sound(0, 'boom', 0.9), sound(0, 'rumble'), fx(0, 'dust', 650, 90, 16), fx(40, 'papers', 640, 110, 34), shake(0, 260, 6),
+    silence(140, 140), ...cam.push(0, 560, 300, 1.12, 280, 'inQuad'), anim(80, 'boss', 'panic'),
+    ...impactFrame(300, 30, 40), sound(300, 'gust', 1.5), ...gustLine(300, { x: 650, y: 200 }, { x: 240, y: 240 }, 5, 50),
+    ...bb.airborne(320, { x: 220, y: 230 }, 400, 170, { rot: -1.4 }), ...cam.slowmo(480, 140, 0.4), tw(320, 'camera', { x: 420, y: 300, sx: 1.04 }, 420, 'inOutQuad'),
+  ]),
+
   /** BOSS FIGHT : la bouche tousse une lueur DORÉE qui file jusqu'au mug de B.B. */
   seg('HVAC_E_GOLDVENT', 'twist', 800, 'compress', [
     silence(0, 220), sound(120, 'pfft', 0.6), fx(140, 'gold', V.x, V.y + 20, 16), sound(160, 'gold'),
@@ -214,12 +280,12 @@ export const hvacHurricane: GadgetDef = {
   },
   segments: segments(SEGMENTS),
   branches: [
-    compose('HVAC-G1', 'Tenir bon', [GUST], [{ seg: 'HVAC_E_HOLD' }, { reaction: 'SIP' }], { categories: ['CLEAN_MISS', 'TEASE', 'BACKFIRE'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
-    compose('HVAC-G2', 'Contre son bureau', [GUST], [{ seg: 'HVAC_E_SLIDE' }, { impact: 'overdesk' }, { reaction: 'auto' }], { categories: ['GRAZE', 'DIRECT', 'COMEBACK'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),
+    compose('HVAC-G1', 'Pfft', [GUST], [{ seg: 'HVAC_E_FIZZLE' }, { reaction: 'FLEX' }], { categories: ['CLEAN_MISS', 'TEASE', 'BACKFIRE'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
+    compose('HVAC-G2', 'Girouette', [GUST], [{ seg: 'HVAC_E_VANE' }, { impact: 'overdesk' }, { reaction: 'auto' }], { categories: ['GRAZE', 'DIRECT', 'COMEBACK'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),
     compose('HVAC-G3', 'Vol plané', [GUST], [{ seg: 'HVAC_E_WALLOP' }, { impact: 'elevator' }, { reaction: 'OFFICE_CHEER' }], { categories: ['DIRECT', 'COMEBACK', 'CHAIN', 'SUPER'], classes: WIN_BIG, rarity: 'COMMON', d1: D1 }),
     compose('HVAC-W1', 'Wendell s\'envole', [GUST, WENDELL], [{ seg: 'HVAC_E_WBLOWN' }], { categories: ['BACKFIRE', 'TEASE'], classes: LOSS, rarity: 'UNCOMMON', d1: D1 }),
     compose('HVAC-W2', 'Wendell à la voile', [GUST, WENDELL], [{ seg: 'HVAC_E_WSAIL' }, { impact: 'none' }, { reaction: 'auto' }], { categories: ['CHAIN', 'COMEBACK', 'DIRECT', 'GRAZE'], classes: WIN_ANY, rarity: 'UNCOMMON', d1: D1 }),
-    compose('HVAC-T1', 'La tornade passe', [TORNADO], [{ seg: 'HVAC_E_PASS' }, { reaction: 'SIP' }], { categories: ['CLEAN_MISS', 'TEASE', 'BACKFIRE'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
+    compose('HVAC-T1', 'La bougie', [TORNADO], [{ seg: 'HVAC_E_BLOWOUT' }, { reaction: 'SIP' }], { categories: ['CLEAN_MISS', 'TEASE', 'BACKFIRE'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
     compose('HVAC-T2', 'Essorage', [TORNADO], [{ seg: 'HVAC_E_LIFT' }, { impact: 'floor' }, { reaction: 'auto' }], { categories: ['GRAZE', 'DIRECT', 'COMEBACK'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),
     compose('HVAC-T3', 'Le toit', [TORNADO], [{ seg: 'HVAC_E_CEILING' }, { impact: 'ceiling' }, { reaction: 'away' }], { categories: ['CHAIN', 'SUPER', 'COMEBACK', 'DIRECT'], classes: WIN_BIG, rarity: 'UNCOMMON', d1: D1 }),
     compose('HVAC-T4', 'Tornade dorée', [TORNADO], [{ seg: 'HVAC_E_GOLDNADO' }, { bossFight: true }], { categories: ['BF_ENTRY'], classes: BOSS_FIGHT, rarity: 'COMMON', d1: D1 }),
@@ -227,7 +293,11 @@ export const hvacHurricane: GadgetDef = {
     compose('HVAC-O2', 'Bombardement', [TORNADO, ORBIT], [{ seg: 'HVAC_E_PELT' }, { impact: 'none' }, { reaction: 'auto' }], { categories: ['CHAIN', 'COMEBACK', 'DIRECT'], classes: WIN_MID, rarity: 'VERY_RARE', d1: D1 }),
     compose('HVAC-S1', 'Le mug s\'envole', [SUCK], [{ seg: 'HVAC_E_MUG' }], { categories: ['TEASE', 'CLEAN_MISS'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
     compose('HVAC-S2', 'Face contre la grille', [SUCK], [{ seg: 'HVAC_E_FACE' }, { impact: 'vent' }, { reaction: 'auto' }], { categories: ['GRAZE', 'DIRECT', 'COMEBACK', 'CHAIN'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),
-    compose('HVAC-S3', 'Le COO aspiré', [SUCK], [{ seg: 'HVAC_E_COO' }], { categories: ['BACKFIRE', 'TEASE'], classes: LOSS, rarity: 'RARE', d1: D1 }),
+    compose('HVAC-S3', 'Le COO aspiré', [SUCK], [{ seg: 'HVAC_E_COO' }], { categories: ['BACKFIRE', 'TEASE'], classes: LOSS, rarity: 'UNCOMMON', d1: D1 }),
     compose('HVAC-S4', 'Souffle doré', [SUCK], [{ seg: 'HVAC_E_GOLDVENT' }, { bossFight: true }], { categories: ['BF_ENTRY'], classes: BOSS_FIGHT, rarity: 'UNCOMMON', d1: D1 }),
+    // P3.1 : événement hors champ (faux départ), avec ses trois silhouettes : LE SIP, réaction en chaîne, destruction.
+    compose('HVAC-D1', 'Avion en papier', [DUCTS], [{ seg: 'HVAC_E_PLANE' }], { categories: ['CLEAN_MISS', 'TEASE', 'BACKFIRE'], classes: LOSS, rarity: 'COMMON', d1: D1 }),
+    compose('HVAC-D2', 'La dalle', [DUCTS], [{ seg: 'HVAC_E_FILES' }, { impact: 'none' }, { reaction: 'auto' }], { categories: ['GRAZE', 'DIRECT', 'COMEBACK'], classes: WIN_ANY, rarity: 'COMMON', d1: D1 }),
+    compose('HVAC-D3', 'Courant d\'air', [DUCTS], [{ seg: 'HVAC_E_DOWNDRAFT' }, { impact: 'window' }, { reaction: 'away' }], { categories: ['CHAIN', 'SUPER', 'COMEBACK', 'DIRECT'], classes: WIN_BIG, rarity: 'RARE', d1: D1 }),
   ],
 };

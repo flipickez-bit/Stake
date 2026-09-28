@@ -84,7 +84,7 @@ test('COLLECTION BOOK + DEBUG: tabs, card detail; OFFICE MELTDOWN at 4 with each
   // PRODUCTION 3 GADGETS : le livre des 9 gadgets n'existe qu'avec les plans (Mock) ; plan A choisi pour que FIRE soit actif.
   await boot(page, '?plans=on');
   await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.flow.setPlan('A'));
-  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.collection.catalog.cards.length)).toBe(147);
+  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.collection.catalog.cards.length)).toBe(150);
   const T = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.collection.catalog.cards.length as number);
   await page.getByTestId('dev-toggle').click();
   await page.getByTestId('dev-coll-random10').click();

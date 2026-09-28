@@ -1,6 +1,6 @@
 # Variété et prévisibilité — BAD BOSS (variété V2)
 
-> Généré par `VARIETY_REPORT=docs/generated/VARIETY_REPORT.md npx vitest run tests/unit/variety.test.ts` le 2026-09-27. Ne pas éditer.
+> Généré par `VARIETY_REPORT=docs/generated/VARIETY_REPORT.md npx vitest run tests/unit/variety.test.ts` le 2026-09-28. Ne pas éditer.
 > Calcul exact depuis le contenu, les poids de rareté cosmétique, la distribution des scripts du book (config/presentation_policy.json)
 > et la distribution mathématique du Rage Level (hors BOSS FIGHT). La rareté ne modifie jamais les maths : elle choisit parmi des branches compatibles.
 
@@ -28,8 +28,8 @@ Manches tirées par le mock mathématique (graine fixe). Référence : contenu P
 | OFFICE ROCKET | turbo | 1.69 s | 2.48 s | 2.39 s | +4 % |
 | CEILING SAFE | normal | 2.31 s | 3.26 s | — | — |
 | CEILING SAFE | turbo | 1.28 s | 1.86 s | — | — |
-| HVAC HURRICANE | normal | 2.38 s | 3.56 s | — | — |
-| HVAC HURRICANE | turbo | 1.32 s | 2.03 s | — | — |
+| HVAC HURRICANE | normal | 2.36 s | 3.38 s | — | — |
+| HVAC HURRICANE | turbo | 1.31 s | 1.93 s | — | — |
 
 ## SWIVEL SLINGSHOT (grumpy) — 17 branches
 
@@ -310,40 +310,44 @@ Même branche deux fois de suite : perte → perte 24 %, gain → gain 21 %.
 | SWING › COO | 2 | 2.3 % | 3.2 % | 1.41 | 20 % |
 | LOWER | 1 | 20.1 % | 36.3 % | 1.81 | 24 % |
 
-## HVAC HURRICANE (unhinged) — 15 branches
+## HVAC HURRICANE (unhinged) — 18 branches
 
 | Branche | Chemin visible avant la fin | Fin | Rareté | P / manche | 1re apparition (manches, médiane) | Vue en 50 / 100 / 200 manches |
 |---|---|---|---|---:|---:|---|
-| HVAC-G1 Tenir bon | GUST | PERTE | COMMON | 29.43 % | 2 | 100 % / 100 % / 100 % |
-| HVAC-G2 Contre son bureau | GUST | GAIN | COMMON | 3.93 % | 17 | 87 % / 98 % / 100 % |
-| HVAC-G3 Vol plané | GUST | GROS GAIN | COMMON | 0.93 % | 74 | 37 % / 61 % / 85 % |
-| HVAC-W1 Wendell s'envole | GUST › WENDELL | PERTE | UNCOMMON | 6.16 % | 11 | 96 % / 100 % / 100 % |
-| HVAC-W2 Wendell à la voile | GUST › WENDELL | GAIN | UNCOMMON | 1.62 % | 42 | 56 % / 81 % / 96 % |
-| HVAC-T1 La tornade passe | TORNADO | PERTE | COMMON | 29.43 % | 2 | 100 % / 100 % / 100 % |
-| HVAC-T2 Essorage | TORNADO | GAIN | COMMON | 3.93 % | 17 | 87 % / 98 % / 100 % |
-| HVAC-T3 Le toit | TORNADO | GROS GAIN | UNCOMMON | 0.37 % | 185 | 17 % / 31 % / 53 % |
+| HVAC-G1 Pfft | GUST | PERTE | COMMON | 21.02 % | 3 | 100 % / 100 % / 100 % |
+| HVAC-G2 Girouette | GUST | GAIN | COMMON | 3.06 % | 22 | 79 % / 96 % / 100 % |
+| HVAC-G3 Vol plané | GUST | GROS GAIN | COMMON | 0.82 % | 84 | 34 % / 56 % / 81 % |
+| HVAC-W1 Wendell s'envole | GUST › WENDELL | PERTE | UNCOMMON | 4.19 % | 16 | 88 % / 99 % / 100 % |
+| HVAC-W2 Wendell à la voile | GUST › WENDELL | GAIN | UNCOMMON | 1.27 % | 54 | 47 % / 72 % / 92 % |
+| HVAC-T1 La bougie | TORNADO | PERTE | COMMON | 21.02 % | 3 | 100 % / 100 % / 100 % |
+| HVAC-T2 Essorage | TORNADO | GAIN | COMMON | 3.06 % | 22 | 79 % / 96 % / 100 % |
+| HVAC-T3 Le toit | TORNADO | GROS GAIN | UNCOMMON | 0.33 % | 211 | 15 % / 28 % / 48 % |
 | HVAC-T4 Tornade dorée | TORNADO | BOSS FIGHT | COMMON | (1/150 × part) | — | — / — / — |
-| HVAC-O1 Tout en place | TORNADO › ORBIT | PERTE | VERY_RARE | 0.53 % | 131 | 23 % / 41 % / 65 % |
-| HVAC-O2 Bombardement | TORNADO › ORBIT | GAIN | VERY_RARE | 0.12 % | 569 | 6 % / 11 % / 22 % |
-| HVAC-S1 Le mug s'envole | SUCK | PERTE | COMMON | 17.62 % | 4 | 100 % / 100 % / 100 % |
-| HVAC-S2 Face contre la grille | SUCK | GAIN | COMMON | 4.06 % | 17 | 87 % / 98 % / 100 % |
-| HVAC-S3 Le COO aspiré | SUCK | PERTE | RARE | 1.85 % | 37 | 61 % / 85 % / 98 % |
+| HVAC-O1 Tout en place | TORNADO › ORBIT | PERTE | VERY_RARE | 0.40 % | 175 | 18 % / 33 % / 55 % |
+| HVAC-O2 Bombardement | TORNADO › ORBIT | GAIN | VERY_RARE | 0.10 % | 726 | 5 % / 9 % / 17 % |
+| HVAC-S1 Le mug s'envole | SUCK | PERTE | COMMON | 13.19 % | 5 | 100 % / 100 % / 100 % |
+| HVAC-S2 Face contre la grille | SUCK | GAIN | COMMON | 3.18 % | 21 | 80 % / 96 % / 100 % |
+| HVAC-S3 Le COO aspiré | SUCK | PERTE | UNCOMMON | 4.19 % | 16 | 88 % / 99 % / 100 % |
 | HVAC-S4 Souffle doré | SUCK | BOSS FIGHT | UNCOMMON | (1/150 × part) | — | — / — / — |
+| HVAC-D1 Avion en papier | DUCTS | PERTE | COMMON | 21.02 % | 3 | 100 % / 100 % / 100 % |
+| HVAC-D2 La dalle | DUCTS | GAIN | COMMON | 3.06 % | 22 | 79 % / 96 % / 100 % |
+| HVAC-D3 Courant d'air | DUCTS | GROS GAIN | RARE | 0.10 % | 705 | 5 % / 9 % / 18 % |
 
-Branches distinctes attendues (même Rage Level, hors BOSS FIGHT) : 10 manches → 4.8 · 25 manches → 6.9 · 50 manches → 8.6 · 100 manches → 10.0 · 200 manches → 11.2.
+Branches distinctes attendues (même Rage Level, hors BOSS FIGHT) : 10 manches → 5.5 · 25 manches → 8.1 · 50 manches → 10.2 · 100 manches → 11.9 · 200 manches → 13.1.
 
-Même branche deux fois de suite : perte → perte 29 %, gain → gain 23 %.
+Même branche deux fois de suite : perte → perte 21 %, gain → gain 18 %.
 
 | Chemin visible | Profondeur | P(chemin | perte) | P(chemin | gain) | Rapport de vraisemblance | P(gain | chemin) (base 15 %) |
 |---|---:|---:|---:|---:|---:|
-| GUST | 1 | 41.9 % | 43.3 % | 1.04 | 15 % |
-| GUST › WENDELL | 2 | 7.2 % | 10.8 % | 1.50 | 21 % |
-| TORNADO | 1 | 35.2 % | 29.6 % | 0.84 | 13 % |
-| TORNADO › ORBIT | 2 | 0.6 % | 0.8 % | 1.31 | 19 % |
-| SUCK | 1 | 22.9 % | 27.1 % | 1.18 | 17 % |
+| GUST | 1 | 29.6 % | 34.4 % | 1.16 | 17 % |
+| GUST › WENDELL | 2 | 4.9 % | 8.5 % | 1.73 | 23 % |
+| TORNADO | 1 | 25.2 % | 23.3 % | 0.92 | 14 % |
+| TORNADO › ORBIT | 2 | 0.5 % | 0.6 % | 1.37 | 19 % |
+| SUCK | 1 | 20.4 % | 21.3 % | 1.04 | 15 % |
+| DUCTS | 1 | 24.7 % | 21.1 % | 0.85 | 13 % |
 
 ## Session mixte (1/3 des manches par Rage Level)
 
-Branches distinctes attendues (hors BOSS FIGHT, sur 129) : 10 manches → 9.3 · 25 manches → 21.0 · 50 manches → 35.8 · 100 manches → 55.0 · 200 manches → 74.7.
-Nouvelles branches attendues entre la 41e et la 50e manche : 5.4 ; entre la 91e et la 100e : 3.1.
+Branches distinctes attendues (hors BOSS FIGHT, sur 132) : 10 manches → 9.4 · 25 manches → 21.1 · 50 manches → 36.2 · 100 manches → 55.8 · 200 manches → 75.9.
+Nouvelles branches attendues entre la 41e et la 50e manche : 5.5 ; entre la 91e et la 100e : 3.1.
 

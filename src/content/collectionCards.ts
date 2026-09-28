@@ -26,7 +26,7 @@ export const SETUP_HINTS: Readonly<Record<string, Readonly<Record<string, string
   'cabinet-domino': { CHAIN: 'Clonk, clonk, clonk…', STALL: 'It leans… and holds?', DRAWERS: 'Drawers everywhere…' },
   'cooler-bowling': { STRAIGHT: 'Straight down the lane…', HOOK: 'A little spin on it…', BURST: 'The cap pops…' },
   'ceiling-safe': { DROP: 'The rope frays…', SWING: 'Round and round it goes…', LOWER: 'Slowly, gently…' },
-  'hvac-hurricane': { GUST: 'Full blast…', TORNADO: 'The air starts to twist…', SUCK: 'Reverse gear…' },
+  'hvac-hurricane': { GUST: 'Full blast…', TORNADO: 'The air starts to twist…', SUCK: 'Reverse gear…', DUCTS: 'Something is moving in the ceiling…' },
 };
 
 export const CARD_TEXTS: Readonly<Record<string, CardText>> = {
@@ -179,12 +179,12 @@ export const CARD_TEXTS: Readonly<Record<string, CardText>> = {
   'SAFE-L5': { name: 'TREASURE', blurb: 'The safe opened. Something golden stared back.' },
 
   // ---------------------------------------------------------------- HVAC HURRICANE (UNHINGED)
-  'HVAC-G1': { name: 'HOLD THE LINE', blurb: 'Full blast. He held on. Then he fixed his tie.' },
-  'HVAC-G2': { name: 'DESK JOB', blurb: 'The wind pushed him straight into his own desk.' },
+  'HVAC-G1': { name: 'PFFT', blurb: 'Full blast. Then a very small pfft. He never put his mug down.' },
+  'HVAC-G2': { name: 'WEATHERVANE', blurb: 'The wind spun him like a weathervane, then parked him on his desk.' },
   'HVAC-G3': { name: 'AIR MAIL', blurb: 'Airborne across the office, express to the elevator.' },
   'HVAC-W1': { name: 'GONE WITH THE WIND', blurb: 'Wendell took the elevator. The wind pressed the button.' },
   'HVAC-W2': { name: 'SAILING', blurb: 'Wendell became a sailboat. B.B. became the harbour.' },
-  'HVAC-T1': { name: 'STORM DETOUR', blurb: 'The tornado went around him and left him some paperwork.' },
+  'HVAC-T1': { name: 'BIRTHDAY CANDLE', blurb: 'The tornado stopped in front of him. He blew it out.' },
   'HVAC-T2': { name: 'SPIN CYCLE XL', blurb: 'Washed, spun, dropped.' },
   'HVAC-T3': { name: 'UPPER MANAGEMENT', blurb: 'The tornado promoted him. Through the ceiling.' },
   'HVAC-T4': { name: 'GOLDEN STORM', blurb: 'The tornado glowed gold and handed back his mug.' },
@@ -194,4 +194,7 @@ export const CARD_TEXTS: Readonly<Record<string, CardText>> = {
   'HVAC-S2': { name: 'FACE THE VENT', blurb: 'Pulled across the room, face first into the grille.' },
   'HVAC-S3': { name: 'PIGEON EXHAUST', blurb: 'COO went into the vent. COO came back grey.' },
   'HVAC-S4': { name: 'GOLDEN BREATH', blurb: 'The vent coughed up something golden.' },
+  'HVAC-D1': { name: 'PAPER PLANE', blurb: 'A paper plane came out of the ceiling and landed in his mug. He drank it anyway.' },
+  'HVAC-D2': { name: 'CEILING TILE', blurb: 'The noise stopped right above him. Then the ceiling delivered a ream of paper.' },
+  'HVAC-D3': { name: 'DRAFT NOTICE', blurb: 'The duct burst. The draft took him, his chair and the window.' },
 };

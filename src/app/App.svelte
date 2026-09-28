@@ -21,7 +21,8 @@
   import PocSessionCard from './poc/PocSessionCard.svelte';
   import { POC_SESSION_ROUNDS, type PocAnswers, type PocPlaytestState, type PocStudy } from '../dev/pocPlaytest';
   import type { AltDisplay } from './pocConfig';
-  import type { PlanSlot } from '../domain/plans';
+  import { PLAN_SETS, type PlanSlot } from '../domain/plans';
+  import { RAGE_LEVEL_IDS } from '../domain/types';
   // LOT 6 (perf) : les écrans ouverts à la demande (DEV, playtest, collection, épisode spécial) sont chargés à la
   // première ouverture — ils ne pèsent plus sur le chargement initial (budget ≤ 300 KB gzip).
   const lazyUi = {
@@ -64,6 +65,8 @@
   const poc = $derived(ctx?.poc ?? null);
   let pocPt = $state<PocPlaytestState | null>(null);
   let pocIntro = $state(false);
+  /** Réglage ALTERNATIVE DISPLAY avant le PLAYTEST #3 (rétabli à la fin de la session). */
+  let altBeforePlaytest: AltDisplay | null = null;
   let pocResults = $state<PocStudy | null>(null);
   const pocStudy = $derived(pocPt?.study ?? null);
   const pocSession = $derived(pocStudy && pocStudy.status === 'running' ? (pocStudy.sessions[pocStudy.sessions.length - 1] ?? null) : null);
@@ -116,9 +119,16 @@
         off.push(c.flow.subscribe((s) => (snap = s)));
         off.push(c.presenter.onSignalEvent(() => (bf = c.presenter.status.bossFight)));
         off.push(c.flow.subscribe((s) => { if (s.state === 'READY' || s.state === 'BET_PENDING') bf = c.presenter.status.bossFight; }));
-        off.push(c.playtest.subscribe((s) => (pt = s)));
+        off.push(c.playtest.subscribe((s) => {
+          pt = s;
+          // Fin du PLAYTEST #3 (questionnaire rendu, passé ou session abandonnée) : réglage d'avant rétabli.
+          if (!s.current && altBeforePlaytest !== null) {
+            c.poc?.altDisplay.set(altBeforePlaytest);
+            altBeforePlaytest = null;
+          }
+        }));
         if (c.poc) {
-          document.title = 'BAD BOSS Playtest 3';
+          document.title = 'BAD BOSS Playtest 3.1';
           off.push(c.poc.altDisplay.subscribe((v) => (altMode = v)));
           off.push(c.poc.playtest.subscribe((v) => (pocPt = v)));
         }
@@ -165,6 +175,29 @@
   function onPickPlan(_slot: PlanSlot, changed: boolean) {
     gesture();
     if (changed) ctx?.audio.play('click', 0.8);
+  }
+
+  // ---------------------------------------------------------------- OTHER PLANS (P3.1)
+  /** Rage Level de la manche révélée (lu dans le book : le gadget payé), pour ne jamais mélanger deux niveaux. */
+  const roundLevel = $derived.by(() => {
+    const g = snap?.revealed?.plans?.selectedGadget;
+    return g ? (RAGE_LEVEL_IDS.find((lv) => PLAN_SETS[lv].includes(g)) ?? null) : null;
+  });
+  /** Ordre des plans à l'écran (de gauche à droite), tel que le joueur les avait devant lui. */
+  const planOrder = $derived.by((): PlanSlot[] => {
+    void snap?.revealed?.roundId;
+    void snap?.level;
+    const rects = ctx?.stage.planRects() ?? [];
+    return rects.length === 3 ? [...rects].sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2)).map((r) => r.slot) : ['A', 'B', 'C'];
+  });
+  /** PLAYTEST #3 : indication unique, après la PREMIÈRE manche seulement, tant que le panneau n'a pas été ouvert. */
+  const otherPlansHint = $derived(ptCurrent?.plans === true && ptCurrent.status === 'playing' && ptCurrent.rounds.length === 1 && (ptCurrent.otherPlans?.opens ?? 0) === 0);
+  /** « CHOOSE ANOTHER PLAN » : les gadgets du décor se signalent brièvement (aucune suggestion de plan). */
+  let pickAttention = $state(0);
+
+  function replaySamePlan() {
+    gesture();
+    if (ctx && snap?.canFire) ctx.flow.fire();
   }
 
   function onRevealOtherPlans(roundId: string) {
@@ -238,8 +271,12 @@
       s.balance = 1000 * 1_000_000;
     });
     const p = ctx.collection?.progress ?? null;
-    // PLAYTEST #3 : l'expérience principale (ON-DEMAND : les autres plans seulement si le joueur le demande).
-    if (snap?.plansEnabled) ctx.poc?.altDisplay.set('ON_DEMAND');
+    // PLAYTEST #3 : protocole reproductible — ON-DEMAND imposé, quelle que soit l'ancienne valeur (DEV, stockage) ;
+    // le réglage précédent est rendu à la fin de la session.
+    if (snap?.plansEnabled && ctx.poc) {
+      altBeforePlaytest = ctx.poc.altDisplay.current;
+      ctx.poc.altDisplay.set('ON_DEMAND');
+    }
     ctx.playtest.start(
       {
         width: window.innerWidth,
@@ -248,7 +285,7 @@
         touch: navigator.maxTouchPoints > 0,
       },
       p,
-      { plans: snap?.plansEnabled === true },
+      { plans: snap?.plansEnabled === true, altDisplay: ctx.poc?.altDisplay.current },
     );
     await ctx.flow.start();
   }
@@ -344,17 +381,27 @@
       <div class="badge" data-testid="mode-badge">{snap.state === 'RESUMING' ? 'RESUMED ROUND' : 'REPLAY · NO BET'}</div>
     {/if}
     {#if ctx && snap && poc && snap.plansEnabled && !showcaseOn && !bootError}
-      <PlanPicker flow={ctx.flow} stage={ctx.stage} {snap} onPick={onPickPlan} found={collProgress ? gadgetFound : null} />
+      <PlanPicker flow={ctx.flow} stage={ctx.stage} {snap} onPick={onPickPlan} found={collProgress ? gadgetFound : null} attention={pickAttention} />
     {/if}
-    {#if ctx && snap && poc && snap.state === 'READY' && snap.revealed?.plans && !showcaseOn}
-      <OtherPlans revealed={snap.revealed} level={snap.level} mode={altMode} onOpen={onRevealOtherPlans} />
+    {#if ctx && snap && poc && snap.state === 'READY' && snap.revealed?.plans && roundLevel === snap.level && !showcaseOn && !overlayOpen}
+      <OtherPlans
+        revealed={snap.revealed}
+        mode={altMode}
+        order={planOrder}
+        waiting={countHold > 0}
+        hint={otherPlansHint}
+        canReplay={snap.canFire}
+        onOpen={onRevealOtherPlans}
+        onReplay={replaySamePlan}
+        onChoose={() => (pickAttention += 1)}
+      />
     {/if}
     {#if poc && pocSession?.status === 'extra' && snap?.state === 'READY'}
       <PocSessionCard session={pocSession} onAnswer={() => ctx?.poc?.playtest.openQuestionnaire()} />
     {/if}
     {#if !showcaseOn}
       <!-- SPECIAL EPISODE : aucun chiffre à l'écran (ni résultat précédent, ni échelle, ni badge). -->
-      <ResultPop revealed={snap?.revealed ?? null} currency={snap?.balance?.currency ?? 'USD'} />
+      <ResultPop revealed={snap?.revealed ?? null} currency={snap?.balance?.currency ?? 'USD'} settled={poc !== null && snap?.plansEnabled === true && snap.state === 'READY'} />
       <BfLadder {bf} />
       {#if ctx?.collection}
         <DiscoveryFlight event={discovery} showOnLoss={ctx.meta.newBadgeOnLoss} target={() => collButton?.getBoundingClientRect() ?? null} onArrive={onCardArrive} />

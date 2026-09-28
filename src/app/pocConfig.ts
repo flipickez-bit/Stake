@@ -5,15 +5,21 @@
 import type { KeyValueStore } from '../platform/storage';
 
 /**
- * PRIVATE : jamais d'alternatives (UX retenue pour le prototype).
  * ON_DEMAND : bouton « REVEAL OTHER PLANS », proposé après TOUTES les manches (jamais seulement après une perte).
+ *   P3.1 : c'est l'expérience PRINCIPALE, et la valeur par défaut.
+ * PRIVATE : jamais d'alternatives (réglage DEV, et variante de l'étude A/B du POC).
  * REVEAL_ALL : A/B/C affichés automatiquement après chaque manche — EXPÉRIMENTAL, DEV seulement.
  */
 export type AltDisplay = 'PRIVATE' | 'ON_DEMAND' | 'REVEAL_ALL';
 export const ALT_DISPLAYS: readonly AltDisplay[] = ['PRIVATE', 'ON_DEMAND', 'REVEAL_ALL'];
 export const ALT_LABEL: Record<AltDisplay, string> = { PRIVATE: 'PRIVATE', ON_DEMAND: 'ON-DEMAND', REVEAL_ALL: 'REVEAL ALL' };
 
-const KEY = 'badboss.poc3.altdisplay.v1';
+/**
+ * v2 (P3.1) : la valeur par défaut passe de PRIVATE à ON_DEMAND. Une ancienne valeur PRIVATE (v1), laissée par le POC ou
+ * un réglage DEV, n'est PAS reprise : c'était la cause réelle de « on ne voit pas les autres plans ».
+ */
+const KEY = 'badboss.altdisplay.v2';
+export const DEFAULT_ALT_DISPLAY: AltDisplay = 'ON_DEMAND';
 
 /** POC demandé : build de préversion (VITE_BADBOSS_POC=1) ou `?poc=3gadget`. Jamais avec le RGS Stake. */
 export function pocRequested(href: string, buildFlag: string | undefined, platform: 'mock' | 'stake'): boolean {
@@ -37,7 +43,7 @@ export class AltDisplaySetting {
 
   constructor(private readonly store: KeyValueStore) {
     const saved = store.get<AltDisplay>(KEY);
-    this.value = saved && ALT_DISPLAYS.includes(saved) ? saved : 'PRIVATE';
+    this.value = saved && ALT_DISPLAYS.includes(saved) ? saved : DEFAULT_ALT_DISPLAY;
   }
 
   get current(): AltDisplay {

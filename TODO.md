@@ -51,6 +51,7 @@
 - [x] LOT 4 BOSS FIGHT : entrées et projectiles par gadget, musique de combat.
 - [x] LOT 5 Collection : niveau → gadget → animations ; nouvelle règle d'OFFICE MELTDOWN (N = 4, simulation exacte).
 - [x] LOT 6 : SOUND KIT et SOUND BIBLE v1, ANIMATION KIT, transitions de monde, perf (UI chargée à la demande, atlas différés), mobile, recherche de branche, mode classique de la collection, PLAYTEST #3, épisode MELTDOWN à 8 tableaux.
+- [x] P3.1 (`P3_1_CORRECTIF.md`) : variété perçue d'HVAC HURRICANE (15 → 18 branches, 4 débuts à cadrage distinct) ; OTHER PLANS (ON-DEMAND par défaut et imposé par le PLAYTEST, action visible, panneau A/B/C dans l'ordre de l'écran, REPLAY / CHOOSE ANOTHER PLAN).
 - [ ] **PLAYTEST #3 humain** (vous) : 50 manches, 11 affirmations + questions libres, export.
 - [ ] Images/s sur un vrai téléphone moyen de gamme (cible 60, minimum 45).
 - [ ] Réponses de Stake : Q21–Q29 (A2), méta-progression, CSP (`blob:` / `data:`), hébergement, audio.

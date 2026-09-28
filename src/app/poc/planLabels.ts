@@ -21,6 +21,13 @@ export const COPY = {
   yourPlan: 'YOUR PLAN',
   otherPlan: 'OTHER PLAN',
   reveal: 'REVEAL OTHER PLANS',
+  /** Sous-titre du bouton : les deux autres plans, dans l'ordre de l'écran (« See what plans A and C held »). */
+  revealSub: (slots: readonly string[]) => (slots.length === 2 ? `See what plans ${slots[0]} and ${slots[1]} held` : 'See what the other plans held'),
+  /** PLAYTEST #3 : indication unique après la première manche. */
+  hint: 'See what the other plans held',
+  panelTitle: 'THIS ROUND · 3 PLANS',
+  replay: (slot: string) => `REPLAY PLAN ${slot}`,
+  choose: 'CHOOSE ANOTHER PLAN',
   hide: 'HIDE',
   prototype: 'PROTOTYPE',
   /** Formulation de l'étude (§1.2, sens faible tant que Stake n'a pas répondu à Q23). */

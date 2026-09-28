@@ -229,7 +229,11 @@ describe('POC 3 PLANS : textes et affichage des autres plans', () => {
   it('OTHER PLANS : aucun son, aucune couleur de gain, même traitement pour tous les multiplicateurs', () => {
     const src = readFileSync('src/app/poc/OtherPlans.svelte', 'utf8');
     expect(/audio|\.play\(|sound/i.test(src.replace(/\/\*[\s\S]*?\*\//g, ''))).toBe(false);
-    expect(/bb-yellow|gold|#7cf0a0|confetti|animation:/i.test(src.split('<style>')[1] ?? '')).toBe(false);
+    const style = src.split('<style>')[1] ?? '';
+    expect(/bb-yellow|gold|#7cf0a0|#ffc400|confetti/i.test(style)).toBe(false);
+    // Le panneau des résultats ne bouge jamais (aucune animation sur une valeur) ; seule l'action « REVEAL », identique
+    // après toutes les manches, a une courte entrée.
+    for (const rule of style.match(/\.(panel|row|cell|mult|who|slot|name|bf)[^{]*\{[^}]*\}/g) ?? []) expect(/animation|transition/.test(rule), rule).toBe(false);
     // Le choix de l'affichage ne dépend jamais du résultat (pas de révélation sélective).
     const logic = src.split('</script>')[0]!;
     expect(/multiplier100\s*[<>=]/.test(logic)).toBe(false);

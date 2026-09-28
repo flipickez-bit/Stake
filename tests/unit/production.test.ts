@@ -22,7 +22,8 @@ import { classify } from '../../src/domain/resultClass';
 import { hash32 as hashSeed, mulberry32 } from '../../src/domain/seed';
 import { RAGE_LEVEL_IDS, type RageLevelId, type ResultClass, type Script } from '../../src/domain/types';
 import { GameFlow, type FlowState } from '../../src/flow/GameFlow';
-import { plansRequested } from '../../src/app/pocConfig';
+import { AltDisplaySetting, plansRequested } from '../../src/app/pocConfig';
+import { createMemoryStore } from '../../src/platform/storage';
 import { distributionTable } from '../../src/platform/rgs/mock/mockMath';
 import { bookForPick, drawTriple } from '../../src/platform/rgs/mock/tripleMath';
 import { branchProbabilities, compileSequence } from '../../src/presentation/compileSequence';
@@ -311,9 +312,9 @@ describe('COLLECTION : seul le gadget JOUÉ découvre ses cartes, sur les trois 
 });
 
 describe('COLLECTION : le livre suit le mode (jamais une règle impossible à remplir)', () => {
-  it('plans (Mock) : 9 gadgets, 147 cartes, MELTDOWN = 4 avec chacun des 9 ; classique (Stake) : 3 gadgets, 51 cartes, 8 par Rage Level', () => {
+  it('plans (Mock) : 9 gadgets, 150 cartes, MELTDOWN = 4 avec chacun des 9 ; classique (Stake) : 3 gadgets, 51 cartes, 8 par Rage Level', () => {
     const plans = buildCatalog(GADGETS);
-    expect(plans.cards).toHaveLength(147);
+    expect(plans.cards).toHaveLength(150);
     expect(plans.meltdown).toBe(MELTDOWN_RULE);
     const classic = buildCatalog(Object.values(CLASSIC_GADGETS));
     expect(classic.cards).toHaveLength(51);
@@ -459,6 +460,35 @@ describe('RGS / réseau en mode 3 gadgets (régression) : ROUND_STATUS_UNKNOWN, 
     expect(server.snapshot().calls.endRound).toBe(1);
     expect(flow.snapshot.balance?.amount).toBe(server.snapshot().balance);
   }, 30_000);
+});
+
+describe('OTHER PLANS (P3.1) : ON-DEMAND par défaut ; valeurs = triple AUTHENTIQUE du book, indépendant du plan choisi', () => {
+  it('réglage : ON_DEMAND par défaut ; une ancienne valeur PRIVATE (v1, POC) n\'est pas reprise ; un choix v2 est gardé', () => {
+    const store = createMemoryStore();
+    store.set('badboss.poc3.altdisplay.v1', 'PRIVATE');
+    expect(new AltDisplaySetting(store).current).toBe('ON_DEMAND');
+    const a = new AltDisplaySetting(store);
+    a.set('REVEAL_ALL');
+    expect(new AltDisplaySetting(store).current).toBe('REVEAL_ALL');
+  });
+
+  it('les résultats révélés sont EXACTEMENT ceux du triple du book, et le triple ne dépend jamais du plan choisi', () => {
+    for (const level of RAGE_LEVEL_IDS) {
+      for (let seed = 1; seed <= 60; seed++) {
+        const triples = PLAN_SLOTS.map((slot) => {
+          const book = bookForPick(drawTriple(level, PLAN_SETS[level], mulberry32(seed)), slot, 1);
+          const o = parseRound({ roundId: `OP-${seed}`, mode: level, betAmount: 1_000_000, payout: book.payoutMultiplier * 10_000, payoutMultiplier100: book.payoutMultiplier, active: false, events: book.events, plan: slot }, 'replay');
+          const ev = book.events.find((e) => e.type === 'triple') as unknown as { results: { multiplier100: number }[] };
+          // Révélé = triple du book, dans l'ordre A, B, C ; le plan payé = celui du pick.
+          expect(o.plans!.results.map((r) => r.multiplier100)).toEqual(ev.results.map((r) => r.multiplier100));
+          expect(o.payoutMultiplier100).toBe(ev.results[PLAN_SLOTS.indexOf(slot)]!.multiplier100);
+          return o.plans!.results.map((r) => `${r.slot}:${r.multiplier100}:${r.bossFight}`).join(',');
+        });
+        // Même graine, trois plans différents → le MÊME triple (jamais modifié selon le choix ou le résultat).
+        expect(new Set(triples).size, `${level} ${seed}`).toBe(1);
+      }
+    }
+  });
 });
 
 describe('déterminisme de la présentation (reprise / replay)', () => {

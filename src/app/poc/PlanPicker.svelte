@@ -18,6 +18,7 @@
     snap,
     onPick,
     found = null,
+    attention = 0,
   }: {
     flow: GameFlow;
     stage: PixiStage;
@@ -25,7 +26,17 @@
     onPick: (slot: PlanSlot, changed: boolean) => void;
     /** COLLECTION : animations découvertes par gadget (des faits : « 6 / 16 »), null si la collection est désactivée. */
     found?: ((gadgetId: string) => { discovered: number; total: number } | null) | null;
+    /** « CHOOSE ANOTHER PLAN » : chaque changement fait brièvement pulser les TROIS étiquettes (aucune n'est mise en avant). */
+    attention?: number;
   } = $props();
+
+  let pulsing = $state(false);
+  $effect(() => {
+    if (attention <= 0) return;
+    pulsing = true;
+    const t = setTimeout(() => (pulsing = false), 1600);
+    return () => clearTimeout(t);
+  });
 
   let rects = $state<PlanRect[]>([]);
   let width = $state(0);
@@ -109,7 +120,7 @@
   }
 </script>
 
-<div class="picker" class:locked={!ready} data-testid="plan-picker" bind:clientWidth={width}>
+<div class="picker" class:locked={!ready} class:pulsing data-testid="plan-picker" data-attention={pulsing} bind:clientWidth={width}>
   {#each rects as r (r.slot)}
     {#if ready}
       <button
@@ -154,6 +165,9 @@
   .tag em { font-style: normal; font-size: 9px; background: #e8ecff; color: #1b1f3b; border-radius: 6px; padding: 0 5px; }
   .plan:hover .tag, .plan:focus-visible .tag { border-color: rgba(232, 236, 255, 0.5); }
   .selected .tag { border-color: #e8ecff; }
+  .pulsing .tag { animation: attn 0.8s ease-in-out 2; }
+  @keyframes attn { 50% { border-color: #fdf8ec; box-shadow: 0 0 0 4px rgba(253, 248, 236, 0.35); } }
+  @media (prefers-reduced-motion: reduce) { .pulsing .tag { animation: none; border-color: #fdf8ec; } }
   .locked .tag { opacity: 0.8; }
   @media (max-width: 520px) { .tag { font-size: 9px; padding: 2px 5px; max-width: none; } .tag .name { flex-basis: 100%; text-align: center; font-size: 8px; } .tag i { display: none; } }
 </style>

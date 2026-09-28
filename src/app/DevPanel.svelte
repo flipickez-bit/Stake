@@ -403,7 +403,7 @@
       </div>
     {/each}
     <div class="buttons">
-      <button onclick={() => playtest.abort()} disabled={!current}>ABORT CURRENT</button>
+      <button onclick={() => playtest.abort()} disabled={!current} data-testid="dev-pt-abort">ABORT CURRENT</button>
       <button onclick={copyAllSessions} disabled={!pt.sessions.length}>COPY ALL</button>
       <button onclick={saveAllSessions} disabled={!pt.sessions.length}>SAVE ALL</button>
       <button onclick={() => playtest.clearAll()}>CLEAR ALL</button>

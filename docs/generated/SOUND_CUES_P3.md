@@ -1,6 +1,6 @@
 # SOUND CUES — PRODUCTION 3 GADGETS (généré)
 
-> Généré par `SOUND_REPORT=docs/generated/SOUND_CUES_P3.md npx vitest run tests/unit/production.test.ts` le 2026-09-27. Ne pas éditer.
+> Généré par `SOUND_REPORT=docs/generated/SOUND_CUES_P3.md npx vitest run tests/unit/production.test.ts` le 2026-09-28. Ne pas éditer.
 > Séquences compilées en vitesse normale, un book compatible par branche (classe la plus basse servie). « Tronc » : avant le point de divergence D1 (identique pour toutes les issues). « Fin » : après D1. DING = nombre de `ding` de la séquence.
 
 ## GRUMPY
@@ -221,19 +221,22 @@
 
 | Branche | Classes | Rareté | Durée | DING | Fin (ordre des sons) |
 |---|---|---|---:|---:|---|
-| HVAC-G1 Tenir bon | MISS | COMMON | 3.43 s | 0 | `gust` ×2 · `deflate` · `hmpf` |
-| HVAC-G2 Contre son bureau | SCRAPE, HIT, BIG | COMMON | 3.75 s | 1 | `gust` ×3 · `thud` · `thump` · `clang` · `boing` · `ding` · `deflate` |
-| HVAC-G3 Vol plané | BIG, MEGA, LEGENDARY | COMMON | 4.76 s | 2 | `gust` ×2 · `whirr` · `gust` · `boom` · `whoosh` · `crash` · `thump` · `boom` · `clang` · `debris` · `room` · `ding` ×2 · `brass` · `cheer` |
-| HVAC-W1 Wendell s'envole | MISS | UNCOMMON | 3.50 s | 0 | `gust` ×2 · `paper` · `tension` · `gust` · `laugh` · `clunk` · `bell` |
-| HVAC-W2 Wendell à la voile | SCRAPE, HIT, BIG | UNCOMMON | 4.55 s | 1 | `gust` ×2 · `paper` · `tension` · `gust` · `thud` · `thump` · `bonk` · `boing` · `ding` · `deflate` |
-| HVAC-T1 La tornade passe | MISS | COMMON | 3.87 s | 0 | `whirr` · `gust` · `whirr` · `paper` |
-| HVAC-T2 Essorage | SCRAPE, HIT, BIG | COMMON | 4.21 s | 1 | `whirr` · `gust` · `spin` · `whoosh` · `thud` · `thump` ×2 · `boing` · `ding` · `deflate` |
-| HVAC-T3 Le toit | BIG, MEGA, LEGENDARY | UNCOMMON | 4.88 s | 2 | `whirr` · `gust` · `spin` · `whirr` · `whoosh` · `crash` · `thump` · `boom` · `debris` ×2 · `room` · `ding` ×2 · `brass` · `plop` |
-| HVAC-T4 Tornade dorée | HIT, BIG, MEGA, LEGENDARY | COMMON | 11.63 s | 4 | `whirr` · `gust` · `gold` · `pfft` · `gold` · `giantRoar` · `ding` · `whoosh` · `clang` · `ding` · `whoosh` · `clang` · `ding` · `whoosh` · `boing` · `laugh` · `ding` · `deflate` |
-| HVAC-O1 Tout en place | MISS | VERY_RARE | 4.24 s | 0 | `whirr` · `gust` · `whoosh` ×3 · `thump` ×2 · `hmpf` · `coo` |
-| HVAC-O2 Bombardement | HIT, BIG | VERY_RARE | 4.78 s | 1 | `whirr` · `gust` · `whoosh` ×3 · `bonk` · `thump` · `thud` · `thump` · `bonk` · `boing` · `ding` · `deflate` |
-| HVAC-S1 Le mug s'envole | MISS | COMMON | 2.81 s | 0 | `deflate` · `gust` · `whoosh` · `clink` |
-| HVAC-S2 Face contre la grille | SCRAPE, HIT, BIG | COMMON | 3.89 s | 1 | `deflate` · `gust` ×2 · `whoosh` · `thud` · `thump` · `rattle` · `boing` · `ding` · `deflate` |
-| HVAC-S3 Le COO aspiré | MISS | RARE | 2.91 s | 0 | `deflate` · `gust` · `coo` · `pfft` · `laugh` |
-| HVAC-S4 Souffle doré | HIT, BIG, MEGA, LEGENDARY | UNCOMMON | 11.47 s | 4 | `deflate` · `gust` · `pfft` · `gold` · `pfft` · `gold` · `giantRoar` · `ding` · `whoosh` · `clang` · `ding` · `whoosh` · `clang` · `ding` · `whoosh` · `boing` · `laugh` · `ding` · `deflate` |
+| HVAC-G1 Pfft | MISS | COMMON | 3.52 s | 0 | `gust` ×3 · `deflate` · `pfft` · `hmpf` |
+| HVAC-G2 Girouette | SCRAPE, HIT, BIG | COMMON | 3.88 s | 1 | `gust` ×4 · `spin` · `thud` · `thump` · `clang` · `boing` · `ding` · `deflate` |
+| HVAC-G3 Vol plané | BIG, MEGA, LEGENDARY | COMMON | 4.69 s | 2 | `gust` ×3 · `whirr` · `gust` · `boom` · `whoosh` · `crash` · `thump` · `boom` · `clang` · `debris` · `room` · `ding` ×2 · `brass` · `cheer` |
+| HVAC-W1 Wendell s'envole | MISS | UNCOMMON | 3.42 s | 0 | `gust` ×3 · `paper` · `tension` · `gust` · `laugh` · `clunk` · `bell` |
+| HVAC-W2 Wendell à la voile | SCRAPE, HIT, BIG | UNCOMMON | 4.49 s | 1 | `gust` ×3 · `paper` · `tension` · `gust` · `thud` · `thump` · `bonk` · `boing` · `ding` · `deflate` |
+| HVAC-T1 La bougie | MISS | COMMON | 3.72 s | 0 | `whirr` · `gust` · `whirr` ×2 · `pfft` · `whoosh` |
+| HVAC-T2 Essorage | SCRAPE, HIT, BIG | COMMON | 4.10 s | 1 | `whirr` · `gust` · `whirr` · `spin` · `whoosh` · `thud` · `thump` ×2 · `boing` · `ding` · `deflate` |
+| HVAC-T3 Le toit | BIG, MEGA, LEGENDARY | UNCOMMON | 4.77 s | 2 | `whirr` · `gust` · `whirr` · `spin` · `whirr` · `whoosh` · `crash` · `thump` · `boom` · `debris` ×2 · `room` · `ding` ×2 · `brass` · `plop` |
+| HVAC-T4 Tornade dorée | HIT, BIG, MEGA, LEGENDARY | COMMON | 11.52 s | 4 | `whirr` · `gust` · `whirr` · `gold` · `pfft` · `gold` · `giantRoar` · `ding` · `whoosh` · `clang` · `ding` · `whoosh` · `clang` · `ding` · `whoosh` · `boing` · `laugh` · `ding` · `deflate` |
+| HVAC-O1 Tout en place | MISS | VERY_RARE | 4.13 s | 0 | `whirr` · `gust` · `whirr` · `whoosh` ×3 · `thump` ×2 · `hmpf` · `coo` |
+| HVAC-O2 Bombardement | HIT, BIG | VERY_RARE | 4.67 s | 1 | `whirr` · `gust` · `whirr` · `whoosh` ×3 · `bonk` · `thump` · `thud` · `thump` · `bonk` · `boing` · `ding` · `deflate` |
+| HVAC-S1 Le mug s'envole | MISS | COMMON | 2.70 s | 0 | `deflate` · `gust` · `rattle` · `gust` · `whoosh` · `clink` |
+| HVAC-S2 Face contre la grille | SCRAPE, HIT, BIG | COMMON | 3.78 s | 1 | `deflate` · `gust` · `rattle` · `gust` ×2 · `whoosh` · `thud` · `thump` · `rattle` · `boing` · `ding` · `deflate` |
+| HVAC-S3 Le COO aspiré | MISS | UNCOMMON | 2.80 s | 0 | `deflate` · `gust` · `rattle` · `gust` · `coo` · `pfft` · `laugh` |
+| HVAC-S4 Souffle doré | HIT, BIG, MEGA, LEGENDARY | UNCOMMON | 11.36 s | 4 | `deflate` · `gust` · `rattle` · `gust` · `pfft` · `gold` · `pfft` · `gold` · `giantRoar` · `ding` · `whoosh` · `clang` · `ding` · `whoosh` · `clang` · `ding` · `whoosh` · `boing` · `laugh` · `ding` · `deflate` |
+| HVAC-D1 Avion en papier | MISS | COMMON | 2.88 s | 0 | `pfft` · `rattle` ×4 · `whoosh` ×2 · `plop` · `hmpf` · `sip` |
+| HVAC-D2 La dalle | SCRAPE, HIT, BIG | COMMON | 3.82 s | 1 | `pfft` · `rattle` ×4 · `clunk` · `debris` · `thud` · `thump` · `bonk` · `boing` · `ding` · `deflate` |
+| HVAC-D3 Courant d'air | BIG, MEGA, LEGENDARY | RARE | 4.71 s | 2 | `pfft` · `rattle` ×4 · `boom` · `rumble` · `gust` · `whoosh` · `crash` · `thump` · `boom` · `glass` · `debris` · `room` · `ding` ×2 · `brass` · `plop` |
 

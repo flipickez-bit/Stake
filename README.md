@@ -6,7 +6,7 @@ Jeu instantané cartoon pour **Stake Engine** : on se venge de Barnaby « B.B. �
 Trois Rage Levels (trois vrais niveaux de risque), un résultat tiré avant l'animation, des animations qui ne révèlent rien avant la fin, et un BOSS FIGHT jusqu'à x5 000.
 
 ## État
-**PRODUCTION 3 GADGETS PAR RAGE LEVEL — prête pour le PLAYTEST #3** : 9 gadgets, 147 branches, 147 cartes de collection, SOUND KIT, ANIMATION KIT. Détails : **[PRODUCTION_3_GADGETS.md](PRODUCTION_3_GADGETS.md)**.
+**PRODUCTION 3 GADGETS PAR RAGE LEVEL — prête pour le PLAYTEST #3** : 9 gadgets, 150 branches, 150 cartes de collection, SOUND KIT, ANIMATION KIT. Détails : **[PRODUCTION_3_GADGETS.md](PRODUCTION_3_GADGETS.md)** ; correctif final P3.1 (variété d'HVAC HURRICANE, OTHER PLANS) : **[P3_1_CORRECTIF.md](P3_1_CORRECTIF.md)**.
 Le choix A/B/C (A2) n'existe qu'avec le Mock RGS (INFORMATION STAKE ENGINE REQUISE) ; avec le RGS Stake, le jeu reste en mode classique (un gadget par Rage Level).
 Voir **[PROJECT_STATE.md](PROJECT_STATE.md)** et **[TODO.md](TODO.md)**. Phase 0 : **[PHASE_0_ACCEPTANCE.md](PHASE_0_ACCEPTANCE.md)**.
 

@@ -19,7 +19,7 @@ import { attachCollectionTracker, shouldObserve } from '../../src/collection/tra
 import { CARD_TEXTS, SETUP_HINTS } from '../../src/content/collectionCards';
 import { CLASSIC_GADGETS, GADGETS } from '../../src/content/gadgets';
 
-/** PRODUCTION 3 GADGETS : 9 gadgets, 147 cartes (129 de Rage Level + 18 BOSS FIGHT). */
+/** PRODUCTION 3 GADGETS : 9 gadgets, 150 cartes (132 de Rage Level + 18 BOSS FIGHT ; P3.1 : HVAC HURRICANE 15 → 18). */
 const TOTAL = GADGETS.reduce((n, g) => n + g.branches.length, 0);
 const ALL_GADGETS_AT = (n: number) => Object.fromEntries(GADGETS.map((g) => [g.id, n]));
 import { classify } from '../../src/domain/resultClass';
@@ -44,13 +44,13 @@ const newCollection = () => new Collection(new MemoryCollectionStore(), catalog,
 const isLossCard = (id: string) => GADGETS.flatMap((g) => g.branches).find((b) => b.id === id)!.classes.includes('MISS');
 
 describe('catalogue', () => {
-  it('une carte par branche, identifiants et noms uniques ; RAGE LEVEL → GADGET → ANIMATIONS (46 / 41 / 42 + 18 BOSS FIGHT)', () => {
+  it('une carte par branche, identifiants et noms uniques ; RAGE LEVEL → GADGET → ANIMATIONS (46 / 41 / 45 + 18 BOSS FIGHT)', () => {
     const branches = GADGETS.flatMap((g) => g.branches);
     expect(catalog.cards.map((c) => c.id)).toEqual(branches.map((b) => b.id));
     expect(new Set(catalog.cards.map((c) => c.name)).size).toBe(catalog.cards.length);
     const totals = Object.fromEntries(catalog.sections.map((s) => [s.id, s.total]));
-    expect(totals).toEqual({ grumpy: 46, furious: 41, unhinged: 42, bossfight: 18 });
-    expect(catalog.cards).toHaveLength(147);
+    expect(totals).toEqual({ grumpy: 46, furious: 41, unhinged: 45, bossfight: 18 });
+    expect(catalog.cards).toHaveLength(150);
     // Chaque onglet de Rage Level range ses cartes par gadget (les 3 plans du niveau), avec leur propre compteur.
     for (const s of catalog.sections.filter((x) => x.id !== 'bossfight')) expect(s.gadgets.map((g) => g.gadgetId)).toHaveLength(3);
     expect(catalog.sections.find((x) => x.id === 'bossfight')!.gadgets).toHaveLength(9);
@@ -222,12 +222,12 @@ describe('observation : seules les manches jouées comptent', () => {
     expect(c.state.equipped.rocket).toBeUndefined();
   });
 
-  it('compteurs de jalons : des faits (« 23 / 25 »), 50 % = 74 / 147', () => {
+  it('compteurs de jalons : des faits (« 23 / 25 »), 50 % = 75 / 150', () => {
     const c = newCollection();
     c.setDiscoveredCount(23, mulberry32(1));
     const p = progress(c.state, catalog);
     expect(milestoneCounter({ kind: 'count', n: 25 }, p)).toEqual({ current: 23, target: 25 });
-    expect(milestoneCounter({ kind: 'fraction', f: 0.5 }, p)).toEqual({ current: 23, target: 74 });
+    expect(milestoneCounter({ kind: 'fraction', f: 0.5 }, p)).toEqual({ current: 23, target: 75 });
   });
 });
 
@@ -277,7 +277,7 @@ describe('stockage (localStorage NON sécurisé, chargement tolérant)', () => {
 });
 
 describe('outils DEV (COLLECTION DEBUG)', () => {
-  it('SET 145/147 (OFFICE MELTDOWN déjà ouvert), FORCE NEW DISCOVERY ×2 → 147/147 et trophée ; RESET → 0', async () => {
+  it('SET 148/150 (OFFICE MELTDOWN déjà ouvert), FORCE NEW DISCOVERY ×2 → 150/150 et trophée ; RESET → 0', async () => {
     const c = newCollection();
     c.setGadgetCounts(ALL_GADGETS_AT(99), mulberry32(6));
     c.setDiscoveredCount(TOTAL - 2, mulberry32(7));
