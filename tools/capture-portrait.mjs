@@ -37,7 +37,7 @@ const MOMENTS = [
   { id: '3-slingshot-win-cabinet', level: 'grumpy', forced: { kind: 'WIN', multiplier: 2, seed: 7 }, reveal: true },
   { id: '4-trapdoor-hover', level: 'furious', forced: { kind: 'LOSS', multiplier: 0, seed: 7 }, at: 1500 },
   { id: '5-rocket-ceiling-reveal', level: 'unhinged', forced: { kind: 'WIN', multiplier: 2, seed: 7 }, reveal: true },
-  { id: '6-boss-fight', level: 'furious', forced: { kind: 'BOSS_FIGHT', bossFightRung: 3, seed: 7 }, rung: 2 },
+  { id: '6-boss-fight', level: 'furious', forced: { kind: 'BOSS_FIGHT', bossFightHits: 3, seed: 7 }, round: 3 },
 ];
 
 for (const d of DEVICES) {
@@ -53,7 +53,7 @@ for (const d of DEVICES) {
         await page.waitForFunction(() => window.__BADBOSS__.state().revealed !== null, null, { timeout: 30000 });
         await page.waitForTimeout(250);
       }
-      if (m.rung) await page.waitForFunction((r) => window.__BADBOSS__.presenter().bossFight.rung >= r, m.rung, { timeout: 60000 });
+      if (m.round) await page.waitForFunction((r) => window.__BADBOSS__.presenter().bossFight.round >= r, m.round, { timeout: 60000 });
     } else {
       await page.waitForTimeout(400);
     }

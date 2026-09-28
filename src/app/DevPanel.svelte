@@ -13,7 +13,7 @@
   import { runLoop, type LoopReport } from '../dev/loop';
   import { PLAYTEST_TARGET, type PlaytestState } from '../dev/playtest';
   import { copyText, saveTextFile } from '../dev/exportFile';
-  import { cryptoRandom, forcibleMultipliers, type ForcedOutcome } from '../platform/rgs/mock/mockMath';
+  import { cryptoRandom, forcedFreeRoundsTotal100, forcibleMultipliers, type ForcedOutcome } from '../platform/rgs/mock/mockMath';
   import type { BranchDef } from '../presentation/types';
   import type { GameContext } from './bootstrap';
   import PocDevSection from './poc/PocDevSection.svelte';
@@ -43,7 +43,9 @@
   type Kind = ForcedOutcome['kind'] | 'RANDOM';
   let kind = $state<Kind>('WIN');
   let multiplier = $state<number>(2);
-  let rung = $state(2);
+  /** BOSS FIGHT forcé : nombre de HIT sur les 8 tours gratuits et base de chaque HIT. */
+  let bfHits = $state(4);
+  let bfBase = $state(2);
   let branchId = $state<string>('auto');
   let seedText = $state('');
   let loopCount = $state(20);
@@ -61,9 +63,11 @@
   const level = $derived(snap.level);
   // Mode 3 gadgets : le gadget est celui du plan choisi (plan A par défaut) ; sinon le gadget classique du niveau.
   const gadget = $derived(snap.plansEnabled ? gadgetForPlan(level, snap.plan ?? 'A') : gadgetFor(level));
-  const ladder = $derived(getRageLevel(level).bossFightLadder);
+  const bfRounds = $derived(getRageLevel(level).freeRounds.rounds);
+  const bfBases = $derived(forcibleMultipliers(level, 'BOSS_FIGHT'));
+  const bfTotal100 = $derived(forcedFreeRoundsTotal100(level, { hits: bfHits, base: bfBase }));
   const multipliers = $derived(kind === 'RANDOM' || kind === 'BOSS_FIGHT' ? [] : forcibleMultipliers(level, kind));
-  const targetClass = $derived(kind === 'BOSS_FIGHT' ? classify((ladder[rung] ?? 5) * 100) : kind === 'RANDOM' ? null : classify(Math.round(multiplier * 100)));
+  const targetClass = $derived(kind === 'BOSS_FIGHT' ? classify(bfTotal100) : kind === 'RANDOM' ? null : classify(Math.round(multiplier * 100)));
   const branches = $derived(
     gadget.branches.filter((b: BranchDef) => {
       if (kind === 'RANDOM' || !targetClass) return true;
@@ -77,7 +81,7 @@
     if (multipliers.length && !multipliers.includes(multiplier)) multiplier = multipliers[0] ?? 0;
   });
   $effect(() => {
-    if (rung >= ladder.length) rung = ladder.length - 1;
+    if (!bfBases.includes(bfBase)) bfBase = bfBases.find((m) => m > 1) ?? bfBases[0] ?? 1;
   });
   $effect(() => {
     if (branchId !== 'auto' && !branches.some((b) => b.id === branchId)) branchId = 'auto';
@@ -112,7 +116,7 @@
     // RANDOM : tirage mathématique complet (la graine vient aussi du tirage).
     if (kind === 'RANDOM') return null;
     const seed = seedText.trim() === '' ? undefined : Number(seedText) >>> 0;
-    if (kind === 'BOSS_FIGHT') return { kind, bossFightRung: rung, seed };
+    if (kind === 'BOSS_FIGHT') return { kind, bossFightHits: bfHits, bossFightBase: bfBase, seed };
     return { kind, multiplier, seed };
   }
 
@@ -261,9 +265,13 @@
       </select>
     </label>
     {#if kind === 'BOSS_FIGHT'}
-      <label>FINAL RUNG
-        <select bind:value={rung}>{#each ladder as m, i (i)}<option value={i}>{i}: x{m}</option>{/each}</select>
+      <label>FREE ROUNDS: HITS
+        <select bind:value={bfHits} data-testid="dev-bf-hits">{#each Array.from({ length: bfRounds }, (_, i) => i + 1) as h (h)}<option value={h}>{h} / {bfRounds}</option>{/each}</select>
       </label>
+      <label>BASE PER HIT
+        <select bind:value={bfBase} data-testid="dev-bf-base">{#each bfBases as m (m)}<option value={m}>x{m}</option>{/each}</select>
+      </label>
+      <span class="hint">total {formatX(bfTotal100)}</span>
     {:else if kind !== 'RANDOM'}
       <label>MULTIPLIER
         <select bind:value={multiplier} data-testid="dev-mult">{#each multipliers as m (m)}<option value={m}>x{m}</option>{/each}</select>

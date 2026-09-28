@@ -2,7 +2,7 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-_Dernière mise à jour : 2026-09-28, **P3.1 livré** (`P3_1_CORRECTIF.md`), puis **autres plans affichés d'office**. A2 : INFORMATION STAKE ENGINE REQUISE (Mock seulement ; Stake = mode classique)._
+_Dernière mise à jour : 2026-09-28, **P3.1 livré** (`P3_1_CORRECTIF.md`), puis **autres plans affichés d'office**, puis **BOSS FIGHT en 8 tours gratuits (1/400)**. A2 : INFORMATION STAKE ENGINE REQUISE (Mock seulement ; Stake = mode classique)._
 
 ## Après P3.1 — autres plans affichés OBLIGATOIREMENT (2026-09-28)
 - ✅ Demande utilisateur : « le résultat des autres options doit s'afficher obligatoirement, pas quand le joueur le veut ».
@@ -10,7 +10,15 @@ _Dernière mise à jour : 2026-09-28, **P3.1 livré** (`P3_1_CORRECTIF.md`), pui
 - ✅ Le panneau s'ouvre seul après chaque manche (après le vol de la carte NEW) ; aucun son de gain, aucune découverte, aucune suggestion ; REPLAY / CHOOSE ANOTHER PLAN inchangés.
 - ✅ Tests : 159 unitaires, 35 E2E (dont 8 réécrits pour l'affichage d'office). Maths inchangées.
 - ⚠ INFORMATION STAKE ENGINE REQUISE : l'affichage d'office des résultats non joués est la variante la plus exposée au risque de « near-miss » (Q24).
-- ⏳ Demande suivante, en attente de votre choix : **tours gratuits** comme bonus, **plus rares mais de vraie valeur** (changement de maths, voir TODO).
+
+## BOSS FIGHT = 8 TOURS GRATUITS, 1 manche sur 400 (2026-09-28, `docs/GDD_05_BOSS_FIGHT.md` §6.FR)
+- ✅ Demande utilisateur : « faire des tours gratuits avec les bonus, en mettre moins, mais qu'ils aient une vraie valeur ». Choix validés : fréquence **1/400**, **8 tours, rage qui monte** ; forme alignée sur Stake Engine (recherche : free spins joués dans le même book que la mise, jeu sans état).
+- ✅ Maths (`config/rage_levels.json`, calcul exact `math/model/bad_boss_math.py`) : RTP **96,5 % exact** ; même part de RTP du bonus ; valeur moyenne d'un bonus **x14,6 → x38,7** (GRUMPY), **x24,2 → x64,4** (FURIOUS), **x35,5 → x95,4** (UNHINGED) ; médianes x33 / x38 / x37 ; bonus < x10 : 1,8 / 2,8 / 4,9 % ; contrôles du SDK OK.
+- ⚠ Conséquences assumées (décision verrouillée n° 3 modifiée) : σ UNHINGED 11,6 → 17,5 ; hit rate 58,1 → 57,8 % / 33,2 → 32,8 % / 15,5 → 15,1 % ; poids de la lookup table arrondis sur 10^15 (écart de RTP ≤ 4·10⁻¹²).
+- ✅ Book : un événement `bossFight` avec les 8 tours (HIT/BLOCKED, base, rage, gain), vérifié strictement par `parseFreeRounds` (gains recalculés, rage, plafond, au moins un HIT, total = payout).
+- ✅ Présentation : un lancer par tour (projectiles du gadget), HUD FREE ROUNDS n/8 · RAGE xN · cumul, fins K.O. / rire ; captures `docs/production/free_rounds/`.
+- ✅ DEV : BOSS FIGHT forcé par nombre de HIT (1 à 8) et base ; A/B/C commun.
+- ✅ Tests : 162 unitaires (dont falsification des tours gratuits, plafond, 1/400), 35 E2E. Collection : MELTDOWN inchangé (86 / 123) ; 100 % : 42 613 / 75 260 manches (cartes BOSS FIGHT plus rares).
 
 ## P3.1 — CORRECTIF FINAL AVANT PLAYTEST #3 (`P3_1_CORRECTIF.md`)
 - ✅ Variété perçue d'HVAC HURRICANE (UNHINGED, en haut à gauche) :
@@ -33,7 +41,7 @@ _Dernière mise à jour : 2026-09-28, **P3.1 livré** (`P3_1_CORRECTIF.md`), pui
 - ✅ SOUND KIT et `SOUND_BIBLE.md` v1 : x0,5 sans DING (test), variantes déterministes, impacts en couches, LE SIP ×4, musique non permanente.
 - ✅ ANIMATION KIT (`ANIMATION_KIT.md`, `src/content/kit.ts`).
 - ✅ Collection niveau → gadget → animations : 150 cartes. OFFICE MELTDOWN = ≥ 4 avec chacun des 9 gadgets (P50 86 / P90 123) ; mode classique = règle historique.
-- ✅ BOSS FIGHT 1/150 inchangé, entrées et projectiles par gadget.
+- ✅ BOSS FIGHT : entrées et projectiles par gadget ; **8 tours gratuits à 1/400 depuis le 2026-09-28** (voir plus haut).
 - ✅ Mondes et transitions ; mobile portrait ; perf (JS initial 279 KB gzip, textures ≤ 41,5 Mo, ≤ 10 appels de dessin, ≤ 226 particules).
 - ✅ DEV PANEL : recherche de branche, LOOP A → B → C. PLAYTEST #3 (bouton PLAYTEST du Mock).
 - **Préversion privée PLAYTEST #3** : https://claude.ai/artifact/789J7CSPYoxkkJkmFSb9co (Mock RGS, argent fictif ; bouton PLAYTEST).
@@ -126,8 +134,8 @@ tests/unit · tests/e2e · tools/ · docs/ (GDD, Stake, captures, rapports gén�
 ## Décisions verrouillées
 1. **RAGE LEVELS** : 3 modes Stake (`grumpy`, `furious`, `unhinged`, coût 1.0), même RTP. Les gadgets sont cosmétiques.
 2. **`TARGET_RTP = 0.965`**, défini seulement dans `config/rage_levels.json`. Validation Stake requise avant publication.
-3. **Max wins** : x200, x1 000, x5 000. **UNHINGED** : σ ≈ 11,6 et hit rate ≈ 15,5 % conservés, variante x1,2 **désactivée**.
-4. **BOSS FIGHT** : 1/150, échelle x5 → x5 000 plafonnée par niveau, entièrement dans le book, sans cash-out.
+3. **Max wins** : x200, x1 000, x5 000. **UNHINGED** : hit rate ≈ 15,1 %, variante x1,2 **désactivée**. σ ≈ 11,6 jusqu'au 2026-09-28, **17,5 depuis les tours gratuits** (modification assumée, conséquence de « moins de bonus, plus de valeur »).
+4. **BOSS FIGHT** : **8 tours gratuits, 1/400** (depuis le 2026-09-28 ; avant : échelle x5 → x5 000, 1/150), plafond = max win du niveau, entièrement dans le book, sans cash-out.
 5. **MVP (définitif)** : GRUMPY → SWIVEL SLINGSHOT, FURIOUS → TRAPDOOR EXPRESS, UNHINGED → OFFICE ROCKET. Ne change plus sauf problème révélé par les playtests.
 6. **Nom** : BAD BOSS = *working title*, clearance de marque requise.
 7. **Réseau** : `stake-engine` derrière un adapter ; GameFlow ne voit que `RgsPort` ; aucun type Stake ne fuit.

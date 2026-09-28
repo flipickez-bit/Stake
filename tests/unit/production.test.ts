@@ -49,7 +49,7 @@ function planOutcome(level: RageLevelId, slot: PlanSlot, m: number, script: Scri
 }
 
 function bfOutcome(level: RageLevelId, slot: PlanSlot, seed = 4): Outcome {
-  const book = bookForPick(drawTriple(level, PLAN_SETS[level], mulberry32(seed), { kind: 'bossFight', rung: 2 }), slot, 1);
+  const book = bookForPick(drawTriple(level, PLAN_SETS[level], mulberry32(seed), { kind: 'bossFight', hits: 2 }), slot, 1);
   return parseRound({ roundId: `BF-${level}`, mode: level, betAmount: 1_000_000, payout: book.payoutMultiplier * 10_000, payoutMultiplier100: book.payoutMultiplier, active: true, events: book.events, plan: slot }, 'play');
 }
 
@@ -91,7 +91,7 @@ describe('PRODUCTION : 9 gadgets, 3 par Rage Level', () => {
 
   it('chaque (classe, script) que le Rage Level peut produire a une branche EXACTE pour CHAQUE gadget (jamais de repli)', () => {
     for (const g of GADGETS) {
-      const classes = new Set(distributionTable(g.rageLevel).filter((r) => r.bossFightRung === null).map((r) => classify(r.multiplier100)));
+      const classes = new Set(distributionTable(g.rageLevel).filter((r) => !r.bossFight).map((r) => classify(r.multiplier100)));
       for (const cls of classes) {
         for (const script of Object.keys(SCRIPTS[cls]) as Script[]) {
           expect(g.branches.some((b) => b.categories.includes(script) && b.classes.includes(cls)), `${g.id} ${cls}/${script}`).toBe(true);
@@ -113,7 +113,7 @@ describe('PRODUCTION : 9 gadgets, 3 par Rage Level', () => {
       const reach = new Map<string, number>();
       for (const r of distributionTable(g.rageLevel)) {
         const cls = classify(r.multiplier100);
-        const weights = r.bossFightRung !== null ? { BF_ENTRY: 1 } : SCRIPTS[cls];
+        const weights = r.bossFight ? { BF_ENTRY: 1 } : SCRIPTS[cls];
         for (const [id, p] of branchProbabilities(g, cls, weights)) reach.set(id, (reach.get(id) ?? 0) + p * r.p);
       }
       for (const b of g.branches) {
@@ -295,7 +295,7 @@ describe('COLLECTION : seul le gadget JOUÉ découvre ses cartes, sur les trois 
       attachCollectionTracker(flow, c);
       await flow.start();
       flow.setLevel(level);
-      const big = distributionTable(level).filter((r) => r.bossFightRung === null && classify(r.multiplier100) === 'BIG')[0]!.multiplier100 / 100;
+      const big = distributionTable(level).filter((r) => !r.bossFight && classify(r.multiplier100) === 'BIG')[0]!.multiplier100 / 100;
       mock.server.update((s) => (s.nextForcedTriple = { kind: 'multipliers', multipliers: [big, 0, big] }));
       expect(flow.setPlan('B')).toBe(true);
       flow.fire();

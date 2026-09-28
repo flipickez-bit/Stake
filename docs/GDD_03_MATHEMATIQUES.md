@@ -15,7 +15,7 @@
 | Max wins | GRUMPY x200, FURIOUS x1 000, UNHINGED x5 000 |
 | UNHINGED | **σ ≈ 11,6 conservé.** On ne remonte **pas** la dernière probabilité d'enchaînement à 30 %. Hit rate ≈ 15,5 % conservé. **Pas de ligne x1,2** pour l'instant |
 | Variante x1,2 | Documentée comme **variante expérimentale désactivée** dans `config/rage_levels.json` (`experimental_variants.unhinged_x12`). Activation pour test uniquement, sans reconstruire le modèle : `python3 math/model/bad_boss_math.py --quick --variant unhinged_x12`. Résultat de la variante : hit rate 20,54 %, σ 11,58, P(10 x0 d'affilée) 10,0 % |
-| BOSS FIGHT | Échelle x5 → x5 000 plafonnée par niveau, fréquence 1/150. La baisse de volatilité liée à la suppression de x2 000 est **acceptée et non compensée** |
+| BOSS FIGHT | **Depuis le 2026-09-28 : 8 TOURS GRATUITS, 1/400** (rage x1 → +1 par HIT, plafond = max win), même part de RTP, valeur moyenne ×2,7 : `docs/GDD_05_BOSS_FIGHT.md` §6.FR. Conséquence assumée : σ UNHINGED 11,6 → 17,5, hit rate UNHINGED 15,5 → 15,1 %. *(Avant : échelle x5 → x5 000, 1/150 ; la baisse de volatilité liée à la suppression de x2 000 était acceptée et non compensée.)* |
 | Production | Le calculateur **ne remplace pas** les artefacts Stake Engine. Books, lookup tables, index et validations seront produits avec le math-sdk officiel (`MVP_ROADMAP.md`, phase 2) |
 
 ## Changements v1 → v2

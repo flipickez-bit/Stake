@@ -18,7 +18,7 @@ const SCRIPTS = policy.scripts_by_class as Record<ResultClass, Partial<Record<Sc
 /** Multiplicateur (×100) représentatif d'une classe dans un Rage Level (médiane des lignes de la classe), ou null. */
 export function multiplierFor(level: RageLevelId, cls: ResultClass): number | null {
   if (cls === 'MISS') return 0;
-  const rows = distributionTable(level).filter((r) => r.bossFightRung === null && r.multiplier100 > 0 && classify(r.multiplier100) === cls);
+  const rows = distributionTable(level).filter((r) => !r.bossFight && r.multiplier100 > 0 && classify(r.multiplier100) === cls);
   if (rows.length === 0) return null;
   return rows[Math.floor((rows.length - 1) / 2)]!.multiplier100;
 }
@@ -44,7 +44,7 @@ export function planForBranch(gadgetId: string, branchId: string, prefer?: Resul
   if (index < 0) return null;
   const slot = PLAN_SLOTS[index]!;
   if (b.categories.includes('BF_ENTRY')) {
-    return { level, slot, triple: { kind: 'bossFight', rung: 2 }, branch: b, resultClass: 'BOSS_FIGHT' };
+    return { level, slot, triple: { kind: 'bossFight', hits: 4 }, branch: b, resultClass: 'BOSS_FIGHT' };
   }
   const order = prefer && b.classes.includes(prefer) ? [prefer, ...b.classes] : b.classes;
   for (const cls of order) {

@@ -173,14 +173,16 @@ describe('Tests obligatoires Phase 0', () => {
 
   it('BOSS FIGHT entièrement déterminé AVANT l\'animation', async () => {
     const { flow, server, presenter } = await readyFlow();
-    server.update((s) => (s.nextForced = { mode: null, forced: { kind: 'BOSS_FIGHT', bossFightRung: 3 } }));
+    server.update((s) => (s.nextForced = { mode: null, forced: { kind: 'BOSS_FIGHT', bossFightHits: 3 } }));
     flow.fire();
     await waitFor(() => presenter.calls.length === 1);
     const o = presenter.calls[0]!.outcome;
     expect(o.bossFight).not.toBeNull();
-    expect(o.bossFight!.attacks.length).toBe(4); // 3 coups réussis + 1 bloqué
-    expect(o.bossFight!.rungs100[o.bossFight!.finalRungIndex]).toBe(o.payoutMultiplier100);
-    expect(o.payoutMultiplier100).toBe(5000); // x50 = 4e palier
+    // 8 tours gratuits dans la MÊME manche, 3 HIT (base x2 par défaut) : x2 × rage (1 + 2 + 3) = x12.
+    expect(o.bossFight!.rounds).toHaveLength(8);
+    expect(o.bossFight!.rounds.filter((r) => r.result === 'HIT')).toHaveLength(3);
+    expect(o.bossFight!.rounds.at(-1)!.total100).toBe(o.payoutMultiplier100);
+    expect(o.payoutMultiplier100).toBe(1200);
     await until(flow, 'READY');
   });
 

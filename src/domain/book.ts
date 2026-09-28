@@ -16,18 +16,33 @@ export interface PresentationEvent {
   seed: number;
 }
 
-export interface BossFightAttack {
+/**
+ * Un tour gratuit du BOSS FIGHT. HIT : gain = base × rage (écrêté au plafond du niveau) ; BLOCKED : 0.
+ * `variant` : projectile du gadget (cosmétique, ne change aucun gain).
+ */
+export interface FreeRoundEvent {
   result: 'HIT' | 'BLOCKED';
+  /** Base tirée (entier ×100), 0 si BLOCKED. */
+  base100: number;
+  /** Rage de ce tour (x1 au premier tour, +1 après chaque HIT). */
+  rage: number;
+  /** Gain de ce tour (entier ×100). */
+  win100: number;
   variant: number;
 }
 
+/**
+ * BOSS FIGHT = TOURS GRATUITS joués dans la MÊME manche que la mise qui les déclenche : un seul book, un seul Play,
+ * un seul payoutMultiplier (modèle des free spins Stake Engine : jeu sans état, chaque mise indépendante).
+ * Tout le déroulé est écrit par la génération mathématique ; le client ne tire rien.
+ */
 export interface BossFightEvent {
   type: 'bossFight';
-  /** Paliers du Rage Level, entiers ×100. */
-  rungs100: number[];
-  /** Déroulé complet du combat, déterminé par la génération mathématique. */
-  attacks: BossFightAttack[];
-  ko: boolean;
+  /** Tours gratuits accordés (8). Moins de tours joués seulement si le plafond est atteint. */
+  freeRounds: number;
+  rounds: FreeRoundEvent[];
+  /** Plafond du niveau (max win, entier ×100) atteint : le bonus s'arrête là. */
+  wincap: boolean;
 }
 
 export interface FinalWinEvent {
@@ -55,7 +70,7 @@ export interface TripleEvent {
   type: 'triple';
   level: RageLevelId;
   model: string;
-  /** BOSS FIGHT commun à la manche : les trois plans portent le même palier (déroulé dans l'événement bossFight). */
+  /** BOSS FIGHT commun à la manche : les trois plans portent les mêmes tours gratuits (déroulé dans l'événement bossFight). */
   bossFight: boolean;
   results: TripleResultEvent[];
 }

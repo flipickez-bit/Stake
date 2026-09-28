@@ -74,7 +74,7 @@ describe('POC 3 PLANS : prototypes B et C (présentation honnête de chaque rés
         for (const speed of SPEEDS) {
           const o = bf
             ? parseRound((() => {
-                const book = bookForPick(drawTriple('grumpy', GRUMPY, mulberry32(4), { kind: 'bossFight', rung: 2 }), slot, 1);
+                const book = bookForPick(drawTriple('grumpy', GRUMPY, mulberry32(4), { kind: 'bossFight', hits: 2 }), slot, 1);
                 return { roundId: 'BF', mode: 'grumpy' as const, betAmount: 1_000_000, payout: book.payoutMultiplier * 10_000, payoutMultiplier100: book.payoutMultiplier, active: true, events: book.events, plan: slot };
               })(), 'play')
             : tripleOutcome(slot, mults, PLAN_SLOTS.map((s) => (s === slot ? script : null)));
@@ -105,7 +105,7 @@ describe('POC 3 PLANS : prototypes B et C (présentation honnête de chaque rés
 
   it('vitesse : une manche B ou C ne dure pas plus longtemps en moyenne qu’une manche du lance-pierre (+15 % max)', () => {
     const MULT: Record<ResultClass, number> = { MISS: 0, SCRAPE: 50, HIT: 200, BIG: 1000, MEGA: 5000, LEGENDARY: 20000 };
-    const rows = distributionTable('grumpy').filter((r) => r.bossFightRung === null);
+    const rows = distributionTable('grumpy').filter((r) => !r.bossFight);
     const total = rows.reduce((a, r) => a + r.p, 0);
     const cp: Partial<Record<ResultClass, number>> = {};
     for (const r of rows) cp[classify(r.multiplier100)] = (cp[classify(r.multiplier100)] ?? 0) + r.p / total;

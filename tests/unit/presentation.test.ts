@@ -90,7 +90,7 @@ describe('contenu placeholder (Phase 0)', () => {
     const known = CHARACTER_ANIMS as Record<string, readonly string[]>;
     for (const level of RAGE_LEVEL_IDS) {
       for (const kind of KINDS) {
-        const seq = compile(outcome(level, { kind, bossFightRung: 3 }));
+        const seq = compile(outcome(level, { kind, bossFightHits: 3 }));
         for (const c of seq.cues) {
           if (c.kind !== 'anim') continue;
           expect(known[c.actor], `acteur ${c.actor}`).toBeDefined();
@@ -137,8 +137,8 @@ describe('déterminisme de la présentation', () => {
     for (const level of RAGE_LEVEL_IDS) {
       const gadget = gadgetFor(level);
       for (const kind of KINDS) {
-        const a = outcome(level, { kind, bossFightRung: 2, seed: 1 }, 7);
-        const b = outcome(level, { kind, bossFightRung: 2, seed: 987654321 }, 7);
+        const a = outcome(level, { kind, bossFightHits: 2, seed: 1 }, 7);
+        const b = outcome(level, { kind, bossFightHits: 2, seed: 987654321 }, 7);
         // Mathématiques identiques : la graine n'y touche pas.
         const { seed: sa, ...mathA } = a;
         const { seed: sb, ...mathB } = b;
@@ -151,8 +151,8 @@ describe('déterminisme de la présentation', () => {
         expect(compatible).toContain(qa.branchId);
         expect(compatible).toContain(qb.branchId);
         expect(qa.markers.d1).toBe(qb.markers.d1);
-        expect(signals(qa, ['bfStart', 'bfRung', 'bfBlocked', 'bfKo', 'reveal']).map((x) => x.split(':')[0]).filter((x) => x === 'reveal')).toHaveLength(1);
-        expect(signals(qa, ['bfRung', 'bfBlocked', 'bfKo'])).toEqual(signals(qb, ['bfRung', 'bfBlocked', 'bfKo']));
+        expect(signals(qa, ['bfStart', 'frRound', 'frHit', 'bfBlocked', 'bfKo', 'reveal']).map((x) => x.split(':')[0]).filter((x) => x === 'reveal')).toHaveLength(1);
+        expect(signals(qa, ['frRound', 'frHit', 'bfBlocked', 'bfKo'])).toEqual(signals(qb, ['frRound', 'frHit', 'bfBlocked', 'bfKo']));
         const tier = impactTierFor(a.resultClass);
         const impacts = (q: AnimationSequence) => q.segments.filter((s) => s.id.startsWith('IMP_')).map((s) => s.id.split('_')[1]);
         if (tier && !a.bossFight) {
@@ -170,11 +170,11 @@ describe('déterminisme de la présentation', () => {
   it('TURBO / SUPER TURBO : même résultat, même branche, mêmes signaux ; seules les durées changent', () => {
     for (const level of RAGE_LEVEL_IDS) {
       for (const kind of KINDS) {
-        const o = outcome(level, { kind, bossFightRung: 3 });
+        const o = outcome(level, { kind, bossFightHits: 3 });
         const [n, t, s] = SPEEDS.map((sp) => compile(o, sp)) as [AnimationSequence, AnimationSequence, AnimationSequence];
         expect(t.branchId).toBe(n.branchId);
         expect(s.branchId).toBe(n.branchId);
-        const sig = (q: AnimationSequence) => signals(q, ['reveal', 'bfStart', 'bfRung', 'bfBlocked', 'bfKo', 'end']);
+        const sig = (q: AnimationSequence) => signals(q, ['reveal', 'bfStart', 'frRound', 'frHit', 'bfBlocked', 'bfKo', 'end']);
         expect(sig(t)).toEqual(sig(n));
         expect(sig(s)).toEqual(sig(n));
         expect(t.totalMs).toBeLessThan(n.totalMs);
@@ -185,14 +185,15 @@ describe('déterminisme de la présentation', () => {
 
   it('BOSS FIGHT : tout le déroulé est dans la séquence compilée, avant la moindre image', () => {
     for (const level of RAGE_LEVEL_IDS) {
-      const o = outcome(level, { kind: 'BOSS_FIGHT', bossFightRung: 2 });
+      const o = outcome(level, { kind: 'BOSS_FIGHT', bossFightHits: 2 });
       const bf = o.bossFight!;
       const seq = compile(o);
-      const rungs = signals(seq, ['bfRung']);
-      expect(rungs).toEqual(Array.from({ length: bf.finalRungIndex + 1 }, (_, i) => `bfRung:${i}`));
-      expect(seq.segments.filter((s) => s.id.startsWith('BF_WINDUP_'))).toHaveLength(bf.attacks.length);
+      // Un lancer par tour gratuit joué ; chaque tour annonce son début, puis son issue (HIT ou BLOCKED), dans l'ordre.
+      expect(signals(seq, ['frRound'])).toEqual(bf.rounds.map((_, i) => `frRound:${i}`));
+      expect(signals(seq, ['frHit'])).toEqual(bf.rounds.flatMap((r, i) => (r.result === 'HIT' ? [`frHit:${i}`] : [])));
+      expect(signals(seq, ['bfBlocked'])).toEqual(bf.rounds.flatMap((r, i) => (r.result === 'BLOCKED' ? [`bfBlocked:${i}`] : [])));
+      expect(seq.segments.filter((s) => s.id.startsWith('BF_WINDUP_'))).toHaveLength(bf.rounds.length);
       expect(signals(seq, ['bfKo'])).toHaveLength(bf.ko ? 1 : 0);
-      expect(signals(seq, ['bfBlocked'])).toHaveLength(bf.ko ? 0 : 1);
     }
   });
 
@@ -266,7 +267,7 @@ describe('SequencePlayer', () => {
   });
 
   it('SLAMSTOP / SKIP : même reveal, mêmes signaux de BOSS FIGHT, émis une seule fois', () => {
-    const bf = outcome('unhinged', { kind: 'BOSS_FIGHT', bossFightRung: 4 });
+    const bf = outcome('unhinged', { kind: 'BOSS_FIGHT', bossFightHits: 4 });
     const seq = compile(bf);
     const full = new RecordingSinks();
     const a = new SequencePlayer(full);

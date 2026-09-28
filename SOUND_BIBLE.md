@@ -76,7 +76,7 @@
 | BIG | x5 à moins de x25 | Couches lourdes + **2 DING** + cuivres (`brass`, +560 ms) |
 | MEGA | x25 à moins de x100 | **3 DING** + cuivres + ovation (`cheer`, +820 ms) |
 | LEGENDARY | x100 et plus | **4 DING** + cuivres + ovation |
-| BOSS FIGHT | palier atteint | Carillon doré (`gold`) à l'entrée, boucle de combat, K.O. : ovation + DING |
+| BOSS FIGHT (8 tours gratuits) | chaque HIT | Carillon doré (`gold`) à l'entrée, `bell` à l'ouverture des tours (pas de DING : rien n'est encore gagné), boucle de combat, DING à chaque HIT, de plus en plus aigu avec la rage ; BLOCKED : `boing` ; K.O. : ovation + DING |
 
 **x0,5 ne joue pas le DING.** L'écart relevé en v0 est **corrigé** : le tier `T05` de `src/content/library.ts` n'a plus de DING. Deux tests automatiques le vérifient (`tests/unit/production.test.ts`, bloc SOUND KIT) :
 1. toutes les branches SCRAPE des 9 gadgets, et toutes leurs réactions, ne contiennent aucun son de `WIN_SOUNDS` ;

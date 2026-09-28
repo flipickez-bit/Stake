@@ -403,7 +403,7 @@ if (reportPath) {
       const bf: Record<string, number> = {};
       for (const r of distributionTable(g.rageLevel)) {
         const c = classify(r.multiplier100);
-        if (r.bossFightRung !== null) {
+        if (r.bossFight) {
           bf[c] = (bf[c] ?? 0) + r.p;
           continue;
         }

@@ -2,7 +2,7 @@
  * Bibliothèques partagées (GDD_04 §5.3) : impacts par tier, réactions, caméo du pigeon, BOSS FIGHT.
  * Un gadget n'écrit que son tronc et ses débuts d'ACTION ; tout le reste vient d'ici.
  */
-import type { Outcome } from '../domain/outcome';
+import type { FreeRound, Outcome } from '../domain/outcome';
 import type { ResultClass } from '../domain/types';
 import type { ContentLibrary, ImpactTier } from '../presentation/compileSequence';
 import type { BossReaction, Cue, ImpactDirection, SegmentDef, SoundId } from '../presentation/types';
@@ -166,38 +166,44 @@ const BF_ENTRY_MUG = seg('BF_ENTRY_MUG', 'twist', 2000, 'compress', [
 
 const BF_ARENA = seg('BF_ARENA', 'twist', 700, 'compress', [
   tw(0, 'bfBack', { alpha: 1 }, 400), signal(0, 'bfStart'), anim(0, 'boss', 'giant-idle'),
-  signal(400, 'bfRung', 0), sound(400, 'ding'),
+  // Carillon d'ouverture des tours gratuits (`bell`, pas le DING de gain : aucun gain n'est encore touché).
+  sound(400, 'bell', 1.2),
 ]);
 
-function attackSegments(index: number, attack: { result: 'HIT' | 'BLOCKED'; variant: number }, projectiles: readonly string[] = BF_PROJECTILES): SegmentDef[] {
-  const kind = projectiles[attack.variant % projectiles.length] ?? 'stapler';
-  // Tronc commun de l'attaque : on ne sait pas si elle passera avant ~900 ms.
-  const windup = seg(`BF_WINDUP_${index}`, 'action', 900, 'compress', [
+/**
+ * Un TOUR GRATUIT : lancer (tronc commun, l'issue reste inconnue ~700 ms), puis HIT (gain = base × rage, affiché au
+ * moment du choc) ou BLOCKED. Plus la rage monte, plus le choc est lourd (secousse, étincelles, hauteur du DING).
+ */
+function freeRoundSegments(index: number, round: FreeRound, projectiles: readonly string[] = BF_PROJECTILES): SegmentDef[] {
+  const kind = projectiles[round.variant % projectiles.length] ?? 'stapler';
+  const heat = Math.min(round.rage, 8);
+  const windup = seg(`BF_WINDUP_${index}`, 'action', 700, 'compress', [
+    signal(0, 'frRound', index),
     state(0, 'proj', `kind=${kind}`),
     tw(0, 'proj', { x: 60, y: 650, alpha: 1, rot: 0 }, 1, 'linear'),
-    tw(2, 'proj', { x: 360, y: 470, rot: 6 }, 880, 'outQuad'),
-    sound(80, 'whoosh'),
-    anim(0, 'boss', 'giant-idle'), anim(420, 'boss', 'giant-wind'),
+    tw(2, 'proj', { x: 360, y: 470, rot: 6 }, 680, 'outQuad'),
+    sound(60, 'whoosh', 0.95 + heat * 0.03),
+    anim(0, 'boss', 'giant-idle'), anim(320, 'boss', 'giant-wind'),
   ]);
-  if (attack.result === 'HIT') {
-    return [windup, seg(`BF_HIT_${index}`, 'impact', 620, 'keep', [
+  if (round.result === 'HIT') {
+    return [windup, seg(`BF_HIT_${index}`, 'impact', 560, 'keep', [
       tw(0, 'proj', { x: 480, y: 420 }, 80, 'inQuad'),
-      freeze(80, 70), tw(80, 'flash', { alpha: 0.55 }, 20, 'linear'), tw(100, 'flash', { alpha: 0 }, 220),
-      sound(80, 'clang'), shake(80, 260, 10), anim(80, 'boss', 'giant-hurt'),
-      tw(100, 'proj', { alpha: 0 }, 100), fx(80, 'sparks', 480, 420, 18),
-      signal(150, 'bfRung', index + 1), sound(170, 'ding', 1 + index * 0.08),
+      freeze(80, 60 + heat * 6), tw(80, 'flash', { alpha: 0.4 + heat * 0.04 }, 20, 'linear'), tw(100, 'flash', { alpha: 0 }, 220),
+      sound(80, 'clang'), shake(80, 220 + heat * 20, 7 + heat), anim(80, 'boss', 'giant-hurt'),
+      tw(100, 'proj', { alpha: 0 }, 100), fx(80, 'sparks', 480, 420, 12 + heat * 3),
+      signal(150, 'frHit', index), sound(170, 'ding', 1 + (heat - 1) * 0.07),
     ])];
   }
-  return [windup, seg(`BF_BLOCK_${index}`, 'impact', 620, 'keep', [
+  return [windup, seg(`BF_BLOCK_${index}`, 'impact', 560, 'keep', [
     anim(0, 'boss', 'giant-swat'),
-    tw(80, 'proj', { x: -220, y: 60, rot: -8 }, 460, 'outQuad'),
-    sound(80, 'boing'), punch(80, 200, 5), signal(150, 'bfBlocked'),
+    tw(80, 'proj', { x: -220, y: 60, rot: -8 }, 420, 'outQuad'),
+    sound(80, 'boing'), punch(80, 200, 5), signal(150, 'bfBlocked', index),
   ])];
 }
 
 function bossFightSegments(bf: NonNullable<Outcome['bossFight']>, projectiles?: readonly string[]): SegmentDef[] {
   const out: SegmentDef[] = [BF_ENTRY_MUG, BF_ARENA];
-  bf.attacks.forEach((a, i) => out.push(...attackSegments(i, a, projectiles?.length ? projectiles : BF_PROJECTILES)));
+  bf.rounds.forEach((r, i) => out.push(...freeRoundSegments(i, r, projectiles?.length ? projectiles : BF_PROJECTILES)));
   if (bf.ko) {
     out.push(seg('BF_KO', 'impact', 1700, 'keep', [
       anim(0, 'boss', 'giant-ko'), tw(0, 'boss', { rot: -1.45, y: 600 }, 600, 'inQuad'),

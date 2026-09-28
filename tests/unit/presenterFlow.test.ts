@@ -72,24 +72,24 @@ describe('Presenter réel + GameFlow + MockRGS', () => {
     expect(server2.snapshot().settledRounds).toBe(1);
   });
 
-  it('RELOAD DURING BOSS FIGHT → même déroulé, même palier final, aucune nouvelle mise', async () => {
+  it('RELOAD DURING BOSS FIGHT (tours gratuits) → même déroulé, même total, aucune nouvelle mise', async () => {
     const { store, server } = createMock(66);
     const a = await boot(store, server);
     a.flow.setLevel('unhinged');
-    server.update((s) => (s.nextForced = { mode: 'unhinged', forced: { kind: 'BOSS_FIGHT', bossFightRung: 4, seed: 31337 } }));
+    server.update((s) => (s.nextForced = { mode: 'unhinged', forced: { kind: 'BOSS_FIGHT', bossFightHits: 4, seed: 31337 } }));
     a.flow.fire();
-    await waitFor(() => a.presenter.status.bossFight.rung >= 2, 8000, 'milieu du BOSS FIGHT');
-    const before = { branch: a.presenter.status.branchId, rungs: a.presenter.status.bossFight.rungs100, round: a.flow.snapshot.round?.roundId };
+    await waitFor(() => a.presenter.status.bossFight.round >= 3, 15000, 'milieu des tours gratuits');
+    const before = { branch: a.presenter.status.branchId, freeRounds: a.presenter.status.bossFight.freeRounds, round: a.flow.snapshot.round?.roundId };
     for (const d of drivers.splice(0)) clearInterval(d);
     const server2 = new MockServer(store, mulberry32(1));
     const b = await boot(store, server2, false);
     await waitFor(() => b.presenter.status.branchId !== null, 3000, 'reprise');
     expect(b.presenter.status.branchId).toBe(before.branch);
     expect(b.flow.snapshot.round?.roundId).toBe(before.round);
-    await waitFor(() => b.presenter.status.bossFight.active, 5000, 'échelle');
-    expect(b.presenter.status.bossFight.rungs100).toEqual(before.rungs);
-    await waitFor(() => b.flow.snapshot.state === 'READY', 20000, 'ready');
-    expect(b.flow.snapshot.revealed?.multiplier100).toBe(10_000); // UNHINGED, palier 4 = x100
+    await waitFor(() => b.presenter.status.bossFight.active, 5000, 'tours gratuits');
+    expect(b.presenter.status.bossFight.freeRounds).toBe(before.freeRounds);
+    await waitFor(() => b.flow.snapshot.state === 'READY', 30000, 'ready');
+    expect(b.flow.snapshot.revealed?.multiplier100).toBe(2_000); // UNHINGED, 4 HIT de base x2 : x2 × (1 + 2 + 3 + 4)
     expect(server2.snapshot().calls.play).toBe(1);
   }, 30000);
 
@@ -97,7 +97,7 @@ describe('Presenter réel + GameFlow + MockRGS', () => {
     const { store, server } = createMock(44);
     const { flow, presenter } = await boot(store, server);
     flow.setLevel('grumpy');
-    server.update((s) => (s.nextForced = { mode: 'grumpy', forced: { kind: 'BOSS_FIGHT', bossFightRung: 2 } }));
+    server.update((s) => (s.nextForced = { mode: 'grumpy', forced: { kind: 'BOSS_FIGHT', bossFightHits: 2 } }));
     flow.fire();
     await waitFor(() => presenter.status.branchId !== null, 3000, 'playing');
     const original = { branch: presenter.status.branchId, key: presenter.status.sequenceKey };

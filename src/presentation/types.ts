@@ -39,7 +39,11 @@ export type VfxId =
   // PRODUCTION : gerbe d'eau (WATER COOLER), traînées de vent (HVAC HURRICANE).
   | 'water' | 'swirl';
 
-export type Signal = 'd1' | 'reveal' | 'bfStart' | 'bfRung' | 'bfBlocked' | 'bfKo' | 'end';
+/**
+ * BOSS FIGHT (tours gratuits) : `bfStart` (arène), `frRound` (valeur = index du tour qui commence), `frHit` /
+ * `bfBlocked` (valeur = index du tour résolu), `bfKo` (dernier coup).
+ */
+export type Signal = 'd1' | 'reveal' | 'bfStart' | 'frRound' | 'frHit' | 'bfBlocked' | 'bfKo' | 'end';
 
 export type Cue =
   /** Interpolation d'un acteur (la caméra est l'acteur "camera" : x, y, sx = zoom). */

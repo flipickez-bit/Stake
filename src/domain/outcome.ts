@@ -1,5 +1,6 @@
 import type { BookEvent, BossFightEvent, PickEvent, PresentationEvent, TripleEvent } from './book';
 import { PLAN_SLOTS, isPlanSlot, type OutcomePlans } from './plans';
+import { getRageLevel, rageAt } from './rageLevels';
 import { classify } from './resultClass';
 import type { InternalRound } from './round';
 import type { RageLevelId, Rarity, ResultClass, Script } from './types';
@@ -16,14 +17,28 @@ export interface Outcome {
   readonly script: Script;
   readonly rarity: Rarity;
   readonly seed: number;
+  /** BOSS FIGHT = tours gratuits de la même manche (null hors bonus). */
   readonly bossFight: {
-    readonly rungs100: readonly number[];
-    readonly attacks: readonly { readonly result: 'HIT' | 'BLOCKED'; readonly variant: number }[];
-    readonly finalRungIndex: number;
+    /** Tours accordés (8). */
+    readonly freeRounds: number;
+    /** Tours joués, dans l'ordre ; `total100` = cumul après le tour. */
+    readonly rounds: readonly FreeRound[];
+    /** Plafond (max win) atteint : le bonus s'est arrêté là. */
+    readonly wincap: boolean;
+    /** Mise en scène : le dernier tour joué est un HIT, B.B. finit K.O. (ne change aucun gain). */
     readonly ko: boolean;
   } | null;
   /** POC « 3 PLANS » (A2, MOCK / DEV) : plan choisi et triple complet. null hors POC. */
   readonly plans: OutcomePlans | null;
+}
+
+export interface FreeRound {
+  readonly result: 'HIT' | 'BLOCKED';
+  readonly base100: number;
+  readonly rage: number;
+  readonly win100: number;
+  readonly total100: number;
+  readonly variant: number;
 }
 
 export class OutcomeError extends Error {}
@@ -66,26 +81,7 @@ export function parseRound(round: InternalRound, source: Outcome['source']): Out
   let bossFight: Outcome['bossFight'] = null;
   if (presentation.script === 'BF_ENTRY') {
     if (!bossFightEvent) throw new OutcomeError(`Manche ${round.roundId} : BOSS FIGHT sans déroulé`);
-    const hits = bossFightEvent.attacks.filter((a) => a.result === 'HIT').length;
-    const finalRungIndex = hits;
-    const lastIndex = bossFightEvent.rungs100.length - 1;
-    const ko = finalRungIndex === lastIndex;
-    const expectedAttacks = ko ? hits : hits + 1;
-    const blockedLast = ko || bossFightEvent.attacks[bossFightEvent.attacks.length - 1]?.result === 'BLOCKED';
-    if (
-      bossFightEvent.attacks.length !== expectedAttacks ||
-      !blockedLast ||
-      ko !== bossFightEvent.ko ||
-      bossFightEvent.rungs100[finalRungIndex] !== m100
-    ) {
-      throw new OutcomeError(`Manche ${round.roundId} : déroulé du BOSS FIGHT incohérent`);
-    }
-    bossFight = Object.freeze({
-      rungs100: Object.freeze(bossFightEvent.rungs100.slice()),
-      attacks: Object.freeze(bossFightEvent.attacks.map((a) => Object.freeze({ result: a.result, variant: a.variant }))),
-      finalRungIndex,
-      ko,
-    });
+    bossFight = parseFreeRounds(round.roundId, round.mode, bossFightEvent, m100);
   } else if (bossFightEvent) {
     throw new OutcomeError(`Manche ${round.roundId} : déroulé de BOSS FIGHT hors script BF_ENTRY`);
   }
@@ -106,6 +102,48 @@ export function parseRound(round: InternalRound, source: Outcome['source']): Out
     bossFight,
     plans,
   });
+}
+
+/**
+ * Contrôle strict des tours gratuits : chaque gain se recalcule (base × rage, écrêté au plafond), la rage suit la
+ * règle du niveau, au moins un HIT, et le total est exactement le multiplicateur payé par le serveur.
+ */
+function parseFreeRounds(id: string, mode: RageLevelId, ev: BossFightEvent, m100: number): NonNullable<Outcome['bossFight']> {
+  const bad = (why: string): never => {
+    throw new OutcomeError(`Manche ${id} : tours gratuits incohérents (${why})`);
+  };
+  const level = getRageLevel(mode);
+  const fr = level.freeRounds;
+  const cap100 = level.maxWin * 100;
+  const bases = new Set(fr.bases.map((b) => Math.round(b.multiplier * 100)));
+  if (ev.freeRounds !== fr.rounds) bad(`${String(ev.freeRounds)} tours au lieu de ${fr.rounds}`);
+  if (!Array.isArray(ev.rounds) || ev.rounds.length < 1 || ev.rounds.length > fr.rounds) bad('nombre de tours joués');
+  const rounds: FreeRound[] = [];
+  let total = 0;
+  let hits = 0;
+  for (const [i, r] of ev.rounds.entries()) {
+    if (total >= cap100) bad(`tour ${i + 1} joué après le plafond`);
+    const rage = rageAt(fr, hits);
+    if (r.rage !== rage) bad(`rage du tour ${i + 1}`);
+    if (!Number.isInteger(r.variant) || r.variant < 0) bad(`variante du tour ${i + 1}`);
+    if (r.result === 'HIT') {
+      if (!bases.has(r.base100)) bad(`base du tour ${i + 1}`);
+      if (r.win100 !== Math.min(r.base100 * rage, cap100 - total)) bad(`gain du tour ${i + 1}`);
+      hits++;
+    } else if (r.result === 'BLOCKED') {
+      if (r.base100 !== 0 || r.win100 !== 0) bad(`tour ${i + 1} bloqué avec un gain`);
+    } else {
+      bad(`résultat du tour ${i + 1}`);
+    }
+    total += r.win100;
+    rounds.push(Object.freeze({ result: r.result, base100: r.base100, rage: r.rage, win100: r.win100, total100: total, variant: r.variant }));
+  }
+  const wincap = total === cap100;
+  if (hits === 0) bad('aucun HIT');
+  if (ev.wincap !== wincap) bad('plafond');
+  if (!wincap && rounds.length !== fr.rounds) bad('bonus interrompu sans plafond');
+  if (total !== m100) bad(`total ${total} ≠ payé ${m100}`);
+  return Object.freeze({ freeRounds: fr.rounds, rounds: Object.freeze(rounds), wincap, ko: rounds[rounds.length - 1]!.result === 'HIT' });
 }
 
 /**
@@ -134,7 +172,7 @@ function parsePlans(round: InternalRound, events: BookEvent[], presentation: Pre
   if (chosen.script !== presentation.script || chosen.rarity !== presentation.rarity || (chosen.seed >>> 0) !== (presentation.seed >>> 0)) {
     throw new OutcomeError(`Manche ${id} : la présentation jouée n'est pas celle du plan ${plan}`);
   }
-  // BOSS FIGHT commun à la manche : les trois plans le portent, avec le même palier.
+  // BOSS FIGHT commun à la manche : les trois plans le portent, avec les mêmes tours gratuits (même total).
   const bfSlots = triple.results.filter((r) => r.script === 'BF_ENTRY').length;
   if (triple.bossFight !== isBossFight || (isBossFight && (bfSlots !== 3 || triple.results.some((r) => r.multiplier100 !== m100))) || (!isBossFight && bfSlots !== 0)) {
     throw new OutcomeError(`Manche ${id} : BOSS FIGHT du triple incohérent`);

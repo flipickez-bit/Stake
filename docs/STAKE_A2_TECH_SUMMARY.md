@@ -42,7 +42,7 @@ The matching lookup table lines share the id and weight and differ only in the p
 
 ## 3. Maths and RTP
 - **Joint model per level (`IND_BFC_v1`).**
-  - With probability 1/150 the round is a BOSS FIGHT that is **common** to the three plans (same rung).
+  - With probability 1/400 the round is a BOSS FIGHT (8 free rounds played inside the same round) that is **common** to the three plans (same free rounds, same total). It was 1/150 with a ladder before 2026-09-28.
   - Otherwise, the three plans are drawn **independently** from the level's base table.
 - **Each plan has exactly the current distribution of its level.** Consequences:
   - RTP A = RTP B = RTP C = 96.5 %;

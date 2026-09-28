@@ -5,9 +5,79 @@
 > Paramètres mathématiques : `config/rage_levels.json` (source de vérité). Chiffres générés : `docs/generated/MATH_REPORT.md`.
 > Règle absolue : **le combat entier est dans le book renvoyé par `/wallet/play`**. Le joueur ne décide rien qui change le gain.
 
+> **VERSION EN VIGUEUR (2026-09-28) : 8 TOURS GRATUITS, 1 manche sur 400.** Demande utilisateur : « faire des tours gratuits
+> avec les bonus, en mettre moins, mais qu'ils aient une vraie valeur ». Le §6.FR ci-dessous fait foi. Les §6.0 à §6.9
+> décrivent l'**ancienne échelle** (1/150, attaques jusqu'au premier coup bloqué) et restent comme historique de conception :
+> l'entrée par gadget, GIGA-BOTTOMLINE, la musique et les deux fins sont conservées.
+
 ---
 
-## 6.0 La promesse
+## 6.FR BOSS FIGHT = 8 TOURS GRATUITS (version en vigueur)
+
+### Ce que Stake Engine propose (recherche du 2026-09-28)
+
+| Fait | Source |
+|---|---|
+| Un jeu Stake Engine est **sans état** : chaque mise est indépendante des précédentes ; pas de jackpot, de gamble, de « continuation » ni de cash-out anticipé. Des tours gratuits ne peuvent donc **pas** être reportés sur les mises suivantes. | [Approval Guidelines](https://stake-engine.com/docs/approval-guidelines) |
+| Les **free spins** du math-sdk se jouent **dans le même book** que la mise qui les déclenche : un seul `/wallet/play`, un seul `payoutMultiplier` (le total), des événements `freeSpinTrigger` → `updateFreeSpin` (compteur) → `freeSpinEnd`. | [math-sdk : Configs](https://stakeengine.github.io/math-sdk/math_docs/gamestate_section/configuration_section/config_overview/), [Adding New Events](https://stakeengine.github.io/math-sdk/fe_docs/steps/) |
+| La fréquence du bonus se règle par les quotas de `Distribution` (`force_freegame`), avec un plafond (`wincap`). | [math-sdk : Distribution](https://stakeengine.github.io/math-sdk/math_docs/gamestate_section/configuration_section/betmode_dist/) |
+| Le front affiche un **compteur de tours** (`freeSpinCounterShow` / `freeSpinCounterUpdate`), une intro et une outro. | [web-sdk](https://github.com/StakeEngine/web-sdk) |
+| L'**achat de bonus** est un mode à part (ex. coût 100x, `is_buybonus`), désactivable par juridiction (`disabledBuyFeature`). **Non retenu ici** (non demandé). | [math-sdk : BetMode](https://stakeengine.github.io/math-sdk/math_docs/gamestate_section/configuration_section/betmode_overview/) |
+
+**Conséquence pour BAD BOSS** : le BOSS FIGHT reste le déclencheur (entrées par gadget, musique), et il donne **8 tours gratuits
+joués dans la même manche**, exactement comme des free spins Stake : un book, un Play, un EndRound, un total.
+
+### Règles (`config/rage_levels.json`, `free_rounds_doc`)
+
+- **8 tours gratuits.** Chaque tour : **HIT** avec la probabilité P(HIT) du niveau, sinon **BLOCKED** (0).
+- **Gain d'un HIT = base × RAGE.** La base est tirée dans la table du niveau. La **RAGE** commence à **x1** et **monte de +1 après chaque HIT** : plus B.B. encaisse, plus les coups suivants valent cher.
+- **Jamais de bonus nul** : si les 7 premiers tours sont bloqués, le 8e est un HIT.
+- **Plafond** : le max win du niveau (x200 / x1 000 / x5 000). Le gain du coup qui l'atteint est écrêté, et le bonus s'arrête là.
+- Tout le déroulé (issue, base, rage, gain de chaque tour) est **écrit dans le book** ; le client le vérifie strictement (`parseFreeRounds`, `src/domain/outcome.ts`) et ne tire rien.
+
+### Mathématiques (calcul exact : `math/model/bad_boss_math.py`, rapport `docs/generated/MATH_REPORT.md` §3)
+
+**Pourquoi 1/400 (justification de la modification de fréquence).** Demande : moins de bonus, plus de valeur. On garde la **part de RTP**
+du bonus (≈ 9,7 / 16,1 / 23,8 %) et on la concentre sur 2,67 fois moins de bonus : la valeur moyenne d'un bonus est donc multipliée
+par ≈ 2,7. Le RTP reste **exactement 96,5 %** (la ligne d'équilibre de la table de base absorbe l'écart, +0,05 point au plus).
+
+| | GRUMPY | FURIOUS | UNHINGED |
+|---|---:|---:|---:|
+| Fréquence (avant → après) | 1/150 → **1/400** | 1/150 → **1/400** | 1/150 → **1/400** |
+| P(HIT) par tour | 75 % | 70 % | 65 % |
+| Bases d'un HIT | x1 à x50 | x1 à x250 | x1 à x1 000 |
+| **Valeur moyenne d'un bonus** (avant → après) | x14,6 → **x38,7** | x24,2 → **x64,4** | x35,5 → **x95,4** |
+| Médiane d'un bonus (avant → après) | x5 → **x33** | x10 → **x38** | x10 → **x37** |
+| P10 / P90 d'un bonus | x16 / x63 | x15 / x114 | x13 / x155 |
+| P(bonus < x10) | 1,8 % | 2,8 % | 4,9 % |
+| Plafond atteint (par bonus) | 1 / 169 | 1 / 188 | 1 / 741 |
+| Max win par manche (avant → après) | 1/17 637 → 1/67 622 | 1/64 133 → 1/75 250 | 1/549 715 → **1/296 419** |
+| Part de RTP du bonus | 9,67 % | 16,10 % | 23,85 % |
+| Attente médiane / P90 (manches) | 277 / 920 | 277 / 920 | 277 / 920 |
+| Écart-type par manche (avant → après) | 2,69 → 2,73 | 6,67 → 6,92 | 11,6 → 17,5 |
+| Contrôles du SDK (RTP, CVaR, ETL40, P5k, P10k) | OK | OK | OK |
+
+Effets de bord, assumés et visibles : le taux de gain par manche baisse légèrement (58,1 → 57,8 % ; 33,2 → 32,8 % ; 15,5 → 15,1 %),
+car les bonus sont plus rares ; la volatilité d'UNHINGED augmente (le x5 000 devient plus fréquent). La lookup table ne peut plus
+avoir des poids EXACTS sur 64 bits (produits de 8 tirages) : ils sont arrondis sur 10^15, écart de RTP ≤ 4·10⁻¹² (rapport §7).
+
+### Mise en scène
+
+- **Entrée** : inchangée (2 entrées de BOSS FIGHT par gadget, GIGA-BOTTOMLINE, musique de combat).
+- **Tours** : un lancer par tour avec les projectiles du gadget. L'issue reste inconnue pendant ~700 ms (tronc commun du lancer), puis HIT (choc, DING de plus en plus aigu avec la rage) ou BLOCKED (B.B. renvoie le projectile).
+- **HUD** (`src/app/BfLadder.svelte`) : **FREE ROUNDS n/8**, points de progression, **RAGE xN**, cumul touché, « +xN » au choc ou « BLOCKED ». Tout est piloté par les signaux de la séquence (`frRound`, `frHit`, `bfBlocked`) : jamais en avance sur l'image.
+- **Fins** : le dernier tour touche → K.O. (confettis) ; sinon B.B. rit puis boude. Le total est révélé une seule fois (signal `reveal`).
+- **Durée** : ≈ 1,26 s par tour en normal, ≈ 14 s pour un bonus complet ; turbo et super turbo compressent comme avant.
+- **Reprise / replay** : le book contient tout ; recharger en plein bonus rejoue le même déroulé, sans nouvelle mise (test `presenterFlow`).
+
+### Questions pour Stake (INFORMATION STAKE ENGINE REQUISE)
+
+- Le format des événements (`bossFight` avec `rounds[]`) est propre à BAD BOSS (le champ `events` est libre) : confirmer qu'aucun nom d'événement `freeSpin*` n'est exigé pour un jeu instantané.
+- Achat de bonus : non prévu. À discuter seulement si Stake le recommande pour ce type de jeu.
+
+---
+
+## 6.0 La promesse (historique : ancienne échelle, 1/150)
 
 Le boss boit une gorgée de trop de son « Executive Blend » et devient **GIGA-BOTTOMLINE** : trois fois sa taille, la tête dans les dalles du plafond, le mug devenu bouclier. Le joueur l'attaque coup après coup. Chaque coup qui passe fait monter le gain d'un palier. Le premier coup bloqué termine le combat. Au sommet de l'échelle, c'est le **K.O.**, et ce jour-là, **le mug se fêle pour la première fois**.
 

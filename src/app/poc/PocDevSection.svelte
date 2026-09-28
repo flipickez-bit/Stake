@@ -19,11 +19,11 @@
   let note = $state('');
   let picks = $state<Record<string, number>>({});
   const allowed = baseTable('grumpy').rows.map((r) => r.multiplier100 / 100);
-  const ladder = getRageLevel('grumpy').bossFightLadder;
+  const bfRounds = getRageLevel('grumpy').freeRounds.rounds;
   let a = $state(0);
   let b = $state(5);
   let c = $state(0);
-  let rung = $state(2);
+  let bfHits = $state(4);
 
   $effect(() => poc.altDisplay.subscribe((v) => (mode = v)));
   $effect(() => poc.playtest.subscribe((s) => (pt = s)));
@@ -59,7 +59,7 @@
     {#each ALT_DISPLAYS as m (m)}
       <label class:on={mode === m}>
         <input type="radio" name="altdisplay" checked={mode === m} onchange={() => poc.altDisplay.set(m)} data-testid="altdisplay-{m}" />
-        {ALT_LABEL[m]}{m === 'REVEAL_ALL' ? ' (EXPERIMENTAL)' : ''}
+        {ALT_LABEL[m]}{m === 'REVEAL_ALL' ? ' (DEFAULT)' : ''}
       </label>
     {/each}
   </div>
@@ -76,10 +76,10 @@
       </label>
     {/each}
     <button onclick={() => arm({ kind: 'multipliers', multipliers: [a, b, c] }, `A x${a} · B x${b} · C x${c}`)}>ARM</button>
-    <label>BF rung
-      <select bind:value={rung}>{#each ladder as m, i (i)}<option value={i}>x{m}</option>{/each}</select>
+    <label>BF hits
+      <select bind:value={bfHits}>{#each Array.from({ length: bfRounds }, (_, i) => i + 1) as h (h)}<option value={h}>{h} / {bfRounds}</option>{/each}</select>
     </label>
-    <button onclick={() => arm({ kind: 'bossFight', rung }, `BOSS FIGHT x${ladder[rung]} (common)`)}>ARM BOSS FIGHT</button>
+    <button onclick={() => arm({ kind: 'bossFight', hits: bfHits }, `BOSS FIGHT, ${bfHits} hits in ${bfRounds} free rounds (common)`)}>ARM BOSS FIGHT</button>
   </div>
   <p class="small">Picks by gadget (collection): {Object.entries(picks).map(([g, n]) => `${g} ${n}`).join(' · ') || '—'}</p>
   <p class="small">A/B playtest: {pt?.study ? `running ${pt.study.id} (${pt.study.order.join(' → ')})` : 'none running'} · {pt?.history.length ?? 0} finished/aborted</p>

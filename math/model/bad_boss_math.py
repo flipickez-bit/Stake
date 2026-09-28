@@ -2,13 +2,15 @@
 
 Calculateur autonome (stdlib Python 3 uniquement). Il :
   1. lit les parametres dans config/rage_levels.json, la SOURCE DE VERITE unique
-     (RTP cible, frequence du BOSS FIGHT, distributions, echelles) ;
-  2. construit la distribution de chaque Rage Level (= un bet mode Stake Engine) ;
+     (RTP cible, frequence du BOSS FIGHT, distributions, tours gratuits) ;
+  2. construit la distribution de chaque Rage Level (= un bet mode Stake Engine), BOSS FIGHT
+     compris : 8 TOURS GRATUITS dans la meme manche (distribution EXACTE du total par recurrence) ;
   3. verifie le RTP de facon EXACTE (fractions rationnelles, aucun arrondi) ;
   4. calcule hit rate, bandes de gains, variance, ecart-type, max win ;
   5. reproduit les controles locaux du math-sdk officiel Stake Engine
      (utils/rgs_verification.py : rtp, cvar, etl40b, prob5k, prob10k) ;
-  6. convertit la distribution en poids entiers uint64 exacts (lookup table CSV) ;
+  6. convertit la distribution en poids entiers uint64 (lookup table CSV : exacts quand le PPCM des
+     denominateurs tient sur 64 bits, sinon arrondis au plus proche sur un total fixe, ecart de RTP affiche) ;
   7. analyse les series de pertes (calcul exact) et les temps d'attente avant
      >= x5, >= x25, >= x100 et BOSS FIGHT (calcul exact + simulation) ;
   8. simule des sessions (Monte Carlo) pour illustrer la volatilite ressentie.
@@ -85,10 +87,14 @@ def load_config(path: Path = CONFIG_PATH, variant: str | None = None) -> dict:
     }
     for lv in raw["rage_levels"]:
         base = [(F(r["multiplier"]), None if r["rtp_share"] == "balance" else F(r["rtp_share"])) for r in lv["base"]]
-        ladder = [F(m) for m in lv["boss_fight"]["ladder"]]
-        cont = [F(c) for c in lv["boss_fight"]["continue"]]
+        bf = lv["boss_fight"]
+        weights = [(F(r["multiplier"]), int(r["weight"])) for r in bf["hit_bases"]]
+        wsum = sum(w for _, w in weights)
+        fr = {"rounds": int(bf["free_rounds"]), "p_hit": F(bf["p_hit"]),
+              "rage_start": int(bf["rage_start"]), "rage_step": int(bf["rage_step"]),
+              "bases": [(m, F(w, wsum)) for m, w in weights]}
         level = {"id": lv["id"], "label": lv["label"], "volatility": lv["volatility"],
-                 "max_win": F(lv["max_win"]), "base": base, "ladder": ladder, "cont": cont}
+                 "max_win": F(lv["max_win"]), "base": base, "fr": fr}
         _validate_level(level)
         cfg["levels"].append(level)
     return cfg
@@ -97,30 +103,48 @@ def load_config(path: Path = CONFIG_PATH, variant: str | None = None) -> dict:
 def _validate_level(lv: dict) -> None:
     name = lv["id"]
     assert sum(1 for _, s in lv["base"] if s is None) == 1, f"{name}: exactly one 'balance' row required"
-    assert len(lv["cont"]) == len(lv["ladder"]) - 1, f"{name}: continue must have len(ladder)-1 values"
-    assert all(0 < c < 1 for c in lv["cont"]), f"{name}: continuation probabilities must be in ]0,1["
-    assert max(lv["ladder"]) == lv["max_win"], f"{name}: ladder top must equal max_win"
+    fr = lv["fr"]
+    assert fr["rounds"] >= 1 and 0 < fr["p_hit"] < 1, f"{name}: free rounds need >= 1 round and p_hit in ]0,1["
+    assert fr["rage_start"] >= 1 and fr["rage_step"] >= 0, f"{name}: rage must start at >= x1"
+    assert all(p > 0 for _, p in fr["bases"]), f"{name}: every hit base needs a positive weight"
+    top_rage = fr["rage_start"] + fr["rage_step"] * (fr["rounds"] - 1)
+    assert max(m for m, _ in fr["bases"]) * top_rage >= lv["max_win"], f"{name}: wincap unreachable in the free rounds"
     assert max(m for m, _ in lv["base"]) <= lv["max_win"], f"{name}: base multiplier above max_win"
-    for m in [m for m, _ in lv["base"]] + lv["ladder"]:
+    for m in [m for m, _ in lv["base"]] + [m for m, _ in fr["bases"]]:
         assert (m * 10).denominator == 1 and m >= F(1, 10), f"{name}: x{m} is not a multiple of x0.1 (Stake)"
 
 
 # --------------------------------------------------------------------------- distribution
 
-def boss_fight_distribution(ladder: list[F], cont: list[F]) -> list[tuple[F, F]]:
-    """P(finir au palier k) = (produit des continuations avant k) * (1 - continuation k)."""
-    out, reach = [], F(1)
-    for k, m in enumerate(ladder):
-        if k < len(ladder) - 1:
-            out.append((m, reach * (1 - cont[k])))
-            reach *= cont[k]
-        else:
-            out.append((m, reach))  # K.O. = dernier palier
-    return out
+def boss_fight_distribution(fr: dict, cap: F) -> list[tuple[F, F]]:
+    """Distribution EXACTE du total des tours gratuits (recurrence sur : rage, total, au moins un HIT).
+    Regles (config free_rounds_doc) : HIT avec p_hit, gain = base x rage, rage += rage_step apres un HIT ;
+    dernier tour force en HIT si aucun HIT avant ; plafond `cap` (wincap) : le bonus s'arrete des qu'il est atteint."""
+    states: dict[tuple[int, F, bool], F] = {(fr["rage_start"], F(0), False): F(1)}
+    ended: dict[F, F] = {}
+    for k in range(fr["rounds"]):
+        forced_last = k == fr["rounds"] - 1
+        nxt: dict[tuple[int, F, bool], F] = {}
+        for (rage, total, hit), p in states.items():
+            p_hit = F(1) if forced_last and not hit else fr["p_hit"]
+            if p_hit < 1:
+                nxt[(rage, total, hit)] = nxt.get((rage, total, hit), F(0)) + p * (1 - p_hit)
+            for base, w in fr["bases"]:
+                new_total = total + base * rage
+                if new_total >= cap:
+                    ended[cap] = ended.get(cap, F(0)) + p * p_hit * w
+                else:
+                    key = (rage + fr["rage_step"], new_total, True)
+                    nxt[key] = nxt.get(key, F(0)) + p * p_hit * w
+        states = nxt
+    for (_, total, _), p in states.items():
+        ended[total] = ended.get(total, F(0)) + p
+    assert sum(ended.values()) == 1 and F(0) not in ended
+    return sorted(ended.items())
 
 
 def build(level: dict, cfg: dict) -> dict:
-    bd = boss_fight_distribution(level["ladder"], level["cont"])
+    bd = boss_fight_distribution(level["fr"], level["max_win"])
     ev_bonus = sum(m * p for m, p in bd)
     share_bonus = cfg["bf_freq"] * ev_bonus
     fixed = sum(s for _, s in level["base"] if s is not None)
@@ -185,10 +209,25 @@ def stats(dist: dict[F, F]) -> dict:
     }
 
 
+LUT_ROUNDED_TOTAL = 10**15  # < 2^64 avec une large marge
+
+
 def integer_weights(dist: dict[F, F]) -> tuple[int, dict[F, int]]:
-    """Poids entiers EXACTS : total = PPCM des denominateurs (aucune erreur d'arrondi)."""
-    total = reduce(lambda a, b: a * b // math.gcd(a, b), (p.denominator for p in dist.values()), 1)
-    weights = {m: int(p * total) for m, p in dist.items()}
+    """Poids entiers de la lookup table.
+    EXACTS si le PPCM des denominateurs tient sur 64 bits. Sinon (tours gratuits : produits de 8 tirages),
+    arrondis au plus proche sur LUT_ROUNDED_TOTAL (methode du plus fort reste, somme exacte) : l'ecart de RTP
+    est affiche dans le rapport ; en production, l'optimiseur du math-sdk pondere de toute facon des books simules."""
+    lcm = reduce(lambda a, b: a * b // math.gcd(a, b), (p.denominator for p in dist.values()), 1)
+    if lcm < 2**64:
+        weights = {m: int(p * lcm) for m, p in dist.items()}
+        assert sum(weights.values()) == lcm
+        return lcm, weights
+    total = LUT_ROUNDED_TOTAL
+    raw = {m: p * total for m, p in dist.items()}
+    weights = {m: math.floor(v) for m, v in raw.items()}
+    rest = total - sum(weights.values())
+    for m in sorted(raw, key=lambda m: raw[m] - weights[m], reverse=True)[:rest]:
+        weights[m] += 1
     assert sum(weights.values()) == total
     return total, weights
 
@@ -336,11 +375,14 @@ def md_distributions(data, cfg) -> str:
         out.append("| Source | Multiplicateur | Part de RTP | Probabilite | Frequence |")
         out.append("|---|---|---|---|---|")
         for r in b["rows"]:
-            if r["src"] == "loss":
+            if r["src"] != "base":
                 continue
-            src = "base" if r["src"] == "base" else "BOSS FIGHT"
             tag = " *(equilibre)*" if r["balance"] else ""
-            out.append(f"| {src} | {fmt_m(r['m'])}{tag} | {pct(r['share'])} | {pct(r['p'], 4)} | {one_in(r['p'])} |")
+            out.append(f"| base | {fmt_m(r['m'])}{tag} | {pct(r['share'])} | {pct(r['p'], 4)} | {one_in(r['p'])} |")
+        bf_p = sum(r["p"] for r in b["rows"] if r["src"] == "boss_fight")
+        out.append(f"| BOSS FIGHT (8 tours gratuits, {len(b['bd'])} totaux possibles, detail §3) | "
+                   f"{fmt_m(b['bd'][0][0])} a {fmt_m(b['bd'][-1][0])} | "
+                   f"{pct(b['share_bonus'])} | {pct(bf_p, 4)} | {one_in(bf_p)} |")
         out.append(f"| — | **x0 (perte)** | 0 % | **{pct(s['p_loss'], 4)}** | — |")
         out.append(f"| **Total** | | **{pct(s['rtp'], 4)}** | 100 % | |\n")
         out.append("| Bande | Probabilite | Part de RTP |")
@@ -351,20 +393,38 @@ def md_distributions(data, cfg) -> str:
     return "\n".join(out)
 
 
-def md_ladders(data) -> str:
-    lines = []
+def bonus_quantile(bd: list[tuple[F, F]], q: F) -> F:
+    cum = F(0)
+    for m, p in bd:
+        cum += p
+        if cum >= q:
+            return m
+    return bd[-1][0]
+
+
+def md_free_rounds(data, cfg) -> str:
+    lines = ["Le BOSS FIGHT se joue dans la MEME manche que la mise qui le declenche (un book, un Play, "
+             "comme les free spins Stake Engine). Regles : `free_rounds_doc` de `config/rage_levels.json`.\n"]
     for lv, b, _ in data:
-        lines.append(f"**{lv['label']}**\n")
-        lines.append("| Palier | Multiplicateur | P(enchainer le coup suivant) | P(atteindre ce palier) | P(finir ici) |")
-        lines.append("|---|---|---|---|---|")
-        reach = F(1)
-        for k, (m, p_end) in enumerate(b["bd"]):
-            c = lv["cont"][k] if k < len(lv["cont"]) else None
-            lines.append(f"| {k + 1} | {fmt_m(m)} | {pct(c, 0) if c is not None else 'K.O. (fin)'} | "
-                         f"{pct(reach, 3)} | {pct(p_end, 3)} |")
-            if c is not None:
-                reach *= c
-        lines.append(f"\nEV du BOSS FIGHT = {float(b['ev_bonus']):.4f}x la mise\n")
+        fr = lv["fr"]
+        mu = sum(m * p for m, p in fr["bases"])
+        lines.append(f"**{lv['label']}** : {fr['rounds']} tours, P(HIT) = {pct(fr['p_hit'], 0)}, rage x{fr['rage_start']} "
+                     f"puis +{fr['rage_step']} par HIT, plafond {fmt_m(lv['max_win'])}\n")
+        lines.append("| Base d'un HIT | Probabilite (sachant HIT) |")
+        lines.append("|---|---|")
+        for m, p in fr["bases"]:
+            lines.append(f"| {fmt_m(m)} | {pct(p, 1)} |")
+        lines.append(f"\nBase moyenne d'un HIT = x{float(mu):.3f}\n")
+        cap_p = dict(b["bd"]).get(lv["max_win"], F(0))
+        lines.append("| Total du bonus | Valeur |")
+        lines.append("|---|---|")
+        lines.append(f"| EV d'un BOSS FIGHT | **x{float(b['ev_bonus']):.2f}** |")
+        for label, q in (("P10", F(1, 10)), ("P25", F(1, 4)), ("Mediane", F(1, 2)), ("P75", F(3, 4)),
+                         ("P90", F(9, 10)), ("P99", F(99, 100))):
+            lines.append(f"| {label} | {fmt_m(bonus_quantile(b['bd'], q))} |")
+        lines.append(f"| P(total < x10) | {pct(sum(p for m, p in b['bd'] if m < 10), 2)} |")
+        lines.append(f"| P(plafond {fmt_m(lv['max_win'])}) par bonus | {pct(cap_p, 4)} ({one_in(cap_p) if cap_p else '—'}) |")
+        lines.append(f"| P(plafond) par manche | {one_in(cap_p * cfg['bf_freq']) if cap_p else '—'} |\n")
     return "\n".join(lines)
 
 
@@ -423,18 +483,30 @@ def md_sessions(data) -> str:
 
 
 def md_lut(data) -> str:
-    out = ["| Rage Level | Total des poids (PPCM) | < 2^64 | RTP recalcule depuis les entiers |", "|---|---|---|---|"]
-    for lv, b, _ in data:
+    out = ["Avec 8 tours gratuits, le PPCM des denominateurs depasse 2^64 : les poids sont arrondis au plus proche "
+           f"sur un total fixe de {fmt_int(LUT_ROUNDED_TOTAL)} (plus fort reste). Le RTP EXACT du modele reste 96,5 % ; "
+           "l'ecart du RTP recalcule depuis les entiers est affiche ci-dessous. En production, les books du math-sdk "
+           "seront ponderes par son optimiseur.\n",
+           "| Rage Level | Total des poids | < 2^64 | RTP recalcule depuis les entiers | Ecart au RTP exact |",
+           "|---|---|---|---|---|"]
+    for lv, b, s in data:
         total, w = integer_weights(b["dist"])
         rtp = F(sum(int(m * 100) * wt for m, wt in w.items()), 100 * total)
-        out.append(f"| {lv['label']} | {fmt_int(total)} | {'OK' if total < 2**64 else 'NON'} | {pct(rtp, 6)} |")
+        out.append(f"| {lv['label']} | {fmt_int(total)} | {'OK' if total < 2**64 else 'NON'} | {pct(rtp, 6)} | "
+                   f"{float(rtp - s['rtp']):+.2e} |")
     lv, b, _ = data[1] if len(data) > 1 else data[0]
     total, w = integer_weights(b["dist"])
-    out += ["", f"Detail {lv['label']} :", "", "| payoutMultiplier (entier Stake) | Poids entier | RTP partiel exact |",
-            "|---|---|---|"]
+    base_pays = {F(0)} | {m for m, _ in lv["base"]}
+    out += ["", f"Detail {lv['label']} (lignes de base ; les totaux du BOSS FIGHT sont resumes en une ligne) :", "",
+            "| payoutMultiplier (entier Stake) | Poids entier | RTP partiel |", "|---|---|---|"]
     for m, wt in w.items():
-        pay = int(m * 100)
-        out.append(f"| {pay} | {fmt_int(wt)} | {pct(F(pay * wt, 100 * total), 4)} |")
+        if m in base_pays:
+            pay = int(m * 100)
+            out.append(f"| {pay} | {fmt_int(wt)} | {pct(F(pay * wt, 100 * total), 4)} |")
+    rest = {m: wt for m, wt in w.items() if m not in base_pays}
+    rest_rtp = F(sum(int(m * 100) * wt for m, wt in rest.items()), 100 * total)
+    out.append(f"| autres totaux du BOSS FIGHT ({len(rest)} valeurs, de {int(min(rest) * 100)} a {int(max(rest) * 100)}) | "
+               f"{fmt_int(sum(rest.values()))} | {pct(rest_rtp, 4)} |")
     return "\n".join(out)
 
 
@@ -452,7 +524,7 @@ def markdown_report(cfg: dict, with_sim: bool) -> str:
         "",
         "## 1. Synthese", "", md_summary(data), "",
         "## 2. Distributions detaillees", "", md_distributions(data, cfg),
-        "## 3. Echelles BOSS FIGHT", "", md_ladders(data),
+        "## 3. BOSS FIGHT : 8 tours gratuits", "", md_free_rounds(data, cfg),
         "## 4. Series de pertes", "", md_streaks(data),
         "## 5. Attente avant evenement", "", md_waits(data, sims), "",
     ]

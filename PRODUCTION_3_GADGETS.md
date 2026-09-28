@@ -12,7 +12,7 @@
 - Son : SOUND KIT et `SOUND_BIBLE.md` v1.
 - Animation : ANIMATION KIT, `ANIMATION_KIT.md`.
 - Collection niveau → gadget → animations, avec une nouvelle règle d'OFFICE MELTDOWN.
-- BOSS FIGHT commun (1/150) avec entrée et projectiles propres à chaque gadget.
+- BOSS FIGHT commun avec entrée et projectiles propres à chaque gadget : **8 tours gratuits, 1/400 depuis le 2026-09-28** (1/150 et une échelle avant ; `docs/GDD_05_BOSS_FIGHT.md` §6.FR).
 - 3 mondes et leurs transitions ; perf ; mobile ; DEV PANEL ; tests ; PLAYTEST #3.
 
 **A2 = INFORMATION STAKE ENGINE REQUISE.** Le choix A/B/C (maths A2 : un triple tiré sans connaître le plan) n'est **jamais** présenté comme accepté par Stake.
@@ -38,7 +38,7 @@
 
 ### Pourquoi ces 6 nouveaux gadgets (et pourquoi aucun n'est « le bon, le moyen, le mauvais »)
 
-- **Mêmes maths pour les trois plans d'un niveau** (A2 symétrique : 96,5 % par position, BOSS FIGHT commun 1/150). Aucun gadget ne rapporte plus : les trois se distinguent seulement par leur **texture comique**.
+- **Mêmes maths pour les trois plans d'un niveau** (A2 symétrique : 96,5 % par position, BOSS FIGHT commun 1/400). Aucun gadget ne rapporte plus : les trois se distinguent seulement par leur **texture comique**.
 - **Chaque niveau propose trois directions d'attaque différentes**, pour que le choix soit un goût, pas un calcul :
   - GRUMPY : précision, pression, paperasse ;
   - FURIOUS : par le sol, par une chaîne de meubles, par une boule qui roule ;
@@ -270,8 +270,8 @@ Le livre suit le mode, pour qu'aucune règle ne soit impossible à remplir :
 
 | Mode | Catalogue | OFFICE MELTDOWN | P50 / P90 (manches) | 100 % P50 / P90 |
 |---|---|---|---:|---:|
-| **3 gadgets** (Mock) | **150 cartes** : GRUMPY 46 · FURIOUS 41 · UNHINGED 45 · BOSS FIGHT 18 | **≥ 4 découvertes avec CHACUN des 9 gadgets** (cartes BOSS FIGHT non requises) | **86 / 123** (joueur réparti) · 150 / 230 (plan préféré 60/25/15) · jamais (3 gadgets seulement) | **32 830 / 69 327** (réparti) · 40 440 / 76 299 (plan préféré) |
-| Classique (Stake tant qu'A2 n'est pas confirmée ; `?plans=off`) | 51 cartes (3 gadgets) | ≥ 8 dans chaque Rage Level (règle historique) | 70 / 113 | 9 844 / 22 880 |
+| **3 gadgets** (Mock) | **150 cartes** : GRUMPY 46 · FURIOUS 41 · UNHINGED 45 · BOSS FIGHT 18 | **≥ 4 découvertes avec CHACUN des 9 gadgets** (cartes BOSS FIGHT non requises) | **86 / 123** (joueur réparti) · 150 / 229 (plan préféré 60/25/15) · jamais (3 gadgets seulement) | **42 613 / 75 260** (réparti) · 60 296 / 104 848 (plan préféré) ; cartes BOSS FIGHT plus rares depuis 1/400 |
+| Classique (Stake tant qu'A2 n'est pas confirmée ; `?plans=off`) | 51 cartes (3 gadgets) | ≥ 8 dans chaque Rage Level (règle historique) | 69 / 113 | 11 707 / 23 746 |
 
 **OFFICE MELTDOWN : pourquoi N = 4.** L'épisode doit récompenser l'exploration des 9 gadgets sans jamais s'ouvrir avec trois gadgets seulement. Le choix vient d'un calcul exact (Poisson-binomial ; `docs/generated/COLLECTION_REPORT_P3.md`) :
 - N = 2 → 42 / 64 manches ; trop tôt ;
@@ -293,8 +293,9 @@ La progression est affichée en faits (« 6 / 16 », « ESPRESSO BLASTER 3 / 4 �
 
 ## 5. BOSS FIGHT
 
-- **Fréquence inchangée : 1/150**, commune à la manche. Elle ne dépend ni du plan ni du gadget.
-- Le déroulé est identique pour les 9 gadgets (test) : paliers, attaques, K.O.
+- **8 TOURS GRATUITS, 1 manche sur 400** depuis le 2026-09-28 (demande utilisateur : moins de bonus, plus de valeur), dans la même manche que la mise (modèle des free spins Stake Engine). Commun à la manche : il ne dépend ni du plan ni du gadget. Règles, maths et justification de la fréquence : `docs/GDD_05_BOSS_FIGHT.md` §6.FR.
+- Valeur moyenne d'un bonus : x38,7 / x64,4 / x95,4 (avant : x14,6 / x24,2 / x35,5 à 1/150). RTP inchangé (96,5 % exact).
+- Le déroulé est identique pour les 9 gadgets (test) : tours gratuits, rage, K.O.
 - Seules changent l'**entrée** (2 par gadget) et les **projectiles** lancés sur le boss géant (mugs, gobelets, ramettes, tiroirs, bonbonnes, fusées, coffres, gants, écrans).
 - Musique : ostinato de combat, de l'arène au K.O. Captures : `docs/production/bossfight/`.
 
@@ -420,7 +421,7 @@ Le bouton **PLAYTEST** du Mock lance la session. Tout reste local : export manue
    - récompenses cosmétiques (`docs/STAKE_ENGINE_FAITS_VERIFIES.md` §11).
 3. **Hébergement et sécurité** : CSP (`img-src blob:` / `data:` pour la rastérisation des atlas), hébergement des fichiers statiques (atlas WebP éventuels), taille maximale du build.
 4. **Audio** : formats, taille, lecture automatique, bouton muet imposé.
-5. **Validation de la fréquence du BOSS FIGHT** (1/150 inchangée) dans le cadre A2.
+5. **Validation du BOSS FIGHT en tours gratuits** (1/400, 8 tours dans la même manche) dans le cadre A2.
 
 ## 13. Problèmes connus
 

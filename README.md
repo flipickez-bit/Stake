@@ -3,7 +3,7 @@
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
 Jeu instantané cartoon pour **Stake Engine** : on se venge de Barnaby « B.B. » Bottomline, un patron fictif et insupportable, en 3 secondes par manche.
-Trois Rage Levels (trois vrais niveaux de risque), un résultat tiré avant l'animation, des animations qui ne révèlent rien avant la fin, et un BOSS FIGHT jusqu'à x5 000.
+Trois Rage Levels (trois vrais niveaux de risque), un résultat tiré avant l'animation, des animations qui ne révèlent rien avant la fin, et un BOSS FIGHT de **8 tours gratuits** (1 manche sur 400, rage qui monte) jusqu'à x5 000.
 
 ## État
 **PRODUCTION 3 GADGETS PAR RAGE LEVEL — prête pour le PLAYTEST #3** : 9 gadgets, 150 branches, 150 cartes de collection, SOUND KIT, ANIMATION KIT. Détails : **[PRODUCTION_3_GADGETS.md](PRODUCTION_3_GADGETS.md)** ; correctif final P3.1 (variété d'HVAC HURRICANE, OTHER PLANS) : **[P3_1_CORRECTIF.md](P3_1_CORRECTIF.md)**.

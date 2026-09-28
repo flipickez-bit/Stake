@@ -2,7 +2,9 @@
   "_doc": "SOURCE DE VERITE UNIQUE des parametres mathematiques de BAD BOSS. Lue par math/model/bad_boss_math.py (et plus tard par le generateur de books et le client pour l'affichage). Ne jamais recopier ces valeurs ailleurs : les importer. Fractions ecrites en chaines decimales ou 'a/b' pour rester exactes.",
   "target_rtp": "0.965",
   "target_rtp_status": "PROVISOIRE - validation Stake Engine requise avant publication",
-  "boss_fight_frequency": "1/150",
+  "boss_fight_frequency": "1/400",
+  "boss_fight_frequency_history": "1/150 jusqu'au 2026-09-28. Passe a 1/400 sur demande utilisateur (moins de bonus, plus de valeur) : la part de RTP du BOSS FIGHT est conservee (~9.7 / 16.1 / 23.7 %), donc la valeur moyenne d'un bonus est multipliee par ~2.7. Justification detaillee : docs/GDD_05_BOSS_FIGHT.md et docs/generated/MATH_REPORT.md.",
+  "free_rounds_doc": "BOSS FIGHT = 8 TOURS GRATUITS dans la MEME manche (un seul book, un seul Play, comme les free spins Stake Engine). Chaque tour : HIT avec la probabilite p_hit (sinon BLOCKED, 0). Gain d'un HIT = base tiree dans hit_bases x RAGE ; la RAGE commence a x1 et monte de +1 apres chaque HIT. Si les 7 premiers tours sont BLOCKED, le 8e est un HIT (jamais de bonus nul). Plafond : max_win du niveau (wincap) ; le bonus s'arrete des qu'il est atteint.",
   "rage_levels": [
     {
       "id": "grumpy",
@@ -20,8 +22,19 @@
         {"multiplier": "25", "rtp_share": "0.035"}
       ],
       "boss_fight": {
-        "ladder": [5, 10, 25, 50, 100, 200],
-        "continue": ["0.45", "0.45", "0.40", "0.35", "0.30"]
+        "free_rounds": 8,
+        "p_hit": "3/4",
+        "rage_start": 1,
+        "rage_step": 1,
+        "hit_bases": [
+          {"multiplier": "1", "weight": 640},
+          {"multiplier": "2", "weight": 230},
+          {"multiplier": "3", "weight": 80},
+          {"multiplier": "5", "weight": 32},
+          {"multiplier": "10", "weight": 12},
+          {"multiplier": "25", "weight": 5},
+          {"multiplier": "50", "weight": 1}
+        ]
       }
     },
     {
@@ -41,8 +54,21 @@
         {"multiplier": "100", "rtp_share": "0.040"}
       ],
       "boss_fight": {
-        "ladder": [5, 10, 25, 50, 100, 250, 500, 1000],
-        "continue": ["0.55", "0.50", "0.45", "0.45", "0.40", "0.35", "0.30"]
+        "free_rounds": 8,
+        "p_hit": "7/10",
+        "rage_start": 1,
+        "rage_step": 1,
+        "hit_bases": [
+          {"multiplier": "1", "weight": 520},
+          {"multiplier": "2", "weight": 250},
+          {"multiplier": "3", "weight": 110},
+          {"multiplier": "5", "weight": 65},
+          {"multiplier": "10", "weight": 30},
+          {"multiplier": "25", "weight": 14},
+          {"multiplier": "50", "weight": 6},
+          {"multiplier": "100", "weight": 3},
+          {"multiplier": "250", "weight": 2}
+        ]
       }
     },
     {
@@ -63,8 +89,23 @@
         {"multiplier": "500", "rtp_share": "0.045"}
       ],
       "boss_fight": {
-        "ladder": [5, 10, 25, 50, 100, 250, 500, 1000, 5000],
-        "continue": ["0.70", "0.60", "0.55", "0.45", "0.35", "0.25", "0.20", "0.15"]
+        "free_rounds": 8,
+        "p_hit": "13/20",
+        "rage_start": 1,
+        "rage_step": 1,
+        "hit_bases": [
+          {"multiplier": "1", "weight": 500},
+          {"multiplier": "2", "weight": 240},
+          {"multiplier": "3", "weight": 110},
+          {"multiplier": "5", "weight": 70},
+          {"multiplier": "10", "weight": 40},
+          {"multiplier": "25", "weight": 20},
+          {"multiplier": "50", "weight": 10},
+          {"multiplier": "100", "weight": 6},
+          {"multiplier": "250", "weight": 2},
+          {"multiplier": "500", "weight": 1},
+          {"multiplier": "1000", "weight": 1}
+        ]
       }
     }
   ],

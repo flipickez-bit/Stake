@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseRound } from '../../src/domain/outcome';
 import { PLAN_SLOTS, POC_PLAN_SETS, parsePlanMode, planModeName, type PlanSlot } from '../../src/domain/plans';
+import { BOSS_FIGHT_FREQUENCY } from '../../src/domain/rageLevels';
 import { mulberry32 } from '../../src/domain/seed';
 import type { InternalRound } from '../../src/domain/round';
 import { GameFlow, type FlowState } from '../../src/flow/GameFlow';
@@ -65,7 +66,7 @@ describe('POC 3 PLANS : maths A2 (triple tiré AVANT de connaître le plan)', ()
     expect(new Set(triples).size).toBe(1);
   });
 
-  it('RTP A = B = C = RTP du niveau ; BOSS FIGHT 1/150 commun aux trois ; « trois pertes » ≈ 7,4 % (GRUMPY)', () => {
+  it('RTP A = B = C = RTP du niveau ; BOSS FIGHT 1/400 commun aux trois ; « trois pertes » ≈ 7,6 % (GRUMPY)', () => {
     const rnd = mulberry32(20260927);
     const N = 300_000;
     const sum = [0, 0, 0];
@@ -84,12 +85,13 @@ describe('POC 3 PLANS : maths A2 (triple tiré AVANT de connaître le plan)', ()
     }
     const exact = expectedMultiplier('grumpy');
     expect(exact).toBeCloseTo(0.965, 6);
-    // Écart-type par manche 2,685 → erreur type ≈ 0,005 sur 300 000 tirages : tolérance 4 σ.
+    // Écart-type par manche 2,734 → erreur type ≈ 0,005 sur 300 000 tirages : tolérance 4 σ.
     for (const s of sum) expect(Math.abs(s / N - exact)).toBeLessThan(0.021);
-    expect(Math.abs(bf / N - 1 / 150)).toBeLessThan(0.0007);
+    expect(BOSS_FIGHT_FREQUENCY).toBeCloseTo(1 / 400, 15);
+    expect(Math.abs(bf / N - BOSS_FIGHT_FREQUENCY)).toBeLessThan(0.0004);
     const p0 = baseTable('grumpy').rows.find((r) => r.multiplier100 === 0)!.p;
-    const expectedAllLose = (1 - 1 / 150) * p0 ** 3;
-    expect(expectedAllLose).toBeCloseTo(0.0743, 3);
+    const expectedAllLose = (1 - BOSS_FIGHT_FREQUENCY) * p0 ** 3;
+    expect(expectedAllLose).toBeCloseTo(0.0757, 3);
     expect(Math.abs(allLose / N - expectedAllLose)).toBeLessThan(0.002);
   });
 });

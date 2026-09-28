@@ -53,7 +53,7 @@ Le POC est un **mode MOCK / DEV séparé**, activé par `?poc=3gadget` ou par le
    - Les deux plans non choisis s'effacent en fondu (260 ms) ; les étiquettes disparaissent.
    - La barre du bas rappelle « YOUR PLAN: B · ESPRESSO BLASTER ».
 5. **Le Mock RGS tire le triple entier, sans connaître le plan.**
-   - BOSS FIGHT commun avec la probabilité 1/150 ; sinon trois tirages indépendants dans la table de base de GRUMPY.
+   - BOSS FIGHT commun avec la probabilité 1/150 (1/400 et 8 tours gratuits depuis le 2026-09-28) ; sinon trois tirages indépendants dans la table de base de GRUMPY.
    - Il écrit le book du mode choisi : triple, `pick`, présentation du plan payé, `finalWin`.
 6. **Seul le gadget du plan payé est joué**, avec sa présentation déjà écrite dans le triple. Reveal, gain, fin de manche, READY : exactement comme dans le jeu normal.
 7. **Après la manche**, selon le réglage : PRIVATE (§3), ON-DEMAND (§4) ou REVEAL ALL (§5).

@@ -31,7 +31,7 @@ const isBf = (b: BranchDef) => b.categories.includes('BF_ENTRY');
 const isLoss = (b: BranchDef) => b.classes.includes('MISS');
 
 function outcomeFor(g: GadgetDef, b: BranchDef, seed: number): Outcome {
-  if (isBf(b)) return makeDevOutcome(g.rageLevel, { kind: 'BOSS_FIGHT', bossFightRung: 2, seed }, mulberry32(seed));
+  if (isBf(b)) return makeDevOutcome(g.rageLevel, { kind: 'BOSS_FIGHT', bossFightHits: 2, seed }, mulberry32(seed));
   const cls = b.classes[0] as ResultClass;
   const script = b.categories.find((s) => (SCRIPTS[cls][s] ?? 0) > 0) ?? (b.categories[0] as Script);
   return Object.freeze({ source: 'dev', roundId: 'T', mode: g.rageLevel, betAmount: 1_000_000, payout: MULT[cls] * 10_000, payoutMultiplier100: MULT[cls], resultClass: cls, script, rarity: 'common', seed, bossFight: null }) as Outcome;
@@ -40,7 +40,7 @@ function outcomeFor(g: GadgetDef, b: BranchDef, seed: number): Outcome {
 /** Probabilités des classes (hors BOSS FIGHT) pour un Rage Level, depuis la distribution mathématique. */
 function classProbs(level: RageLevelId): Record<ResultClass, number> {
   const out = { MISS: 0, SCRAPE: 0, HIT: 0, BIG: 0, MEGA: 0, LEGENDARY: 0 } as Record<ResultClass, number>;
-  const rows = distributionTable(level).filter((r) => r.bossFightRung === null);
+  const rows = distributionTable(level).filter((r) => !r.bossFight);
   const total = rows.reduce((a, r) => a + r.p, 0);
   for (const r of rows) out[classify(r.multiplier100)] += r.p / total;
   return out;

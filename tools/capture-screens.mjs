@@ -49,8 +49,8 @@ await page.waitForFunction(() => window.__BADBOSS__.state().revealed !== null, n
 await page.waitForTimeout(250);
 await shot(page, '04-desktop-rocket-ceiling-reveal-x2');
 await ready(page);
-await preview(page, 'furious', { kind: 'BOSS_FIGHT', bossFightRung: 3, seed: 7 });
-await page.waitForFunction(() => window.__BADBOSS__.presenter().bossFight.rung >= 2, null, { timeout: 60000 });
+await preview(page, 'furious', { kind: 'BOSS_FIGHT', bossFightHits: 3, seed: 7 });
+await page.waitForFunction(() => window.__BADBOSS__.presenter().bossFight.round >= 3, null, { timeout: 60000 });
 await shot(page, '05-desktop-boss-fight-ladder');
 await ready(page);
 await page.close();

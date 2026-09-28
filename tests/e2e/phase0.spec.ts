@@ -124,7 +124,7 @@ test('RELOAD DURING ANIMATION → same result, same branch, same seed', async ({
 
 test('REPLAY (dev + URL) → same branch and result, no wallet call, no bet possible', async ({ page }) => {
   await boot(page);
-  await force(page, { kind: 'BOSS_FIGHT', bossFightRung: 1, seed: 99 });
+  await force(page, { kind: 'BOSS_FIGHT', bossFightHits: 1, seed: 99 });
   await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.flow.setSpeed('turbo'));
   await page.getByTestId('fire').click();
   await untilBranch(page);

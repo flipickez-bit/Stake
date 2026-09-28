@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { FlowSnapshot } from '../flow/GameFlow';
-  import type { BossFightStatus } from '../presenter/Presenter';
+  import { NO_BF, type BossFightStatus } from '../presenter/Presenter';
   import { bootstrap, type GameContext } from './bootstrap';
   import BfLadder from './BfLadder.svelte';
   import Hud from './Hud.svelte';
@@ -40,7 +40,7 @@
   let host: HTMLDivElement;
   let ctx = $state<GameContext | null>(null);
   let snap = $state<FlowSnapshot | null>(null);
-  let bf = $state<BossFightStatus>({ active: false, rungs100: [], rung: -1, blocked: false, ko: false });
+  let bf = $state<BossFightStatus>(NO_BF);
   let devOpen = $state(false);
   let muted = $state(false);
   let bootError = $state<string | null>(null);

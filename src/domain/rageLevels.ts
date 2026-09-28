@@ -14,10 +14,20 @@ export interface RageLevelInfo {
   baseMultipliers: number[];
   /** Parts de RTP ('balance' = ligne d'équilibre). */
   baseRows: { multiplier: number; rtpShare: number | 'balance' }[];
-  /** Échelle du BOSS FIGHT (multiplicateurs). */
-  bossFightLadder: number[];
-  /** Probabilités d'enchaîner d'un palier au suivant. */
-  bossFightContinue: number[];
+  /** BOSS FIGHT = tours gratuits dans la même manche (règles : `free_rounds_doc` de config/rage_levels.json). */
+  freeRounds: FreeRoundsConfig;
+}
+
+export interface FreeRoundsConfig {
+  /** Nombre de tours gratuits (8). */
+  rounds: number;
+  /** Probabilité qu'un tour soit un HIT (sinon BLOCKED, 0). */
+  pHit: number;
+  /** Rage du premier tour (x1) et hausse après chaque HIT (+1). */
+  rageStart: number;
+  rageStep: number;
+  /** Bases d'un HIT (multiplicateurs) et leurs poids entiers. */
+  bases: { multiplier: number; weight: number }[];
 }
 
 export function parseFraction(text: string): number {
@@ -41,9 +51,19 @@ export const RAGE_LEVELS: readonly RageLevelInfo[] = raw.rage_levels.map((lv) =>
     multiplier: Number(r.multiplier),
     rtpShare: r.rtp_share === 'balance' ? ('balance' as const) : Number(r.rtp_share),
   })),
-  bossFightLadder: lv.boss_fight.ladder.slice(),
-  bossFightContinue: lv.boss_fight.continue.map(Number),
+  freeRounds: {
+    rounds: lv.boss_fight.free_rounds,
+    pHit: parseFraction(lv.boss_fight.p_hit),
+    rageStart: lv.boss_fight.rage_start,
+    rageStep: lv.boss_fight.rage_step,
+    bases: lv.boss_fight.hit_bases.map((b) => ({ multiplier: Number(b.multiplier), weight: b.weight })),
+  },
 }));
+
+/** Rage d'un tour gratuit (index 0) sachant le nombre de HIT déjà joués. */
+export function rageAt(fr: FreeRoundsConfig, hitsBefore: number): number {
+  return fr.rageStart + fr.rageStep * hitsBefore;
+}
 
 export function getRageLevel(id: RageLevelId): RageLevelInfo {
   const level = RAGE_LEVELS.find((l) => l.id === id);

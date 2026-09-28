@@ -32,7 +32,15 @@ function thumbOutcome(g: GadgetDef, b: BranchDef): Outcome {
     rarity: 'common',
     seed: 1,
     bossFight: bf
-      ? { rungs100: [500, 1000, 2500], attacks: [{ result: 'HIT', variant: 0 }, { result: 'BLOCKED', variant: 1 }], finalRungIndex: 0, ko: false }
+      ? {
+          freeRounds: 8,
+          rounds: [
+            { result: 'HIT', base100: 200, rage: 1, win100: 200, total100: 200, variant: 0 },
+            { result: 'BLOCKED', base100: 0, rage: 2, win100: 0, total100: 200, variant: 1 },
+          ],
+          wincap: false,
+          ko: false,
+        }
       : null,
     plans: null,
   };

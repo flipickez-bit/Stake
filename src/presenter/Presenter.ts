@@ -27,12 +27,23 @@ export interface AudioSink {
 
 export type PresenterMode = 'idle' | 'neutral' | 'waiting' | 'playing' | 'finished';
 
+/** HUD du BOSS FIGHT (tours gratuits), mis à jour par les signaux de la séquence : jamais en avance sur l'image. */
 export interface BossFightStatus {
   active: boolean;
-  rungs100: readonly number[];
-  rung: number;
-  blocked: boolean;
+  /** Tours gratuits accordés (8). */
+  freeRounds: number;
+  /** Tour en cours (1 à 8) ; 0 avant le premier. */
+  round: number;
+  /** Rage du tour en cours (x1, puis +1 après chaque HIT). */
+  rage: number;
+  /** Cumul des gains déjà touchés (entier ×100). */
+  total100: number;
+  /** Issue du dernier tour résolu. */
+  last: 'HIT' | 'BLOCKED' | null;
+  /** Gain du dernier HIT (entier ×100). */
+  lastWin100: number;
   ko: boolean;
+  wincap: boolean;
 }
 
 export interface PresenterStatus {
@@ -52,7 +63,7 @@ export interface PresenterStatus {
   bossFight: BossFightStatus;
 }
 
-const NO_BF: BossFightStatus = { active: false, rungs100: [], rung: -1, blocked: false, ko: false };
+export const NO_BF: BossFightStatus = { active: false, freeRounds: 0, round: 0, rage: 1, total100: 0, last: null, lastWin100: 0, ko: false, wincap: false };
 
 /** Séquence de repos : aucun cue, le temps reste à 0, les poses vivent (attente sans fin). */
 function idleSequence(gadget: GadgetDef): AnimationSequence {
@@ -281,13 +292,22 @@ export class Presenter implements RoundPresenter {
     const p = this.pending;
     switch (signal) {
       case 'bfStart':
-        this.bf = { active: true, rungs100: this.outcome?.bossFight?.rungs100 ?? [], rung: -1, blocked: false, ko: false };
+        this.bf = { ...NO_BF, active: true, freeRounds: this.outcome?.bossFight?.freeRounds ?? 0 };
         break;
-      case 'bfRung':
-        this.bf = { ...this.bf, rung: value ?? this.bf.rung };
+      case 'frRound': {
+        // Un nouveau tour commence : compteur et rage de CE tour (issue encore inconnue à l'écran).
+        const r = this.outcome?.bossFight?.rounds[value ?? -1];
+        if (r) this.bf = { ...this.bf, round: (value ?? 0) + 1, rage: r.rage, last: null };
         break;
+      }
+      case 'frHit': {
+        const r = this.outcome?.bossFight?.rounds[value ?? -1];
+        const capped = this.outcome?.bossFight?.wincap === true && r?.total100 === this.outcome?.payoutMultiplier100;
+        if (r) this.bf = { ...this.bf, total100: r.total100, last: 'HIT', lastWin100: r.win100, wincap: capped };
+        break;
+      }
       case 'bfBlocked':
-        this.bf = { ...this.bf, blocked: true };
+        this.bf = { ...this.bf, last: 'BLOCKED', lastWin100: 0 };
         break;
       case 'bfKo':
         this.bf = { ...this.bf, ko: true };

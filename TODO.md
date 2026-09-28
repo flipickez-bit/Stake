@@ -53,7 +53,9 @@
 - [x] LOT 6 : SOUND KIT et SOUND BIBLE v1, ANIMATION KIT, transitions de monde, perf (UI chargée à la demande, atlas différés), mobile, recherche de branche, mode classique de la collection, PLAYTEST #3, épisode MELTDOWN à 8 tableaux.
 - [x] P3.1 (`P3_1_CORRECTIF.md`) : variété perçue d'HVAC HURRICANE (15 → 18 branches, 4 débuts à cadrage distinct) ; OTHER PLANS (ON-DEMAND par défaut et imposé par le PLAYTEST, action visible, panneau A/B/C dans l'ordre de l'écran, REPLAY / CHOOSE ANOTHER PLAN).
 - [x] Autres plans affichés **obligatoirement** après chaque manche (REVEAL ALL par défaut et imposé par le PLAYTEST #3 ; ON-DEMAND et PRIVATE en DEV).
-- [ ] **Tours gratuits** comme bonus, plus rares mais de vraie valeur (demande utilisateur) : forme et fréquence à choisir ; RTP 96,5 % à conserver ; changement de fréquence du BOSS FIGHT (1/150) à justifier explicitement.
+- [x] **BOSS FIGHT = 8 tours gratuits, 1/400** (demande utilisateur : moins de bonus, vraie valeur) : RTP 96,5 % exact, valeur moyenne ×2,7, justification dans `docs/GDD_05_BOSS_FIGHT.md` §6.FR.
+- [ ] Stake : confirmer le format d'événements des tours gratuits pour un jeu instantané (champ `events` libre) ; achat de bonus non prévu.
+- [ ] Playtest : ressenti du bonus plus rare (attente médiane 277 manches) et de la volatilité d'UNHINGED (σ 17,5).
 - [ ] **PLAYTEST #3 humain** (vous) : 50 manches, 11 affirmations + questions libres, export.
 - [ ] Images/s sur un vrai téléphone moyen de gamme (cible 60, minimum 45).
 - [ ] Réponses de Stake : Q21–Q29 (A2), méta-progression, CSP (`blob:` / `data:`), hébergement, audio.
