@@ -11,6 +11,11 @@ _Dernière mise à jour : 2026-09-28, **P3.1 livré** (`P3_1_CORRECTIF.md`), pui
 - ✅ Tests : 159 unitaires, 35 E2E (dont 8 réécrits pour l'affichage d'office). Maths inchangées.
 - ⚠ INFORMATION STAKE ENGINE REQUISE : l'affichage d'office des résultats non joués est la variante la plus exposée au risque de « near-miss » (Q24).
 
+## Tours gratuits grâce à la collection : EN ATTENTE DE STAKE (2026-09-28)
+- ⏳ Demande utilisateur : remplacer les récompenses cosmétiques de la collection par des tours gratuits.
+- ⚠ Bloquant : les Approval Guidelines imposent un jeu sans état (chaque mise indépendante des précédentes) ; aucun mécanisme RGS connu pour offrir une manche ; collection stockée côté client.
+- Décision de l'utilisateur : **demander à Stake d'abord**. Question prête : `docs/STAKE_QUESTION_COLLECTION_FREE_ROUNDS.md`. Rien n'est codé.
+
 ## BOSS FIGHT = 8 TOURS GRATUITS, 1 manche sur 400 (2026-09-28, `docs/GDD_05_BOSS_FIGHT.md` §6.FR)
 - ✅ Demande utilisateur : « faire des tours gratuits avec les bonus, en mettre moins, mais qu'ils aient une vraie valeur ». Choix validés : fréquence **1/400**, **8 tours, rage qui monte** ; forme alignée sur Stake Engine (recherche : free spins joués dans le même book que la mise, jeu sans état).
 - ✅ Maths (`config/rage_levels.json`, calcul exact `math/model/bad_boss_math.py`) : RTP **96,5 % exact** ; même part de RTP du bonus ; valeur moyenne d'un bonus **x14,6 → x38,7** (GRUMPY), **x24,2 → x64,4** (FURIOUS), **x35,5 → x95,4** (UNHINGED) ; médianes x33 / x38 / x37 ; bonus < x10 : 1,8 / 2,8 / 4,9 % ; contrôles du SDK OK.

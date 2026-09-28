@@ -55,6 +55,7 @@
 - [x] Autres plans affichés **obligatoirement** après chaque manche (REVEAL ALL par défaut et imposé par le PLAYTEST #3 ; ON-DEMAND et PRIVATE en DEV).
 - [x] **BOSS FIGHT = 8 tours gratuits, 1/400** (demande utilisateur : moins de bonus, vraie valeur) : RTP 96,5 % exact, valeur moyenne ×2,7, justification dans `docs/GDD_05_BOSS_FIGHT.md` §6.FR.
 - [ ] Stake : confirmer le format d'événements des tours gratuits pour un jeu instantané (champ `events` libre) ; achat de bonus non prévu.
+- [ ] **Envoyer à Stake** la question « tours gratuits gagnés grâce à la collection » (`docs/STAKE_QUESTION_COLLECTION_FREE_ROUNDS.md`) ; rien n'est codé avant leur réponse (règle « sans état » des Approval Guidelines).
 - [ ] Playtest : ressenti du bonus plus rare (attente médiane 277 manches) et de la volatilité d'UNHINGED (σ 17,5).
 - [ ] **PLAYTEST #3 humain** (vous) : 50 manches, 11 affirmations + questions libres, export.
 - [ ] Images/s sur un vrai téléphone moyen de gamme (cible 60, minimum 45).
