@@ -52,6 +52,8 @@
 - [x] LOT 5 Collection : niveau → gadget → animations ; nouvelle règle d'OFFICE MELTDOWN (N = 4, simulation exacte).
 - [x] LOT 6 : SOUND KIT et SOUND BIBLE v1, ANIMATION KIT, transitions de monde, perf (UI chargée à la demande, atlas différés), mobile, recherche de branche, mode classique de la collection, PLAYTEST #3, épisode MELTDOWN à 8 tableaux.
 - [x] P3.1 (`P3_1_CORRECTIF.md`) : variété perçue d'HVAC HURRICANE (15 → 18 branches, 4 débuts à cadrage distinct) ; OTHER PLANS (ON-DEMAND par défaut et imposé par le PLAYTEST, action visible, panneau A/B/C dans l'ordre de l'écran, REPLAY / CHOOSE ANOTHER PLAN).
+- [x] Autres plans affichés **obligatoirement** après chaque manche (REVEAL ALL par défaut et imposé par le PLAYTEST #3 ; ON-DEMAND et PRIVATE en DEV).
+- [ ] **Tours gratuits** comme bonus, plus rares mais de vraie valeur (demande utilisateur) : forme et fréquence à choisir ; RTP 96,5 % à conserver ; changement de fréquence du BOSS FIGHT (1/150) à justifier explicitement.
 - [ ] **PLAYTEST #3 humain** (vous) : 50 manches, 11 affirmations + questions libres, export.
 - [ ] Images/s sur un vrai téléphone moyen de gamme (cible 60, minimum 45).
 - [ ] Réponses de Stake : Q21–Q29 (A2), méta-progression, CSP (`blob:` / `data:`), hébergement, audio.
@@ -63,7 +65,7 @@
 - [x] Maths A2 expérimentales dans le Mock RGS (`IND_BFC_v1`, triple tiré sans le plan, RTP A = B = C) ; maths de production inchangées.
 - [x] Choix du plan AVANT Play, verrouillé ensuite (I9) : tests unitaires + e2e (animation, rechargement, reprise, double tap).
 - [x] Choix dans le décor (A SLINGSHOT réel, prototypes B ESPRESSO BLASTER et C COPIER CATAPULT) ; survol animé.
-- [x] PRIVATE (défaut) / ON-DEMAND (« REVEAL OTHER PLANS » après toutes les manches) / REVEAL ALL (DEV) ; aucun son, aucune célébration, aucun texte de regret.
+- [x] PRIVATE / ON-DEMAND / REVEAL ALL (défaut depuis le 2026-09-28 : affichage obligatoire) ; aucun son, aucune célébration, aucun texte de regret.
 - [x] PLAYTEST A/B 2 × 30 manches, ordre aléatoire, Q1–Q7 + question libre, mesures de changement de gadget, export.
 - [x] Résumé technique pour Stake (`docs/STAKE_A2_TECH_SUMMARY.md`) ; SOUND BIBLE v0 (`SOUND_BIBLE.md`).
 - [ ] **Playtest A/B humain** (vous, préversion 3 GADGET POC) ; plusieurs testeurs si possible.

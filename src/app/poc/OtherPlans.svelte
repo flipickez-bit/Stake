@@ -7,7 +7,8 @@
    *   manches (perte, x0,5, gain, gros gain) et après le vol de la carte NEW éventuelle ; elle reste jusqu'au tir suivant ;
    * - panneau : les trois plans DANS L'ORDRE DE L'ÉCRAN (de gauche à droite), YOUR PLAN marqué, valeurs exactes du book ;
    *   il reste ouvert jusqu'à un geste du joueur (fermer, REPLAY, CHOOSE ANOTHER PLAN, FIRE) ;
-   * - REVEAL_ALL (DEV) : panneau ouvert d'office ; PRIVATE (DEV) : rien.
+   * - REVEAL_ALL (PAR DÉFAUT depuis le 2026-09-28, décision utilisateur) : panneau ouvert d'office après CHAQUE manche ;
+   *   ON_DEMAND et PRIVATE : réglages DEV.
    * Simple INFORMATION : aucun son, aucune animation ni couleur de gain, aucun texte de regret, aucune suggestion de plan.
    */
   import type { Revealed } from '../../flow/GameFlow';

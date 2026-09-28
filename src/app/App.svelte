@@ -271,11 +271,11 @@
       s.balance = 1000 * 1_000_000;
     });
     const p = ctx.collection?.progress ?? null;
-    // PLAYTEST #3 : protocole reproductible — ON-DEMAND imposé, quelle que soit l'ancienne valeur (DEV, stockage) ;
-    // le réglage précédent est rendu à la fin de la session.
+    // PLAYTEST #3 : protocole reproductible — les autres plans s'affichent OBLIGATOIREMENT après chaque manche, quelle
+    // que soit l'ancienne valeur (DEV, stockage) ; le réglage précédent est rendu à la fin de la session.
     if (snap?.plansEnabled && ctx.poc) {
       altBeforePlaytest = ctx.poc.altDisplay.current;
-      ctx.poc.altDisplay.set('ON_DEMAND');
+      ctx.poc.altDisplay.set('REVEAL_ALL');
     }
     ctx.playtest.start(
       {

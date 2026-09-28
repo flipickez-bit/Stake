@@ -13,6 +13,14 @@
 - des 8 autres gadgets ;
 - de GameFlow ou du RGS.
 
+> **Mise à jour du 2026-09-28 (après P3.1), demande utilisateur** : « le résultat des autres options doit s'afficher
+> **obligatoirement**, pas quand le joueur le veut ». **REVEAL ALL est désormais la valeur par défaut** (nouvelle clé
+> `badboss.altdisplay.v3`) et le PLAYTEST #3 l'impose : le panneau du §5 s'ouvre **seul** après chaque manche, après le vol
+> de la carte NEW. Le bouton ON-DEMAND et l'indication de première manche (§5, points 1 à 3) ne restent qu'en réglage DEV.
+> Tout le reste du §5 s'applique tel quel (ordre de l'écran, YOUR PLAN, valeurs du book, aucun son de gain, aucune
+> découverte, REPLAY / CHOOSE ANOTHER PLAN). Tests E2E réécrits en conséquence (`tests/e2e/otherplans.spec.ts`, 8 tests) ;
+> captures : `docs/production/p3_1/otherplans-auto-*.jpg`. INFORMATION STAKE ENGINE REQUISE (Q24).
+
 ---
 
 ## 1. Le gadget « niveau 3, en haut à gauche » : HVAC HURRICANE (plan C)

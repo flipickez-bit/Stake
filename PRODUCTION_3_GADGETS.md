@@ -254,13 +254,14 @@ Chaque branche a sa carte de collection (150 noms uniques, `src/content/collecti
 4. **FIRE**. Le plan part AVEC la mise et devient immuable (invariant I9).
 5. **RESULT**.
 6. **Découverte** : une carte vole vers le livre.
-7. **REVEAL OTHER PLANS** : uniquement à la demande, sans son ni célébration.
+7. **OTHER PLANS** : les trois résultats s'affichent **d'office** (affichage obligatoire), sans son ni célébration.
 8. **NEXT**.
 
 Règles d'affichage des autres plans (`src/app/poc/OtherPlans.svelte`) :
-- ON-DEMAND est l'expérience principale et, depuis P3.1, **la valeur par défaut** ; le PLAYTEST #3 l'impose et rétablit l'ancien réglage à la fin ;
-- après chaque manche, l'action REVEAL OTHER PLANS est bien visible sous le résultat ; le panneau montre les trois plans dans l'ordre de l'écran et reste ouvert jusqu'à un geste du joueur (REPLAY PLAN, CHOOSE ANOTHER PLAN, fermer, FIRE) — détails : `P3_1_CORRECTIF.md` §5 ;
-- PRIVATE et REVEAL ALL sont des réglages DEV ;
+- **REVEAL ALL est la valeur par défaut** depuis le 2026-09-28 (décision utilisateur après P3.1 : « le résultat des autres options doit s'afficher obligatoirement, pas quand le joueur le veut ») ; le PLAYTEST #3 l'impose et rétablit l'ancien réglage à la fin ;
+- après CHAQUE manche (perte, x0,5, gain, gros gain), et après le vol de la carte NEW éventuelle, le panneau s'ouvre seul sous le résultat : les trois plans dans l'ordre de l'écran, YOUR PLAN marqué, valeurs exactes du book ; il reste affiché jusqu'à un geste du joueur (REPLAY PLAN, CHOOSE ANOTHER PLAN, fermer, FIRE) — détails : `P3_1_CORRECTIF.md` §5 ;
+- ON-DEMAND (bouton REVEAL OTHER PLANS) et PRIVATE sont des réglages DEV ;
+- **INFORMATION STAKE ENGINE REQUISE** : montrer d'office ce qu'auraient rapporté les plans non joués est la variante la plus exposée au risque de « near-miss » (Q24) ; à valider avec Stake avant toute sortie ;
 - le vocabulaire est neutre, contrôlé par `FORBIDDEN_PHRASES` et ses tests.
 
 ## 4. Collection (niveau → gadget → animations)
@@ -378,7 +379,7 @@ Crochets de capture et de test : `window.__BADBOSS__.dev.forceBranch(gadget, bra
   - LOOP ×100 par niveau et par plan (3 vitesses) ;
   - pannes réseau en mode 3 gadgets ;
   - PLAYTEST #3.
-- **E2E** (Playwright) : flux RGS classique ; plans (choix avant Play, double tap, rechargement) ; ON-DEMAND silencieux ; collection et MELTDOWN (9 gadgets et classique) ; PLAYTEST 50 et PLAYTEST #3.
+- **E2E** (Playwright) : flux RGS classique ; plans (choix avant Play, double tap, rechargement) ; autres plans affichés d'office, sans son de gain ; collection et MELTDOWN (9 gadgets et classique) ; PLAYTEST 50 et PLAYTEST #3.
 - **LOOP ×100 par Rage Level dans le navigateur** (turbo, plans A → B → C, les 9 gadgets ; `docs/generated/LOOP_X100_P3_{GRUMPY,FURIOUS,UNHINGED}.md`) :
 
 | Niveau | Manches / reveal | Erreurs | Appels wallet | Tas après GC (0 → 50 → 100) | Nœuds (repos → stable) | Particules max |
@@ -392,9 +393,9 @@ Crochets de capture et de test : `window.__BADBOSS__.dev.forceBranch(gadget, bra
 ## 11. PLAYTEST #3
 
 Le bouton **PLAYTEST** du Mock lance la session. Tout reste local : export manuel, argent fictif.
-- 50 manches comme un joueur normal, en ON-DEMAND.
+- 50 manches comme un joueur normal ; les autres plans s'affichent d'office (REVEAL ALL imposé).
 - Mesures par manche : niveau, **plan et gadget**, issue, durée, vitesse, découverte.
-- Changements de gadget dans un même niveau, usage de REVEAL OTHER PLANS (après perte ou gain).
+- Changements de gadget dans un même niveau, ouvertures manuelles de REVEAL OTHER PLANS (0 attendu : l'affichage est automatique).
 - Questionnaire à la fin seulement :
   - les 8 affirmations des PLAYTEST #1/#2, pour la comparaison ;
   - 3 affirmations sur les gadgets (intérêt égal des trois gadgets, plaisir de choisir, impression qu'un gadget rapporte plus : une note basse est attendue, puisque les maths sont symétriques) ;

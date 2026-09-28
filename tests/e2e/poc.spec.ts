@@ -141,7 +141,7 @@ test('POC : ON-DEMAND propose REVEAL OTHER PLANS après une perte ET après un g
   await expect(page.getByTestId('other-plans')).toHaveCount(0);
 });
 
-test('POC : REVEAL ALL (DEV, expérimental) affiche les trois plans automatiquement après chaque manche', async ({ page }) => {
+test('REVEAL ALL (défaut, affichage obligatoire) : les trois plans s\'affichent automatiquement après chaque manche', async ({ page }) => {
   await boot(page);
   await setAlt(page, 'REVEAL_ALL');
   await playRound(page, 'C', [2, 0, 0]);
@@ -172,24 +172,25 @@ test('POC : PLAYTEST A/B — ordre tiré, compteur de session, affichage de la v
   expect(rounds[0].alternatives).toEqual({ A: 0, B: 0, C: 0 });
 });
 
-test('PLAYTEST #3 : session en mode 3 gadgets — plan et gadget par manche, changements de gadget, REVEAL OTHER PLANS mesurés localement', async ({ page }) => {
+test('PLAYTEST #3 : session en mode 3 gadgets — plan et gadget par manche, changements de gadget, autres plans affichés d\'office', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.flow.setSpeed('super'));
   await page.getByTestId('playtest-open').click();
   await expect(page.getByTestId('playtest-intro')).toContainText('PLAYTEST #3');
   await page.getByTestId('playtest-go').click();
   await untilState(page, 'READY');
-  // Expérience principale : ON-DEMAND.
-  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.poc.altDisplay.current)).toBe('ON_DEMAND');
+  // Expérience principale : les autres plans s'affichent obligatoirement après chaque manche.
+  expect(await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.poc.altDisplay.current)).toBe('REVEAL_ALL');
   await expect(page.getByTestId('playtest-counter')).toContainText('PLAYTEST 1/50');
   await playRound(page, 'A', [0, 2, 5]);
   await playRound(page, 'A', [0, 2, 5]);
   await playRound(page, 'C', [0, 2, 0]);
-  await page.getByTestId('reveal-other-plans').click();
-  await expect(page.getByTestId('other-plans')).toBeVisible();
+  await expect(page.getByTestId('other-plans')).toBeVisible({ timeout: 5_000 });
   const current = await page.evaluate(() => (window as unknown as Win).__BADBOSS__.ctx.playtest.current);
   expect(current.plans).toBe(true);
   expect(current.rounds.map((r: { plan: string }) => r.plan)).toEqual(['A', 'A', 'C']);
   expect(current.rounds.map((r: { gadget: string }) => r.gadget)).toEqual(['swivel-slingshot', 'swivel-slingshot', 'copier-catapult']);
-  expect(current.otherPlans).toEqual({ opens: 1, afterLoss: 1, afterWin: 0 });
+  expect(current.altDisplay).toBe('REVEAL_ALL');
+  // Affichage automatique : aucune ouverture manuelle à compter.
+  expect(current.otherPlans).toEqual({ opens: 0, afterLoss: 0, afterWin: 0 });
 });

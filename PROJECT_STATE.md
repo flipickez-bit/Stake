@@ -2,7 +2,15 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-_Dernière mise à jour : 2026-09-28, **P3.1 livré : correctif final avant le PLAYTEST #3** (`P3_1_CORRECTIF.md`). A2 : INFORMATION STAKE ENGINE REQUISE (Mock seulement ; Stake = mode classique)._
+_Dernière mise à jour : 2026-09-28, **P3.1 livré** (`P3_1_CORRECTIF.md`), puis **autres plans affichés d'office**. A2 : INFORMATION STAKE ENGINE REQUISE (Mock seulement ; Stake = mode classique)._
+
+## Après P3.1 — autres plans affichés OBLIGATOIREMENT (2026-09-28)
+- ✅ Demande utilisateur : « le résultat des autres options doit s'afficher obligatoirement, pas quand le joueur le veut ».
+- ✅ REVEAL ALL par défaut (clé `badboss.altdisplay.v3` : les anciens choix PRIVATE / ON-DEMAND ne sont pas repris) et imposé par le PLAYTEST #3 ; ON-DEMAND et PRIVATE deviennent des réglages DEV.
+- ✅ Le panneau s'ouvre seul après chaque manche (après le vol de la carte NEW) ; aucun son de gain, aucune découverte, aucune suggestion ; REPLAY / CHOOSE ANOTHER PLAN inchangés.
+- ✅ Tests : 159 unitaires, 35 E2E (dont 8 réécrits pour l'affichage d'office). Maths inchangées.
+- ⚠ INFORMATION STAKE ENGINE REQUISE : l'affichage d'office des résultats non joués est la variante la plus exposée au risque de « near-miss » (Q24).
+- ⏳ Demande suivante, en attente de votre choix : **tours gratuits** comme bonus, **plus rares mais de vraie valeur** (changement de maths, voir TODO).
 
 ## P3.1 — CORRECTIF FINAL AVANT PLAYTEST #3 (`P3_1_CORRECTIF.md`)
 - ✅ Variété perçue d'HVAC HURRICANE (UNHINGED, en haut à gauche) :
@@ -11,7 +19,7 @@ _Dernière mise à jour : 2026-09-28, **P3.1 livré : correctif final avant le P
   - branches différentes vues en 10 / 50 manches : 4,8 → 5,5 et 8,6 → 10,2.
 - ✅ OTHER PLANS :
   - cause réelle : réglage PRIVATE par défaut et bouton trop discret ;
-  - désormais ON-DEMAND par défaut et imposé par le PLAYTEST #3 (réglage rétabli à la fin) ;
+  - ON-DEMAND par défaut et imposé par le PLAYTEST #3 (réglage rétabli à la fin) — **remplacé depuis par REVEAL ALL (affichage obligatoire)** ;
   - action bien visible après chaque manche, panneau A/B/C dans l'ordre de l'écran, REPLAY / CHOOSE ANOTHER PLAN, indication unique après la 1re manche du PLAYTEST.
 - ✅ Maths inchangées ; 8 autres gadgets inchangés ; 150 cartes (MELTDOWN P50 86 / P90 123).
 - **Préversion privée P3.1 (à utiliser pour le PLAYTEST #3)** : https://claude.ai/artifact/KC9VuCh8R6v71gcTwjpBME
@@ -36,7 +44,7 @@ _Dernière mise à jour : 2026-09-28, **P3.1 livré : correctif final avant le P
 - ✅ POC MOCK / DEV séparé (`?poc=3gadget`, `npm run build:poc`) : scène GRUMPY avec A · SWIVEL SLINGSHOT (réel), B · ESPRESSO BLASTER et C · COPIER CATAPULT (prototypes) posés dans le bureau.
 - ✅ Maths A2 expérimentales (Mock seulement) : triple tiré sans connaître le plan, BOSS FIGHT commun, RTP A = B = C ; **maths de production inchangées**.
 - ✅ Sécurité : plan choisi AVANT Play, verrouillé ensuite (animation, rechargement, reprise, double tap) — tests unitaires et e2e.
-- ✅ PRIVATE par défaut ; ON-DEMAND (« REVEAL OTHER PLANS » après toutes les manches, neutre, silencieux) ; REVEAL ALL en DEV seulement.
+- ✅ (POC) PRIVATE par défaut ; ON-DEMAND ; REVEAL ALL en DEV — aujourd'hui : **REVEAL ALL par défaut** (affichage obligatoire).
 - ✅ PLAYTEST A/B 2 × 30 manches (ordre aléatoire, Q1–Q7, mesures de changement de gadget, export local).
 - ✅ Tests : 126 unitaires + 25 e2e verts. Performances : `docs/generated/POC3_PERF.md`. Captures : `docs/poc3/`.
 - ✅ Résumé technique pour Stake : `docs/STAKE_A2_TECH_SUMMARY.md` ; A2 **non validée production** : INFORMATION STAKE ENGINE REQUISE (Q21–Q29).

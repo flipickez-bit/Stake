@@ -462,14 +462,15 @@ describe('RGS / réseau en mode 3 gadgets (régression) : ROUND_STATUS_UNKNOWN, 
   }, 30_000);
 });
 
-describe('OTHER PLANS (P3.1) : ON-DEMAND par défaut ; valeurs = triple AUTHENTIQUE du book, indépendant du plan choisi', () => {
-  it('réglage : ON_DEMAND par défaut ; une ancienne valeur PRIVATE (v1, POC) n\'est pas reprise ; un choix v2 est gardé', () => {
+describe('OTHER PLANS : affichage obligatoire par défaut ; valeurs = triple AUTHENTIQUE du book, indépendant du plan choisi', () => {
+  it('réglage : REVEAL_ALL (affichage obligatoire) par défaut ; les anciennes valeurs (v1 PRIVATE, v2 ON_DEMAND) ne sont pas reprises', () => {
     const store = createMemoryStore();
     store.set('badboss.poc3.altdisplay.v1', 'PRIVATE');
-    expect(new AltDisplaySetting(store).current).toBe('ON_DEMAND');
-    const a = new AltDisplaySetting(store);
-    a.set('REVEAL_ALL');
+    store.set('badboss.altdisplay.v2', 'ON_DEMAND');
     expect(new AltDisplaySetting(store).current).toBe('REVEAL_ALL');
+    const a = new AltDisplaySetting(store);
+    a.set('ON_DEMAND');
+    expect(new AltDisplaySetting(store).current).toBe('ON_DEMAND');
   });
 
   it('les résultats révélés sont EXACTEMENT ceux du triple du book, et le triple ne dépend jamais du plan choisi', () => {
