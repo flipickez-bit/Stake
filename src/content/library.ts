@@ -174,7 +174,10 @@ const BF_ARENA = seg('BF_ARENA', 'twist', 700, 'compress', [
  * Un TOUR GRATUIT : lancer (tronc commun, l'issue reste inconnue ~700 ms), puis HIT (gain = base × rage, affiché au
  * moment du choc) ou BLOCKED. Plus la rage monte, plus le choc est lourd (secousse, étincelles, hauteur du DING).
  */
-function freeRoundSegments(index: number, round: FreeRound, projectiles: readonly string[] = BF_PROJECTILES): SegmentDef[] {
+/** Éclats de l'arène à chaque HIT (positions fixes, pas de hasard) : l'arène se fissure un peu plus à chaque coup. */
+const BF_CHIPS: readonly [number, number][] = [[250, 140], [760, 120], [180, 330], [820, 300], [400, 90], [640, 70], [120, 200], [880, 210]];
+
+function freeRoundSegments(index: number, round: FreeRound, projectiles: readonly string[] = BF_PROJECTILES, hitsBefore = 0): SegmentDef[] {
   const kind = projectiles[round.variant % projectiles.length] ?? 'stapler';
   const heat = Math.min(round.rage, 8);
   const windup = seg(`BF_WINDUP_${index}`, 'action', 700, 'compress', [
@@ -192,6 +195,9 @@ function freeRoundSegments(index: number, round: FreeRound, projectiles: readonl
       sound(80, 'clang'), shake(80, 220 + heat * 20, 7 + heat), anim(80, 'boss', 'giant-hurt'),
       tw(100, 'proj', { alpha: 0 }, 100), fx(80, 'sparks', 480, 420, 12 + heat * 3),
       signal(150, 'frHit', index), sound(170, 'ding', 1 + (heat - 1) * 0.07),
+      // DESTRUCTION CUMULATIVE : chaque HIT fissure l'arène un peu plus (rendu du fond selon `dmg`) et fait tomber des éclats.
+      state(150, 'bfBack', `dmg=${hitsBefore + 1}`),
+      fx(160, 'debris', BF_CHIPS[hitsBefore % BF_CHIPS.length]![0], BF_CHIPS[hitsBefore % BF_CHIPS.length]![1], 4 + heat),
     ])];
   }
   return [windup, seg(`BF_BLOCK_${index}`, 'impact', 560, 'keep', [
@@ -203,12 +209,18 @@ function freeRoundSegments(index: number, round: FreeRound, projectiles: readonl
 
 function bossFightSegments(bf: NonNullable<Outcome['bossFight']>, projectiles?: readonly string[]): SegmentDef[] {
   const out: SegmentDef[] = [BF_ENTRY_MUG, BF_ARENA];
-  bf.rounds.forEach((r, i) => out.push(...freeRoundSegments(i, r, projectiles?.length ? projectiles : BF_PROJECTILES)));
+  let hits = 0;
+  bf.rounds.forEach((r, i) => {
+    out.push(...freeRoundSegments(i, r, projectiles?.length ? projectiles : BF_PROJECTILES, hits));
+    if (r.result === 'HIT') hits++;
+  });
   if (bf.ko) {
     out.push(seg('BF_KO', 'impact', 1700, 'keep', [
       anim(0, 'boss', 'giant-ko'), tw(0, 'boss', { rot: -1.45, y: 600 }, 600, 'inQuad'),
       sound(600, 'crash'), shake(600, 650, 18), freeze(600, 130), fx(600, 'dust', 380, 560, 30),
       signal(600, 'bfKo'), signal(650, 'reveal'), fx(700, 'confetti', 500, 280, 60), fx(720, 'gold', 500, 260, 40),
+      // Effondrement : l'arène cède, pluie de gravats et de dossiers.
+      state(600, 'bfBack', 'dmg=collapse'), fx(620, 'debris', 300, 40, 18), fx(660, 'debris', 700, 30, 18), fx(700, 'papers', 500, 60, 24),
       sound(700, 'cheer'), sound(760, 'ding', 1.2),
       tw(1000, 'boss', { sx: 1, sy: 1 }, 500, 'outQuad'), tw(1000, 'bfBack', { alpha: 0 }, 500), tw(1000, 'dim', { alpha: 0 }, 500),
     ]));

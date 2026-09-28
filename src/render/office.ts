@@ -61,5 +61,50 @@ export function drawBfBackdrop(): Container {
   title.alpha = 0.18;
   title.position.set(0, -250);
   view.addChild(title);
+  // DESTRUCTION CUMULATIVE (tours gratuits) : 8 fissures qui apparaissent une à une (une par HIT), puis l'effondrement.
+  // Tracés fixes (générateur à graine constante, jamais Math.random) : même bonus, même image.
+  let seed = 0x5eed;
+  const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296);
+  const starts: [number, number][] = [[-560, -300], [560, -280], [-620, 60], [600, 90], [-240, -330], [260, -340], [-700, -120], [700, -60]];
+  starts.forEach(([x0, y0], i) => {
+    const crack = new Graphics();
+    const pts: number[] = [x0, y0];
+    let x = x0;
+    let y = y0;
+    for (let k = 0; k < 7; k++) {
+      x += (-x0 / 9) + (rnd() - 0.5) * 70;
+      y += (-y0 / 9) + (rnd() - 0.5) * 70;
+      pts.push(x, y);
+    }
+    crack.poly(pts, false).stroke({ width: 9, color: 0x0b0414, join: 'round', cap: 'round' });
+    crack.poly(pts, false).stroke({ width: 3, color: 0xff9e5e, join: 'round', cap: 'round' });
+    // Branche secondaire.
+    const m = 6 + Math.floor(rnd() * 4) * 2;
+    const bx = pts[m] ?? x0;
+    const by = pts[m + 1] ?? y0;
+    crack.moveTo(bx, by).lineTo(bx + (rnd() - 0.5) * 160, by + (rnd() - 0.2) * 120).stroke({ width: 3, color: 0xff9e5e, cap: 'round' });
+    crack.visible = false;
+    crack.label = `crack-${i + 1}`;
+    view.addChild(crack);
+  });
+  const collapse = new Graphics();
+  for (let i = 0; i < 14; i++) {
+    const x = -680 + i * 105 + (rnd() - 0.5) * 40;
+    collapse.poly([x, -700, x + 60 + rnd() * 40, -700, x + 30, -330 - rnd() * 160], true).fill({ color: 0x0b0414, alpha: 0.85 });
+  }
+  collapse.visible = false;
+  collapse.label = 'collapse';
+  view.addChild(collapse);
   return view;
+}
+
+/** Dégâts de l'arène (état `dmg` du fond : nombre de HIT, ou `collapse` au K.O.). Rendu seulement. */
+export function setBfDamage(view: Container, dmg: string | undefined): void {
+  const all = dmg === 'collapse';
+  const n = all ? 8 : Math.max(0, Math.min(8, Number(dmg ?? 0) || 0));
+  for (const c of view.children) {
+    if (c.label?.startsWith('crack-')) c.visible = Number(c.label.slice(6)) <= n;
+    else if (c.label === 'collapse') c.visible = all;
+  }
+  view.children[0]!.position.y = all ? 18 : 0;
 }

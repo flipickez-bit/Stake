@@ -487,7 +487,8 @@ export class PixiStage implements SceneSink {
     }
 
     // Superpositions plein cadre du contenu (BOSS FIGHT, assombrissement).
-    this.add('bfBack', office.drawBfBackdrop(), undefined, this.overlays);
+    const bfBack = office.drawBfBackdrop();
+    this.add('bfBack', bfBack, (f) => office.setBfDamage(bfBack, f.states.dmg), this.overlays);
     this.add('dim', new Graphics().rect(-1400, -700, 2800, 1400).fill(INK), undefined, this.overlays);
 
     // ---------------------------------------------------------------- accessoires des gadgets
