@@ -14,6 +14,7 @@ _Dernière mise à jour : 2026-09-28, **P3.1 livré : correctif final avant le P
   - désormais ON-DEMAND par défaut et imposé par le PLAYTEST #3 (réglage rétabli à la fin) ;
   - action bien visible après chaque manche, panneau A/B/C dans l'ordre de l'écran, REPLAY / CHOOSE ANOTHER PLAN, indication unique après la 1re manche du PLAYTEST.
 - ✅ Maths inchangées ; 8 autres gadgets inchangés ; 150 cartes (MELTDOWN P50 86 / P90 123).
+- **Préversion privée P3.1 (à utiliser pour le PLAYTEST #3)** : https://claude.ai/artifact/KC9VuCh8R6v71gcTwjpBME
 
 ## PRODUCTION 3 GADGETS (`PRODUCTION_3_GADGETS.md`)
 - ✅ 9 gadgets réels, 3 par Rage Level :

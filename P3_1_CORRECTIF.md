@@ -2,7 +2,9 @@
 
 > **BAD BOSS — WORKING TITLE — TRADEMARK/CLEARANCE REQUIRED**
 
-**Date** : 2026-09-28. **Portée** : passe ciblée. Deux problèmes remontés par l'utilisateur, rien d'autre :
+**Date** : 2026-09-28. **Préversion privée P3.1** : https://claude.ai/artifact/KC9VuCh8R6v71gcTwjpBME (Mock RGS, argent fictif ; bouton PLAYTEST).
+
+**Portée** : passe ciblée. Deux problèmes remontés par l'utilisateur, rien d'autre :
 1. la variété perçue du gadget « niveau 3, en haut à gauche » ;
 2. l'affichage des autres plans (OTHER PLANS).
 
