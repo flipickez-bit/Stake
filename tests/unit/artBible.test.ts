@@ -13,9 +13,10 @@ import { PLAN_PARTS } from '../../src/render/art/parts/plans';
 import { FURIOUS_PARTS } from '../../src/render/art/parts/furious';
 import { UNHINGED_PARTS } from '../../src/render/art/parts/unhinged';
 import { VFX_PARTS } from '../../src/render/art/parts/vfx';
-import { ART_BOOKS, PLAN_BOOK } from '../../src/render/art/books';
+import { TROPHY_PARTS } from '../../src/render/art/parts/trophies';
+import { ART_BOOKS, PLAN_BOOK, TROPHY_BOOK } from '../../src/render/art/books';
 
-const ALL = [...BOSS_PARTS, ...CAST_PARTS, ...OFFICE_PARTS, ...VFX_PARTS, ...PLAN_PARTS, ...FURIOUS_PARTS, ...UNHINGED_PARTS];
+const ALL = [...BOSS_PARTS, ...CAST_PARTS, ...OFFICE_PARTS, ...VFX_PARTS, ...PLAN_PARTS, ...FURIOUS_PARTS, ...UNHINGED_PARTS, ...TROPHY_PARTS];
 
 /** Retire les masques de luminance (blanc/noir techniques) et les dégradés qu'ils utilisent. */
 function visible(body: string): string {
@@ -89,7 +90,7 @@ describe('ART BIBLE : cohérence automatique des assets', () => {
       }
       return pages.reduce((a, pg) => a + pow2(pg.width * book.scale) * pow2(pg.height * book.scale) * 4, 0) * (4 / 3) / 1048576;
     };
-    for (const book of [...ART_BOOKS, PLAN_BOOK]) {
+    for (const book of [...ART_BOOKS, PLAN_BOOK, TROPHY_BOOK]) {
       for (const p of book.parts) {
         expect(seen.has(p.id), `${p.id} dans deux livres`).toBe(false);
         seen.add(p.id);
@@ -98,10 +99,11 @@ describe('ART BIBLE : cohérence automatique des assets', () => {
     expect(seen.size).toBe(ALL.length);
     const base = ART_BOOKS.reduce((a, b) => a + mb(b), 0);
     const plans = mb(PLAN_BOOK);
+    const trophies = mb(TROPHY_BOOK);
     // Mémoire GPU des atlas (mipmaps comprises). Cible MVP_ROADMAP §4 : ≤ 64 Mo de textures actives sur mobile,
-    // tampons d'affichage compris : les atlas restent sous 40 Mo, tout chargé (pire cas).
+    // tampons d'affichage compris : les atlas restent sous 40 Mo, tout chargé (pire cas : plans ET trophées).
     expect(base).toBeLessThanOrEqual(36);
-    expect(base + plans).toBeLessThanOrEqual(40);
+    expect(base + plans + trophies).toBeLessThanOrEqual(40);
     expect(pow2(packShelves(PLAN_BOOK.parts, (PLAN_BOOK.maxPx ?? 2048) / PLAN_BOOK.scale, 2048 / PLAN_BOOK.scale).pages[0]!.width * PLAN_BOOK.scale)).toBeLessThanOrEqual(1024);
   });
 });

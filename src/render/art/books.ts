@@ -9,6 +9,7 @@ import { FURIOUS_PARTS } from './parts/furious';
 import { UNHINGED_PARTS } from './parts/unhinged';
 import { OFFICE_PARTS } from './parts/office';
 import { PLAN_PARTS } from './parts/plans';
+import { TROPHY_PARTS } from './parts/trophies';
 import { VFX_PARTS } from './parts/vfx';
 
 /** Art flou par nature (lointain, lumière, ombres) : 0,6 px par unité suffit. */
@@ -42,6 +43,13 @@ export const UNHINGED_BOOK: AtlasBook = { id: 'unhinged', scale: 1.5, maxPx: 102
 export const ART_BOOKS: readonly AtlasBook[] = [CHARACTER_BOOK, PROPS_BOOK, DECOR_BOOK, SOFT_BOOK, FURIOUS_BOOK, UNHINGED_BOOK];
 
 /**
+ * TROPHÉES VISIBLES de la collection (HALL OF SHAME, cicatrices, blessures de B.B., auras des gadgets) : petite page
+ * (1024 × 512, 1,5 px par unité), chargée en différé et SEULEMENT si la collection est active (Mock ; jamais en mode
+ * Stake tant que la méta-progression n'est pas confirmée). Rendu seulement : aucun effet sur une manche.
+ */
+export const TROPHY_BOOK: AtlasBook = { id: 'trophies', scale: 1.5, maxPx: 1024, parts: TROPHY_PARTS };
+
+/**
  * POC « 3 PLANS » : prototypes des plans B et C, dans leur propre petite page (1024 × 512, 1,5 px par unité),
  * chargée SEULEMENT en mode POC. Le budget des livres de production (≤ 32 Mo) n'est pas touché.
  */
@@ -51,7 +59,7 @@ export const PLAN_BOOK: AtlasBook = { id: 'plans', scale: 1.5, maxPx: 1024, part
  * LOT 6 (perf) : livres chargés APRÈS la construction de la scène de jeu (préchargement en arrière-plan, en
  * parallèle de la connexion au RGS). La base (personnages, accessoires, décor, art doux) reste immédiate.
  */
-export const DEFERRED_BOOKS: ReadonlySet<string> = new Set([FURIOUS_BOOK.id, UNHINGED_BOOK.id, PLAN_BOOK.id]);
+export const DEFERRED_BOOKS: ReadonlySet<string> = new Set([FURIOUS_BOOK.id, UNHINGED_BOOK.id, PLAN_BOOK.id, TROPHY_BOOK.id]);
 
 /** Même art à une autre densité (vignettes du COLLECTION BOOK : leur propre contexte WebGL, peu de pixels). */
 export function scaledBooks(k: number): readonly AtlasBook[] {

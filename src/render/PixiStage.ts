@@ -17,7 +17,7 @@ import type { ActorFrame, FrameState } from '../presentation/timeline';
 import type { ActorId, GadgetDef } from '../presentation/types';
 import type { SceneSink } from '../presenter/Presenter';
 import { loadTextures } from './art/atlas';
-import { DEFERRED_BOOKS, PLAN_BOOK, scaledBooks } from './art/books';
+import { DEFERRED_BOOKS, PLAN_BOOK, scaledBooks, TROPHY_BOOK } from './art/books';
 import { BossRig, CHAIR_SCALE } from './art/BossRig';
 import { CooRig, HandsRig, WendellRig } from './art/castRigs';
 import { ArtKit } from './art/kit';
@@ -25,6 +25,8 @@ import { drawCeiling, drawFloor, drawPlayerDesk, drawWall, FLOOR_Y, makeGradeCan
 import { hex } from './art/palette';
 import { DEFAULT_LOOK, type CosmeticLook } from './cosmeticLook';
 import * as office from './office';
+import { holo, TrophyLayer } from './TrophyLayer';
+import type { GadgetTier, TrophyState, TrophyUnlock } from '../collection/trophies';
 
 /**
  * Zone de jeu à toujours montrer (coordonnées du monde logique 1000 × 700).
@@ -224,6 +226,13 @@ export class PixiStage implements SceneSink {
   private offscreen = false;
   /** DEV (concepts, captures) : impose l'habillage d'un monde, quel que soit le gadget. */
   worldOverride: RageLevelId | null = null;
+  /** TROPHÉES VISIBLES de la collection (HALL OF SHAME, cicatrices, étapes du bureau) : null si la collection est inactive. */
+  private trophyLayer: TrophyLayer | null = null;
+  /** GADGETS DE LÉGENDE : niveau de chaque gadget (rendu seulement) et aura de chaque plan affiché. */
+  private tiers: Record<string, GadgetTier> = {};
+  private readonly tierBursts = new Map<string, number | null>();
+  private readonly auraPool: { aura: Sprite; twinkles: Sprite[] }[] = [];
+  private currentGadget: GadgetDef | null = null;
   /** Livres différés (FURIOUS, UNHINGED, plans B/C) arrivés : attendu avant la première manche. */
   artReady: Promise<void> = Promise.resolve();
 
@@ -231,7 +240,7 @@ export class PixiStage implements SceneSink {
    * `offscreen` : scène secondaire (vignettes du COLLECTION BOOK) — tampon conservé pour la lecture des pixels,
    * résolution 1, pas d'identifiant de test.
    */
-  async init(host: HTMLElement, options: { offscreen?: boolean; plans?: boolean } = {}): Promise<void> {
+  async init(host: HTMLElement, options: { offscreen?: boolean; plans?: boolean; trophies?: boolean } = {}): Promise<void> {
     this.offscreen = options.offscreen === true;
     await this.app.init({
       background: hex('ink'),
@@ -249,7 +258,8 @@ export class PixiStage implements SceneSink {
     // Vignettes (hors écran) : atlas à demi-densité, largement suffisants pour une carte de 320 px.
     // Plans B/C : petite page d'atlas des gadgets posés sur le bureau du joueur, chargée seulement dans ce mode.
     const books = scaledBooks(options.offscreen ? 0.5 : 1);
-    const all = options.plans ? [...books, PLAN_BOOK] : [...books];
+    // Trophées de la collection : seulement si elle est active (jamais dans les vignettes, le replay par URL ni sur Stake).
+    const all = [...books, ...(options.plans ? [PLAN_BOOK] : []), ...(options.trophies && !options.offscreen ? [TROPHY_BOOK] : [])];
     // LOT 6 (perf) : la scène de jeu se construit avec les livres de base (bureau, personnages, décor) ; les livres
     // d'un Rage Level (FURIOUS, UNHINGED) et des plans B/C arrivent juste après, en arrière-plan (`artReady`).
     // Les vignettes chargent tout d'un coup (elles photographient n'importe quel monde tout de suite).
@@ -270,6 +280,85 @@ export class PixiStage implements SceneSink {
     this.boss?.setLook(look);
     if (this.duck) this.duck.visible = look.duck;
     if (this.trapView) this.trapView.tint = look.trapdoor === 'arctic' ? 0x9be7ff : 0xffffff;
+  }
+
+  /**
+   * TROPHÉES VISIBLES (collection) : HALL OF SHAME, cicatrices, étapes du bureau, blessures de B.B., niveaux des gadgets.
+   * `unlocks` : ce qui vient d'apparaître (mis en scène). Rendu seulement, jamais un cue ni une durée.
+   */
+  setTrophies(state: TrophyState, unlocks: readonly TrophyUnlock[] = []): void {
+    this.trophyLayer?.set(state, unlocks);
+    this.boss?.setInjuries(state.injuries, unlocks.flatMap((u) => (u.kind === 'injury' ? [u.injury] : [])));
+    this.tiers = { ...state.tiers };
+    for (const u of unlocks) if (u.kind === 'tier') this.tierBursts.set(u.gadgetId, null);
+  }
+
+  /** DEV, tests : photos affichées au mur. */
+  get trophyPhotoCount(): number {
+    return this.trophyLayer?.photoCount ?? 0;
+  }
+
+  /**
+   * GADGETS DE LÉGENDE : aura derrière chaque gadget selon son niveau (TUNED chrome, NEON magenta/cyan, LEGENDARY
+   * holographique ; jamais l'or du BOSS FIGHT). Au choix du plan : les trois ; pendant la manche : le gadget joué, atténué.
+   */
+  private drawTierAuras(frame: FrameState): void {
+    const kit = this.kit;
+    if (!kit || !kit.has('tr_aura')) return;
+    const list = this.pickerActive && this.pickSet ? this.pickSet : this.currentGadget ? [this.currentGadget] : [];
+    const clock = frame.clock;
+    for (let i = 0; i < 3; i++) {
+      let pool = this.auraPool[i];
+      if (!pool) {
+        const aura = kit.sprite('tr_aura');
+        aura.blendMode = 'add';
+        const twinkles = [0, 1, 2, 3].map(() => {
+          const t = kit.sprite('tr_twinkle');
+          t.blendMode = 'add';
+          return t;
+        });
+        pool = { aura, twinkles };
+        this.auraPool[i] = pool;
+      }
+      const g = list[i];
+      const tier = g ? (this.tiers[g.id] ?? 0) : 0;
+      const pick = g?.pick;
+      const show = !!pick && tier > 0 && (this.pickerActive || i === 0);
+      pool.aura.visible = show;
+      pool.twinkles.forEach((t) => (t.visible = show && tier >= 2));
+      if (!show || !pick || !g) continue;
+      const layer = pick.layer === 'front' ? this.plansLayer : this.spotRoom;
+      if (pool.aura.parent !== layer) {
+        layer.addChildAt(pool.aura, 0);
+        for (const t of pool.twinkles) layer.addChild(t);
+      }
+      const b = pick.box;
+      const cx = b.x + b.w / 2;
+      const cy = b.y + b.h / 2;
+      const r = Math.max(b.w, b.h);
+      let burst = 0;
+      const start = this.tierBursts.get(g.id);
+      if (start !== undefined) {
+        const t0 = start ?? clock;
+        if (start === null) this.tierBursts.set(g.id, clock);
+        const k = (clock - t0) / 1200;
+        burst = k < 1 ? Math.sin(Math.PI * k) : 0;
+        if (k >= 1) this.tierBursts.delete(g.id);
+      }
+      const dim = this.pickerActive ? 1 : 0.5;
+      const pulse = 1 + 0.05 * Math.sin(clock / 520 + i);
+      pool.aura.position.set(cx, cy);
+      pool.aura.scale.set(((r * 1.45) / 160) * pulse * (1 + 1.2 * burst));
+      pool.aura.tint = tier === 1 ? 0xbfe8ff : tier === 2 ? (Math.sin(clock / 500 + i) > 0 ? 0xff4fd8 : 0x4ff0ff) : holo(clock, i / 3);
+      pool.aura.alpha = Math.min(1, (tier === 1 ? 0.45 : tier === 2 ? 0.6 : 0.7) * dim + 0.5 * burst);
+      pool.twinkles.forEach((t, j) => {
+        const a = clock / 900 + (j * Math.PI) / 2 + i;
+        t.position.set(cx + Math.cos(a) * r * 0.55, cy + Math.sin(a) * r * 0.38);
+        t.scale.set(0.7 + 0.35 * Math.sin(clock / 180 + j * 1.7));
+        t.tint = tier === 3 ? holo(clock, j / 4) : j % 2 ? 0x4ff0ff : 0xff9ff0;
+        t.alpha = 0.85 * dim;
+      });
+    }
   }
 
   destroy(): void {
@@ -388,6 +477,15 @@ export class PixiStage implements SceneSink {
     });
     this.add('bell', kit.sprite('bell'));
 
+    // TROPHÉES VISIBLES (collection active) : mur, sol, plafond et bureau de B.B. gardent les traces de la vengeance.
+    if (kit.has('tr_polaroid')) {
+      const tl = new TrophyLayer(kit);
+      this.trophyLayer = tl;
+      this.bg.addChild(tl.wall);
+      this.room.addChildAt(tl.floor, 1);
+      this.room.addChild(tl.desk);
+    }
+
     // Superpositions plein cadre du contenu (BOSS FIGHT, assombrissement).
     this.add('bfBack', office.drawBfBackdrop(), undefined, this.overlays);
     this.add('dim', new Graphics().rect(-1400, -700, 2800, 1400).fill(INK), undefined, this.overlays);
@@ -493,6 +591,7 @@ export class PixiStage implements SceneSink {
     const ceiling = drawCeiling(kit);
     this.ceilingLights = ceiling.lights;
     this.ceiling.addChild(ceiling.view, this.ceilingDressing);
+    if (this.trophyLayer) this.ceiling.addChild(this.trophyLayer.ceiling);
     const hole = kit.sprite('ceiling_hole');
     this.add('ceiling', this.wrap(hole).outer, (f) => (hole.visible = f.states.main === 'hole'), this.ceiling);
 
@@ -877,6 +976,7 @@ export class PixiStage implements SceneSink {
   }
 
   setGadget(gadget: GadgetDef): void {
+    this.currentGadget = gadget;
     // Au tir, les plans non choisis s'effacent en fondu (au lieu de disparaître d'un coup).
     const wasPicker = this.pickerActive;
     this.pickerActive = gadget.id === 'plan-picker';
@@ -997,6 +1097,9 @@ export class PixiStage implements SceneSink {
     this.drawCable(frame);
     this.applyPickIdle(frame);
     this.drawPlanPicker(frame);
+    this.drawTierAuras(frame);
+    this.trophyLayer?.render(frame.clock);
+    this.boss?.tickInjuries(frame.clock);
     this.drawShadows(frame);
     this.drawSpeed(frame);
     this.drawParticles(frame);
@@ -1157,14 +1260,15 @@ export class PixiStage implements SceneSink {
     });
     if (this.worldLevel === 'unhinged') {
       // Néons qui grésillent et alarme rouge (pulsation lente, jamais plus de 3 Hz).
-      this.ceilingLights.forEach((l, i) => (l.alpha = Math.sin(t / 97 + i * 2.1) > 0.85 ? 0.35 : 1));
+      this.ceilingLights.forEach((l, i) => (l.alpha = (Math.sin(t / 97 + i * 2.1) > 0.85 ? 0.35 : 1) * (this.trophyLayer?.lightFlicker(t + i * 131) ?? 1)));
       if (this.alarm) {
         this.alarm.visible = true;
         this.alarm.setSize(this.width, this.height);
         this.alarm.alpha = 0.06 + 0.08 * (0.5 + 0.5 * Math.sin(t / 380));
       }
     } else {
-      for (const l of this.ceilingLights) l.alpha = 1;
+      // Bureau condamné (trophée OFFICE MELTDOWN) : les néons grésillent aussi dans les autres mondes.
+      this.ceilingLights.forEach((l, i) => (l.alpha = this.trophyLayer?.lightFlicker(t + i * 131) ?? 1));
       if (this.alarm) this.alarm.visible = false;
     }
   }

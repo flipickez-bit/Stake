@@ -69,7 +69,9 @@ export async function bootstrap(host: HTMLElement): Promise<GameContext> {
   const stage = new PixiStage();
   // Mesure (DEV) : initialisation de la scène, rastérisation des atlas d'art comprise (Phase 0.6).
   const stageT0 = performance.now();
-  await stage.init(host, { plans: poc });
+  // Trophées visibles de la collection : atlas chargé seulement si la collection sera active (jamais Stake ni replay URL).
+  const trophies = metaFeaturesFor(params.rgs).collection && !params.replay;
+  await stage.init(host, { plans: poc, trophies });
   const stageInitMs = performance.now() - stageT0;
   let artReadyMs: number | null = null;
   const audio = new AudioDirector();

@@ -8,6 +8,7 @@
 import { Container, Sprite } from 'pixi.js';
 import { CHARACTER_ANIMS } from '../../content/office';
 import type { CharacterAnimator, PoseContext } from '../../presentation/characterAnimator';
+import type { InjuryId } from '../../collection/trophies';
 import type { CosmeticLook } from '../cosmeticLook';
 import type { ArtKit } from './kit';
 
@@ -953,6 +954,9 @@ export class BossRig implements CharacterAnimator<Container> {
   private readonly mug: Sprite;
   private readonly steam: Sprite;
   private look: Pick<CosmeticLook, 'mug' | 'tie' | 'rocket'> = { mug: 'default', tie: 'default', rocket: 'default' };
+  /** B.B. PORTE LES MARQUES (trophées de la collection) : blessures cumulées, rendu seulement. */
+  private readonly injuries = new Map<InjuryId, { sprite: Sprite; scale: number }>();
+  private readonly injuryPops = new Map<InjuryId, number | null>();
 
   constructor(private readonly kit: ArtKit) {
     this.view.addChild(this.inner);
@@ -998,6 +1002,54 @@ export class BossRig implements CharacterAnimator<Container> {
       this.chair, this.legL, this.legR, this.rocket, this.torso, this.tie, this.tieSnapped, this.tieStretched,
       this.armL.root, this.head, this.armR.root,
     );
+    this.buildInjuries();
+  }
+
+  /**
+   * Blessures cartoon (collection) posées sur les pièces du rig : elles suivent la tête, le torse, la touffe, le bras.
+   * Toutes cachées par défaut (pièces de l'atlas des trophées, chargé seulement si la collection est active).
+   */
+  private buildInjuries(): void {
+    const k = this.kit;
+    if (!k.has('bb_inj_bandaid')) return;
+    const put = (id: InjuryId, tex: string, parent: Container, x: number, y: number, rot = 0, scale = 1, index?: number) => {
+      const sp = k.sprite(tex, x, y);
+      sp.rotation = rot;
+      sp.scale.set(scale);
+      sp.visible = false;
+      if (index === undefined) parent.addChild(sp);
+      else parent.addChildAt(sp, index);
+      this.injuries.set(id, { sprite: sp, scale });
+    };
+    put('blackeye', 'bb_inj_blackeye', this.head, -EYE.x, EYE.y - 2, 0, 0.84, this.head.getChildIndex(this.eyeL.root));
+    put('headwrap', 'bb_inj_headwrap', this.head, 0, -70);
+    put('bump', 'bb_inj_bump', this.head, -30, -98, -0.2);
+    put('bandaid', 'bb_inj_bandaid', this.head, 28, -88, 0.15, 0.8);
+    put('papercut', 'bb_inj_papercut', this.head, -38, -30, -0.35);
+    put('singed', 'bb_inj_singed', this.tuft, 0, 0);
+    put('stain', 'bb_inj_stain', this.torso, 22, -70);
+    put('cast', 'bb_inj_cast', this.armL.elbow, 0, 4, 0, 1, 1);
+    put('brace', 'bb_inj_brace', this.inner, 0, NECK_Y + 10, 0, 1, this.inner.getChildIndex(this.armL.root));
+  }
+
+  /** Blessures visibles ; `fresh` : celles qui viennent d'apparaître (petit « pop »). Rendu seulement. */
+  setInjuries(list: readonly InjuryId[], fresh: readonly InjuryId[] = []): void {
+    for (const [id, inj] of this.injuries) inj.sprite.visible = list.includes(id);
+    for (const id of fresh) if (this.injuries.has(id)) this.injuryPops.set(id, null);
+  }
+
+  /** Animation d'apparition des blessures (horloge de présentation). */
+  tickInjuries(clock: number): void {
+    for (const [id, start] of this.injuryPops) {
+      const inj = this.injuries.get(id);
+      if (!inj) continue;
+      const t0 = start ?? clock;
+      if (start === null) this.injuryPops.set(id, clock);
+      const k = Math.min(1, (clock - t0) / 520);
+      const pop = k < 1 ? 1 + 0.9 * Math.exp(-k * 5) * Math.cos(k * 14) : 1;
+      inj.sprite.scale.set(inj.scale * pop);
+      if (k >= 1) this.injuryPops.delete(id);
+    }
   }
 
   private makeArm(x: number, side: 1 | -1): ArmRig {

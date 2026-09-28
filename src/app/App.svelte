@@ -12,6 +12,8 @@
   import { cryptoRandom } from '../platform/rgs/mock/mockMath';
   import DiscoveryFlight from './collection/DiscoveryFlight.svelte';
   import GiftNotice from './collection/GiftNotice.svelte';
+  import TrophyToast from './collection/TrophyToast.svelte';
+  import { trophiesFrom, trophyUnlocks, type GadgetTier, type TrophyState, type TrophyUnlock } from '../collection/trophies';
   import { lookFrom } from './collection/look';
   import { progress as collectionProgress } from '../collection/rewards';
   import type { CollectionState, DiscoveryEvent } from '../collection/types';
@@ -60,6 +62,31 @@
   let lastUnseen = -1;
   let showcaseOn = $state(false);
   let thumbs = $state.raw<ThumbnailRenderer | null>(null);
+  // TROPHÉES VISIBLES (collection) : appliqués au décor en READY ; ce qui vient d'apparaître est mis en scène.
+  let latestTrophies: TrophyState | null = null;
+  let appliedTrophies: TrophyState | null = null;
+  let trophyTiers = $state<Record<string, GadgetTier>>({});
+  let trophyBatch = $state<{ id: number; items: readonly TrophyUnlock[] } | null>(null);
+  let trophyBatchId = 0;
+  /** Au plus 6 photos mises en scène d'un coup (outils DEV : des dizaines de cartes d'un coup). */
+  const MAX_PHOTO_REVEALS = 6;
+  function applyTrophies(c: GameContext): void {
+    if (!latestTrophies || latestTrophies === appliedTrophies) return;
+    const all = appliedTrophies ? trophyUnlocks(appliedTrophies, latestTrophies) : [];
+    const photos = all.filter((u) => u.kind === 'photo');
+    const unlocks = [...all.filter((u) => u.kind !== 'photo'), ...photos.slice(-MAX_PHOTO_REVEALS)];
+    c.stage.setTrophies(latestTrophies, unlocks);
+    appliedTrophies = latestTrophies;
+    trophyTiers = latestTrophies.tiers;
+    if (!unlocks.length) return;
+    trophyBatch = { id: ++trophyBatchId, items: all };
+    // Sons NEUTRES (jamais un son de gain) : papier épinglé, choc sourd, « bonk » sur B.B., bourdonnement d'un gadget.
+    if (photos.length) c.audio.play('paper', 1.1);
+    if (unlocks.some((u) => u.kind === 'scar' || u.kind === 'stage')) c.audio.play('thud', 0.9);
+    if (unlocks.some((u) => u.kind === 'injury')) c.audio.play('bonk', 1.05);
+    if (unlocks.some((u) => u.kind === 'tier')) c.audio.play('whirr', 1.2);
+  }
+  const tierOf = (gadgetId: string): GadgetTier => trophyTiers[gadgetId] ?? 0;
   // POC « 3 PLANS » (BAD BOSS — 3 GADGET POC) : réglage DEV ALTERNATIVE DISPLAY.
   let altMode = $state<AltDisplay>('PRIVATE');
   const poc = $derived(ctx?.poc ?? null);
@@ -116,7 +143,10 @@
       .then((c) => {
         ctx = c;
         devOpen = c.devEnabled && new URL(location.href).searchParams.get('dev') === '1';
-        off.push(c.flow.subscribe((s) => (snap = s)));
+        off.push(c.flow.subscribe((s) => {
+          snap = s;
+          if (s.state === 'READY') applyTrophies(c);
+        }));
         off.push(c.presenter.onSignalEvent(() => (bf = c.presenter.status.bossFight)));
         off.push(c.flow.subscribe((s) => { if (s.state === 'READY' || s.state === 'BET_PENDING') bf = c.presenter.status.bossFight; }));
         off.push(c.playtest.subscribe((s) => {
@@ -136,6 +166,9 @@
           off.push(
             c.collection.subscribe((s) => {
               coll = s;
+              // Trophées : recalculés à chaque changement, appliqués au décor en READY (jamais au milieu d'une manche).
+              if (c.collection) latestTrophies = trophiesFrom(s, c.collection.catalog);
+              if (appliedTrophies === null || c.flow.snapshot.state === 'READY') applyTrophies(c);
               // Cosmétiques : rendu seulement (jamais un cue, une durée ni une branche).
               const look = lookFrom(s);
               c.stage.setCosmetics(look);
@@ -381,7 +414,7 @@
       <div class="badge" data-testid="mode-badge">{snap.state === 'RESUMING' ? 'RESUMED ROUND' : 'REPLAY · NO BET'}</div>
     {/if}
     {#if ctx && snap && poc && snap.plansEnabled && !showcaseOn && !bootError}
-      <PlanPicker flow={ctx.flow} stage={ctx.stage} {snap} onPick={onPickPlan} found={collProgress ? gadgetFound : null} attention={pickAttention} />
+      <PlanPicker flow={ctx.flow} stage={ctx.stage} {snap} onPick={onPickPlan} found={collProgress ? gadgetFound : null} attention={pickAttention} tierOf={collProgress ? tierOf : null} />
     {/if}
     {#if ctx && snap && poc && snap.state === 'READY' && snap.revealed?.plans && roundLevel === snap.level && !showcaseOn && !overlayOpen}
       <OtherPlans
@@ -404,6 +437,7 @@
       <ResultPop revealed={snap?.revealed ?? null} currency={snap?.balance?.currency ?? 'USD'} settled={poc !== null && snap?.plansEnabled === true && snap.state === 'READY'} />
       <BfLadder {bf} />
       {#if ctx?.collection}
+        <TrophyToast batch={trophyBatch} />
         <DiscoveryFlight event={discovery} showOnLoss={ctx.meta.newBadgeOnLoss} target={() => collButton?.getBoundingClientRect() ?? null} onArrive={onCardArrive} />
       {/if}
     {/if}

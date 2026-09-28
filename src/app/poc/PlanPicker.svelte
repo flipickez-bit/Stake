@@ -19,6 +19,7 @@
     onPick,
     found = null,
     attention = 0,
+    tierOf = null,
   }: {
     flow: GameFlow;
     stage: PixiStage;
@@ -28,7 +29,10 @@
     found?: ((gadgetId: string) => { discovered: number; total: number } | null) | null;
     /** « CHOOSE ANOTHER PLAN » : chaque changement fait brièvement pulser les TROIS étiquettes (aucune n'est mise en avant). */
     attention?: number;
+    /** GADGETS DE LÉGENDE : niveau cosmétique de chaque gadget (0 = STANDARD, rien d'affiché). Ne change aucun résultat. */
+    tierOf?: ((gadgetId: string) => 0 | 1 | 2 | 3) | null;
   } = $props();
+  const TIER_LABEL = ['', 'TUNED', 'NEON', 'LEGENDARY'] as const;
 
   let pulsing = $state(false);
   $effect(() => {
@@ -145,6 +149,10 @@
             {@const f = found(planGadgetId(snap.level, r.slot) ?? '')}
             {#if f}<i class="found" data-testid="plan-{r.slot}-found">{f.discovered} / {f.total}</i>{/if}
           {/if}
+          {#if tierOf}
+            {@const t = tierOf(planGadgetId(snap.level, r.slot) ?? '')}
+            {#if t > 0}<span class="tier t{t}" data-testid="plan-{r.slot}-tier">{TIER_LABEL[t]}</span>{/if}
+          {/if}
           {#if selected === r.slot}<em data-testid="plan-{r.slot}-mine">{COPY.yourPlan}</em>{/if}
         </span>
       </button>
@@ -169,5 +177,12 @@
   @keyframes attn { 50% { border-color: #fdf8ec; box-shadow: 0 0 0 4px rgba(253, 248, 236, 0.35); } }
   @media (prefers-reduced-motion: reduce) { .pulsing .tag { animation: none; border-color: #fdf8ec; } }
   .locked .tag { opacity: 0.8; }
+  /* Niveaux des gadgets (cosmétiques) : chrome, néon, holographique — jamais l'or du BOSS FIGHT. */
+  .tier { font-size: 8px; letter-spacing: 1px; padding: 0 5px; border-radius: 6px; color: #12152b; }
+  .tier.t1 { background: linear-gradient(90deg, #dfe9f5, #9fb4cc); }
+  .tier.t2 { background: linear-gradient(90deg, #ff4fd8, #4ff0ff); }
+  .tier.t3 { background: linear-gradient(90deg, #ff6b6b, #ffe66b, #6bff9e, #6bd5ff, #c56bff); background-size: 300% 100%; animation: holo 3s linear infinite; }
+  @keyframes holo { to { background-position: 300% 0; } }
+  @media (prefers-reduced-motion: reduce) { .tier.t3 { animation: none; } }
   @media (max-width: 520px) { .tag { font-size: 9px; padding: 2px 5px; max-width: none; } .tag .name { flex-basis: 100%; text-align: center; font-size: 8px; } .tag i { display: none; } }
 </style>
